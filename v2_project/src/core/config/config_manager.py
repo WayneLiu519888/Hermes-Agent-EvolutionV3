@@ -6,7 +6,7 @@ import os
 import json
 import yaml
 import logging
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 import asyncio
