@@ -1,0 +1,314 @@
+# HermesAgentEvolution 配置文件
+
+# 全局配置
+global:
+  project_name: "HermesAgentEvolution"
+  version: "0.1.0"
+  evolution_mode: "active"  # active, passive, hybrid
+  log_level: "INFO"
+  data_dir: "./data/evolution"
+  
+# 进化引擎配置
+evolution_engine:
+  enabled: true
+  evolution_cycle_hours: 24  # 进化周期（小时）
+  max_generations: 100  # 最大进化代数
+  population_size: 10  # 种群大小
+  
+  # 进化算法参数
+  algorithm:
+    mutation_rate: 0.1  # 变异率
+    crossover_rate: 0.7  # 交叉率
+    selection_pressure: 0.3  # 选择压力
+    elitism_count: 2  # 精英保留数量
+    
+  # 安全约束
+  safety:
+    max_risk_score: 0.7  # 最大风险评分
+    require_human_approval: false  # 是否需要人工批准
+    rollback_on_failure: true  # 失败时回滚
+    test_in_sandbox: true  # 在沙箱中测试
+
+# 自我监控配置
+self_monitoring:
+  enabled: true
+  collection_interval_seconds: 60  # 数据收集间隔
+  
+  # 监控指标
+  metrics:
+    - name: "tool_call_latency"
+      enabled: true
+      threshold_warning: 2.0  # 警告阈值（秒）
+      threshold_critical: 5.0  # 严重阈值（秒）
+      
+    - name: "reasoning_time"
+      enabled: true
+      threshold_warning: 10.0
+      threshold_critical: 30.0
+      
+    - name: "memory_retrieval_accuracy"
+      enabled: true
+      threshold_warning: 0.6  # 准确率阈值
+      threshold_critical: 0.4
+      
+    - name: "task_completion_rate"
+      enabled: true
+      threshold_warning: 0.8
+      threshold_critical: 0.6
+      
+    - name: "error_rate"
+      enabled: true
+      threshold_warning: 0.1
+      threshold_critical: 0.3
+      
+    - name: "context_usage"
+      enabled: true
+      threshold_warning: 0.8  # 上下文使用率
+      threshold_critical: 0.95
+
+# 记忆系统进化配置
+memory_evolution:
+  enabled: true
+  priority: 5  # 优先级 1-5
+  
+  # 检索策略优化
+  retrieval_optimization:
+    enabled: true
+    optimization_interval_hours: 12
+    algorithms:
+      - "similarity_threshold_auto_tune"
+      - "reranking_strategy_optimization"
+      - "hybrid_search_ratio_optimization"
+    
+  # 关联发现
+  association_discovery:
+    enabled: true
+    min_support: 0.1  # 最小支持度
+    min_confidence: 0.7  # 最小置信度
+    max_associations: 100  # 最大关联数量
+    
+  # 压缩优化
+  compression_optimization:
+    enabled: true
+    target_compression_ratio: 0.3  # 目标压缩率
+    quality_preservation_threshold: 0.8  # 质量保持阈值
+
+# 学习能力进化配置
+learning_evolution:
+  enabled: true
+  priority: 5
+  
+  # 经验积累
+  experience_accumulation:
+    enabled: true
+    storage_strategy: "selective"  # selective, comprehensive
+    min_utility_score: 0.5  # 最小效用分数
+    
+  # 模式识别
+  pattern_recognition:
+    enabled: true
+    pattern_types:
+      - "success_patterns"
+      - "failure_patterns"
+      - "efficiency_patterns"
+      - "bottleneck_patterns"
+      
+  # 策略生成
+  strategy_generation:
+    enabled: true
+    generation_methods:
+      - "rule_based"
+      - "learning_based"
+      - "hybrid"
+
+# 工具能力进化配置
+tool_evolution:
+  enabled: true
+  priority: 4
+  
+  # 工具选择优化
+  tool_selection_optimization:
+    enabled: true
+    optimization_algorithm: "multi_armed_bandit"
+    exploration_rate: 0.1  # 探索率
+    
+  # 参数调优
+  parameter_tuning:
+    enabled: true
+    tuning_method: "bayesian_optimization"
+    max_trials: 20  # 最大试验次数
+    
+  # 工具组合创新
+  tool_composition_innovation:
+    enabled: true
+    innovation_strategy: "genetic_algorithm"
+    max_composition_length: 5  # 最大组合长度
+
+# 推理能力进化配置
+reasoning_evolution:
+  enabled: true
+  priority: 3
+  
+  # 推理策略优化
+  strategy_optimization:
+    enabled: true
+    strategy_types:
+      - "depth_first"
+      - "breadth_first"
+      - "heuristic_based"
+      - "hybrid"
+      
+  # 启发式规则学习
+  heuristic_learning:
+    enabled: true
+    learning_method: "rule_mining"
+    min_rule_confidence: 0.8
+    
+  # 元推理能力
+  meta_reasoning:
+    enabled: true
+    reflection_depth: 2  # 反思深度
+
+# 协作能力进化配置
+collaboration_evolution:
+  enabled: false  # 初始阶段禁用
+  priority: 2
+  
+  # 通信协议
+  communication_protocol:
+    protocol_type: "publish_subscribe"
+    message_format: "json"
+    
+  # 任务分配
+  task_allocation:
+    algorithm: "auction_based"
+    fairness_weight: 0.3  # 公平性权重
+    
+  # 冲突解决
+  conflict_resolution:
+    strategy: "negotiation_based"
+    timeout_seconds: 30
+
+# 安全体系进化配置
+security_evolution:
+  enabled: true
+  priority: 4
+  
+  # 威胁识别
+  threat_identification:
+    enabled: true
+    detection_methods:
+      - "anomaly_detection"
+      - "pattern_matching"
+      - "behavior_analysis"
+      
+  # 防护策略
+  protection_strategy:
+    enabled: true
+    strategy_types:
+      - "preventive"
+      - "detective"
+      - "corrective"
+      
+  # 紧急机制
+  emergency_mechanism:
+    enabled: true
+    stop_conditions:
+      - "risk_score > 0.9"
+      - "unexpected_behavior"
+      - "resource_exhaustion"
+
+# 数据库配置
+database:
+  # 主数据库
+  main:
+    type: "sqlite"
+    path: "./data/evolution.db"
+    
+  # 缓存数据库
+  cache:
+    type: "redis"
+    host: "localhost"
+    port: 6379
+    enabled: false  # 初始阶段禁用
+    
+  # 向量数据库（用于记忆）
+  vector_db:
+    type: "chromadb"
+    path: "./data/vector_db"
+    enabled: true
+
+# 日志配置
+logging:
+  file_path: "./logs/evolution.log"
+  max_file_size_mb: 100
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 实验配置
+experiments:
+  # A/B测试
+  ab_testing:
+    enabled: true
+    test_duration_hours: 24
+    min_sample_size: 100
+    
+  # 沙箱环境
+  sandbox:
+    enabled: true
+    isolation_level: "high"
+    resource_limits:
+      cpu: "50%"
+      memory: "1GB"
+      disk: "100MB"
+      
+  # 回滚机制
+  rollback:
+    enabled: true
+    max_versions: 10
+    auto_rollback_on_failure: true
+
+# 性能优化配置
+performance:
+  # 并行处理
+  parallel_processing:
+    enabled: true
+    max_workers: 4
+    
+  # 缓存策略
+  caching:
+    enabled: true
+    ttl_seconds: 3600  # 缓存生存时间
+    
+  # 资源监控
+  resource_monitoring:
+    enabled: true
+    check_interval_seconds: 30
+
+# 用户界面配置
+ui:
+  # 进化可视化
+  visualization:
+    enabled: true
+    update_interval_seconds: 10
+    charts:
+      - "performance_trends"
+      - "evolution_progress"
+      - "bottleneck_analysis"
+      
+  # 报告生成
+  reporting:
+    enabled: true
+    report_types:
+      - "daily_summary"
+      - "weekly_analysis"
+      - "evolution_impact"
+      
+  # 控制接口
+  control:
+    enabled: true
+    allow_manual_intervention: true
+    intervention_levels:
+      - "suggest_only"
+      - "require_approval"
+      - "full_control"

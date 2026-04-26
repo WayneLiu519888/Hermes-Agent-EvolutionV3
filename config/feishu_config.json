@@ -1,0 +1,9 @@
+{
+    "mode": "openapi",
+    "webhook_url": "",
+    "app_id": "cli_a96b9943f1f8dcd2",
+    "app_secret": "",
+    "home_channel": "oc_018d7317c249d59c48fa0ef0ada77317",
+    "domain": "feishu",
+    "home_channel_name": "Wayne-Hermes"
+}

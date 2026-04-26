@@ -1,0 +1,94 @@
+# HermesAgentEvolution V2 配置文件
+# 环境: development
+
+app:
+  name: "HermesAgentEvolution"
+  version: "2.0.0"
+  env: "development"
+  debug: true
+
+logging:
+  level: "DEBUG"
+  file: "logs/hermes_v2.log"
+  max_size_mb: 100
+  backup_count: 5
+
+event_bus:
+  max_history: 1000
+  async_workers: 4
+  retry_attempts: 3
+
+service_manager:
+  heartbeat_interval: 30
+  health_check_interval: 60
+  service_timeout: 300
+
+database:
+  url: "sqlite:///data/hermes.db"
+  pool_size: 10
+  echo: false
+
+redis:
+  url: "redis://localhost:6379/0"
+  pool_size: 20
+  timeout: 5
+
+learning:
+  reinforcement:
+    learning_rate: 0.01
+    discount_factor: 0.95
+    exploration_rate: 0.1
+    batch_size: 32
+    memory_size: 10000
+  
+  meta:
+    adaptation_steps: 100
+    meta_batch_size: 4
+  
+  reflection:
+    depth: 3
+    max_iterations: 10
+
+tools:
+  discovery:
+    scan_interval: 300  # 5分钟
+    auto_register: true
+  
+  composition:
+    max_depth: 3
+    timeout: 30
+  
+  evaluation:
+    metrics: ["accuracy", "efficiency", "reliability"]
+    weight_accuracy: 0.4
+    weight_efficiency: 0.3
+    weight_reliability: 0.3
+
+monitoring:
+  metrics:
+    interval: 60
+    retention_days: 30
+  
+  alerts:
+    enabled: true
+    health_threshold: 70.0
+    error_threshold: 10
+  
+  tracing:
+    enabled: true
+    sample_rate: 0.1
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  cors_origins: ["*"]
+
+security:
+  api_key_enabled: false
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+  
+  secrets:
+    encryption_key: "change_this_in_production"
