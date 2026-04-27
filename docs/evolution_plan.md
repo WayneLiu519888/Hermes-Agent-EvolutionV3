@@ -113,6 +113,70 @@
    - 使用示例创建
    - 最佳实践指南
 
+### **迭代6: 第六周 - Hermes 集成部署** 🔌
+> **目标**: 将进化引擎打包为 pip 包 + Hermes 插件，实现一键安装到 Hermes Agent 中
+
+#### 6.1 Python 包化
+1. **完善 `pyproject.toml` / `setup.py`**
+   - 声明包名 `hermes-agent-evolution`，版本 `2.0.0`
+   - 定义依赖：核心零外部依赖，`[llm]` 可选组（openai/anthropic）
+   - 配置 `packages.find(where="src")` 自动发现
+   - 添加 classifiers、project.urls（GitHub/docs）
+
+2. **版本管理与发布**
+   - 遵循语义化版本 `MAJOR.MINOR.PATCH`
+   - 配置 `pip install -e .[dev]` 开发模式
+   - 发布到 PyPI（可选）/ 私有索引
+
+#### 6.2 Hermes Plugin 薄层
+1. **创建插件骨架**
+   ```
+   hermes-plugin/
+   ├── plugin.yaml          # name: hermes-evolution, version: 2.0.0
+   └── __init__.py          # register(ctx) 入口
+   ```
+
+2. **`register(ctx)` 实现**
+   - `ctx.register_tool("evolution_run_cycle", ...)` — 进化周期
+   - `ctx.register_tool("evolution_create_tool", ...)` — 工具创建
+   - `ctx.register_tool("evolution_analyze_performance", ...)` — 性能分析
+   - `ctx.register_tool("evolution_learn", ...)` — 经验记录/分析
+   - `ctx.register_tool("evolution_self_monitor", ...)` — 自我监控
+   - `ctx.register_tool("evolution_memory_discover", ...)` — 关联发现
+   - `ctx.register_hook("post_tool_call", on_tool_call)` — 自动记录每次工具执行经验
+
+3. **配置集成**
+   - 读取 `config/evolution_config.yaml` 作为 EvolutionConfig
+   - 支持环境变量覆盖（`EVOLUTION_INTERVAL`、`EVOLUTION_MIN_SCORE` 等）
+   - 数据库路径默认 `~/.hermes/data/evolution/`
+
+#### 6.3 安装流程
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1 | `pip install hermes-agent-evolution` | 安装进化引擎 |
+| 2 | `cp -r hermes-plugin ~/.hermes/plugins/hermes-evolution/` | 部署插件 |
+| 3 | `hermes gateway restart` | 重启 Hermes |
+| 4 | `/tools` → 确认 `evolution_*` 工具可见 | 验证 |
+
+#### 6.4 集成测试
+1. **插件加载测试** — Hermes 启动后工具发现正常
+2. **工具调用测试** — LLM 能正确调用进化工具
+3. **Hook 触发测试** — `post_tool_call` 自动记录经验
+4. **多 session 持久化测试** — 进化状态跨 session 保持
+5. **降级测试** — 学习模块不可用时工具层仍正常工作
+
+#### 6.5 文档补充
+1. **`INSTALLATION.md`** — 新增 §8 "Hermes集成安装"
+2. **`README.md`** — 新增 "快速集成到 Hermes" 章节
+3. **`docs/HERMES_INTEGRATION.md`** — 独立集成指南（架构图+步骤+FAQ）
+
+#### 6.6 交付物
+- ✅ `pyproject.toml` — 标准化 Python 包
+- ✅ `hermes-plugin/` — Hermes 插件目录
+- ✅ `docs/HERMES_INTEGRATION.md` — 集成指南
+- ✅ 集成测试套件（5+ 测试用例）
+- ✅ `pip install` + 插件部署一键可用的验证流程
+
 ## 🔄 执行策略
 
 ### **每日工作流程:**
@@ -148,7 +212,6 @@
 
 ---
 
-**计划制定时间:** 2026-04-21 04:49:38
-**项目版本:** 0.1.0
-**预计完成时间:** 5周后
-**当前状态:** 迭代1进行中
+**计划制定时间:** 2026-04-21 04:49:38  
+**最后更新:** 2026-04-27 20:04 (追加迭代6 - Hermes集成部署)  
+**项目版本:** 2.0.0  \n**预计完成时间:** 6周后  \n**当前状态:** 迭代5已完成 → 迭代6进行中
