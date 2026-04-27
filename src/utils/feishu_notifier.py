@@ -36,12 +36,15 @@ class FeishuNotifier:
             "home_channel_name": os.environ.get("FEISHU_HOME_CHANNEL_NAME", "Wayne-Hermes")
         }
         
-        # 尝试从配置文件加载
+        # 尝试从配置文件加载（只更新非空值，避免覆盖环境变量）
         if config_path and os.path.exists(config_path):
             try:
                 with open(config_path, 'r') as f:
                     file_config = json.load(f)
-                    config.update(file_config)
+                    # Only update keys that have non-empty values in the file config
+                    for key, value in file_config.items():
+                        if value:  # Non-empty string/list/dict
+                            config[key] = value
             except Exception as e:
                 self.logger.warning(f"配置文件加载失败: {e}")
         

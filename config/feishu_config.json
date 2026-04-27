@@ -1,5 +1,5 @@
 {
-    "mode": "openapi",
+    "mode": "auto",
     "webhook_url": "",
     "app_id": "cli_a96b9943f1f8dcd2",
     "app_secret": "",
