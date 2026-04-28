@@ -302,7 +302,7 @@ def _handle_create_tool(ctx, params):
         return json.dumps({
             "success": False,
             "error": str(e),
-            "tool_name": params.get("tool_name", ""),
+            "tool_name": params.get("tool_name", "") if isinstance(params, dict) else "",
             "timestamp": datetime.now().isoformat(),
         })
 

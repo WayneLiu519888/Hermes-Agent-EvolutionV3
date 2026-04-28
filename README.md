@@ -217,6 +217,38 @@ python -m pytest tests/ --cov=src/evolution --cov-report=term-missing
 
 ---
 
+## 🔌 Hermes 集成
+
+将进化引擎一键集成到 Hermes Agent 中，获得 6 个自主进化工具。
+
+### 快速安装
+
+```bash
+# 1. 安装进化引擎
+pip install hermes-agent-evolution
+
+# 2. 部署插件到 Hermes
+cp -r hermes-plugin ~/.hermes/plugins/hermes-evolution/
+
+# 3. 重启 Hermes
+hermes gateway restart
+```
+
+### 可用工具
+
+| 工具 | 功能 |
+|------|------|
+| `evolution_run_cycle` | 触发完整进化周期 |
+| `evolution_create_tool` | 从 API 描述自动创建工具 |
+| `evolution_analyze_performance` | 分析工具性能指标 |
+| `evolution_learn` | 记录学习经验/教训 |
+| `evolution_self_monitor` | 获取系统健康状态 |
+| `evolution_memory_discover` | 发现记忆之间的关联 |
+
+> 📖 完整指南、架构图、验证步骤、FAQ、故障排除见 **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md)**
+
+---
+
 ## 📦 移植说明
 
 本项目的核心设计原则是**高可移植性**。以下是从 HermesAgent 实例迁移到其它项目的步骤：

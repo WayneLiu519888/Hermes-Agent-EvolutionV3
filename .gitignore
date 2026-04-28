@@ -34,3 +34,11 @@ config/feishu_config.json
 
 # Infographic outputs
 infographic/*/output/
+
+# Test coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Temporary / utility scripts
+_check_v2_imports.py
