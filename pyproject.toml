@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-agent-evolution"
+version = "2.0.0"
+authors = [
+    { name = "HermesAgentEvolution Team", email = "contact@example.com" },
+]
+description = "AI助手自我进化系统 - 使AI助手能够从经验中学习并持续改进自身能力"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "psutil>=5.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/HermesAgentEvolution"
+"Bug Reports" = "https://github.com/yourusername/HermesAgentEvolution/issues"
+Source = "https://github.com/yourusername/HermesAgentEvolution"
+Documentation = "https://github.com/yourusername/HermesAgentEvolution/wiki"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+full = [
+    "requests>=2.25.0",
+    "numpy>=1.19.0",
+    "scikit-learn>=0.24.0",
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+evolution = ["data/*.db", "config/*.json"]
