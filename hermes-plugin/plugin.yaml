@@ -1,3 +1,3 @@
 name: hermes-evolution
-version: "2.0.0"
-description: AI self-evolution engine — autonomous learning, tool creation, performance optimization, and closed-loop improvement for Hermes Agent
+version: "3.0.0"
+description: HermesAgentEvolution V3 — V1/V2/V3 融合架构，AI自主进化引擎（学习/工具/安全/协作/闭环）+ 微服务层
