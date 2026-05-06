@@ -48,7 +48,7 @@ def _get_tool_registry():
     """Get or create a ToolRegistry singleton."""
     if "tool_registry" not in _engine_instances:
         try:
-            from src.evolution.tools import ToolRegistry
+            from evolution.tools import ToolRegistry
             project_root = Path(__file__).resolve().parent.parent
             db_path = str(project_root / "data" / "tools.db")
             _engine_instances["tool_registry"] = ToolRegistry(db_path=db_path)
@@ -62,7 +62,7 @@ def _get_learning_observer():
     """Get or create a LearningObserver singleton."""
     if "learning_observer" not in _engine_instances:
         try:
-            from src.evolution.learning import LearningObserver
+            from evolution.learning import LearningObserver
             project_root = Path(__file__).resolve().parent.parent
             db_path = str(project_root / "data" / "learning_experiences.db")
             _engine_instances["learning_observer"] = LearningObserver(db_path=db_path)
@@ -76,17 +76,17 @@ def _get_orchestrator():
     """Get or create a ClosedLoopOrchestrator singleton."""
     if "orchestrator" not in _engine_instances:
         try:
-            from src.evolution.closed_loop import (
+            from evolution.closed_loop import (
                 ClosedLoopOrchestrator,
                 SystemMetricsCollector,
             )
-            from src.evolution.learning import (
+            from evolution.learning import (
                 LearningObserver,
                 ExperienceAnalyzer,
                 PatternRecognizer,
                 ToolStrategyLearner,
             )
-            from src.evolution import SelfMonitor  # top-level import
+            from evolution import SelfMonitor  # top-level import
 
             project_root = Path(__file__).resolve().parent.parent
             db_base = str(project_root / "data")
@@ -98,7 +98,7 @@ def _get_orchestrator():
             self_monitor = SelfMonitor(observer, analyzer, strategy_learner)
             metrics_collector = SystemMetricsCollector()
             pattern_recognizer = PatternRecognizer()
-            from src.evolution.closed_loop import ActionExecutor
+            from evolution.closed_loop import ActionExecutor
             action_executor = ActionExecutor()
 
             _engine_instances["orchestrator"] = ClosedLoopOrchestrator(
@@ -133,7 +133,7 @@ def _get_tool_performance_analyzer():
     """Get or create a ToolPerformanceAnalyzer singleton."""
     if "tool_performance_analyzer" not in _engine_instances:
         try:
-            from src.evolution.tools import ToolPerformanceAnalyzer
+            from evolution.tools import ToolPerformanceAnalyzer
             registry = _get_tool_registry()
             if registry is None:
                 _engine_instances["tool_performance_analyzer"] = None
@@ -153,7 +153,7 @@ def _get_association_discoverer():
     """Get or create an AssociationDiscoverer singleton."""
     if "association_discoverer" not in _engine_instances:
         try:
-            from src.evolution.memory import AssociationDatabase, AssociationDiscoverer
+            from evolution.memory import AssociationDatabase, AssociationDiscoverer
             project_root = Path(__file__).resolve().parent.parent
             db_path = str(project_root / "data" / "associations.db")
             db = AssociationDatabase(db_path=db_path)
@@ -179,7 +179,7 @@ TOOL_RUN_CYCLE_SCHEMA = {
 }
 
 
-def _handle_run_cycle(ctx, params):
+def _handle_run_cycle(ctx, params, **kwargs):
     """Handler for evolution_run_cycle."""
     try:
         orchestrator = _get_orchestrator()
@@ -244,7 +244,7 @@ TOOL_CREATE_TOOL_SCHEMA = {
 }
 
 
-def _handle_create_tool(ctx, params):
+def _handle_create_tool(ctx, params, **kwargs):
     """Handler for evolution_create_tool."""
     try:
         tool_name = params.get("tool_name", "")
@@ -259,7 +259,7 @@ def _handle_create_tool(ctx, params):
                 "error": "Missing required parameters: tool_name, description, api_spec",
             })
 
-        from src.evolution.tools import EnhancedToolCreator, ToolCategory
+        from evolution.tools import EnhancedToolCreator, ToolCategory
 
         cat_map = {
             "utility": ToolCategory.UTILITY,
@@ -332,7 +332,7 @@ TOOL_ANALYZE_PERFORMANCE_SCHEMA = {
 }
 
 
-def _handle_analyze_performance(ctx, params):
+def _handle_analyze_performance(ctx, params, **kwargs):
     """Handler for evolution_analyze_performance."""
     try:
         analyzer = _get_tool_performance_analyzer()
@@ -451,10 +451,10 @@ TOOL_LEARN_SCHEMA = {
 }
 
 
-def _handle_learn(ctx, params):
+def _handle_learn(ctx, params, **kwargs):
     """Handler for evolution_learn."""
     try:
-        from src.evolution.learning import Experience, ExperienceType, Outcome
+        from evolution.learning import Experience, ExperienceType, Outcome
         import uuid
 
         desc = params.get("description", "")
@@ -543,7 +543,7 @@ TOOL_SELF_MONITOR_SCHEMA = {
 }
 
 
-def _handle_self_monitor(ctx, params):
+def _handle_self_monitor(ctx, params, **kwargs):
     """Handler for evolution_self_monitor."""
     try:
         self_monitor = _get_self_monitor()
@@ -618,7 +618,7 @@ TOOL_MEMORY_DISCOVER_SCHEMA = {
 }
 
 
-def _handle_memory_discover(ctx, params):
+def _handle_memory_discover(ctx, params, **kwargs):
     """Handler for evolution_memory_discover."""
     try:
         discoverer = _get_association_discoverer()
@@ -672,7 +672,7 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
         if observer is None:
             return
 
-        from src.evolution.learning import Experience, ExperienceType, Outcome
+        from evolution.learning import Experience, ExperienceType, Outcome
         import uuid
 
         # Determine outcome
@@ -738,7 +738,12 @@ def register(ctx):
 
     for name, schema, handler in tools:
         try:
-            ctx.register_tool(name, schema, handler)
+            ctx.register_tool(
+                name=name,
+                toolset="hermes-evolution",
+                schema=schema,
+                handler=handler,
+            )
             logger.info("Registered tool: %s", name)
         except Exception as e:
             logger.error("Failed to register tool %s: %s", name, e)
