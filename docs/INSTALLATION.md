@@ -53,7 +53,7 @@
 
 ## 2. 快速安装
 
-### 2.1 使用 pip
+### 2.1 使用 pip 安装
 
 ```bash
 # 克隆仓库
@@ -66,9 +66,41 @@ source .venv/bin/activate  # Linux/macOS
 # 或
 .venv\Scripts\activate     # Windows
 
-# 安装依赖
-pip install -r requirements.txt
+# 安装 (可编辑模式, 推荐)
+pip install -e .
+
+# 或使用 Makefile 一键安装开发依赖
+make install
 ```
+
+安装后可通过以下命令验证:
+
+```bash
+# 环境自检
+hermes-evolution check
+
+# 或
+make check
+```
+
+### 2.1.1 pip 安装路径说明
+
+通过 `pip install -e .` 安装后，`hermes-evolution` 命令行工具注册到系统 PATH，位于:
+
+| 环境 | 路径 |
+|------|------|
+| **虚拟环境 (推荐)** | `.venv/bin/hermes-evolution` (Linux/macOS) / `.venv\Scripts\hermes-evolution.exe` (Windows) |
+| **用户安装** | `~/.local/bin/hermes-evolution` |
+| **系统安装** | `/usr/local/bin/hermes-evolution` |
+
+CLI 提供以下命令:
+
+| 命令 | 说明 |
+|------|------|
+| `hermes-evolution check` | 环境自检 (Python版本、模块导入、DB连接、插件部署) |
+| `hermes-evolution setup` | 一键部署插件到 `~/.hermes/plugins/hermes-evolution/` |
+| `hermes-evolution status` | 查看系统状态 (版本、模块数、测试、DB文件) |
+| `hermes-evolution test` | 运行测试套件 |
 
 ### 2.2 可选的 LLM 功能安装
 
@@ -80,7 +112,35 @@ pip install openai>=1.0.0
 pip install anthropic
 ```
 
-### 2.3 开发模式安装
+### 2.3 插件部署 (hermes-evolution setup)
+
+将 Hermes Agent 插件部署到 Hermes Gateway:
+
+```bash
+# 方式1: CLI 一键部署
+hermes-evolution setup
+
+# 方式2: Makefile
+make setup
+
+# 方式3: 手动
+cp -r hermes-plugin/ ~/.hermes/plugins/hermes-evolution/
+```
+
+部署后需重启 Hermes Gateway 使插件生效。
+
+```bash
+hermes gateway restart
+```
+
+验证插件部署:
+
+```bash
+hermes-evolution check
+# ✅ Hermes 插件已部署
+```
+
+### 2.4 开发模式安装
 
 ```bash
 pip install -e ".[dev]"
@@ -327,7 +387,44 @@ learner.min_samples = 5          # 切换策略前的最少样本数
 
 ## 6. 验证安装
 
-### 6.1 基础验证脚本
+### 6.1 CLI 环境自检 (推荐)
+
+```bash
+# 快速自检
+hermes-evolution check
+
+# 或
+make check
+```
+
+输出示例:
+
+```
+🔍 HermesAgentEvolution 环境自检
+==================================================
+  ✅ Python 3.12.3 ≥ 3.9
+  ✅ 模块 工具注册表
+  ✅ 模块 学习观察器
+  ✅ 模块 记忆数据库
+  ✅ 模块 安全审计
+  ✅ 模块 协作编排
+  ✅ 模块 闭环编排
+  ✅ 模块 自我监控
+  ✅ 模块 DB工具
+  ✅ DB 可读写
+  ✅ Hermes 插件已部署
+  ✅ 数据目录: ~/.hermes/data/evolution
+==================================================
+  🎉 环境就绪，可以正常使用
+```
+
+### 6.2 查看系统状态
+
+```bash
+hermes-evolution status
+```
+
+### 6.3 基础验证脚本
 
 ```python
 """
@@ -453,7 +550,7 @@ if __name__ == "__main__":
 python verify_installation.py
 ```
 
-### 6.2 运行测试套件
+### 6.4 运行测试套件
 
 ```bash
 # 运行所有测试
@@ -498,21 +595,55 @@ export OPENAI_API_KEY=sk-your-key-here
 
 ### Q3: 数据库文件位置
 
-默认数据库文件创建在项目根目录的 `data/` 文件夹下：
-- `data/tools.db` — 工具注册表
-- `data/tool_performance.db` — 工具性能记录
-- `data/learning_experiences.db` — 学习经验
-- `data/associations.db` — 记忆关联
+默认数据库文件创建在 `~/.hermes/data/evolution/` 目录下：
+
+| 数据库文件 | 用途 |
+|-----------|------|
+| `tools.db` | 工具注册表 |
+| `tool_performance.db` | 工具性能记录 |
+| `learning_experiences.db` | 学习经验 |
+| `associations.db` | 记忆关联 |
+
+**路径优先级**:
+1. 环境变量 `EVOLUTION_DATA_DIR`（优先级最高）
+2. 环境变量 `HERMES_HOME` → `$HERMES_HOME/data/evolution/`
+3. 默认 `~/.hermes/data/evolution/`
 
 可通过构造函数参数自定义路径。
 
-### Q4: SQLite 并发写入问题
+### Q4: 如何开启日志
 
-SQLite 支持并发读取但写入会锁定。如果在高并发场景下使用：
-- 使用内存数据库 (`:memory:`) 提升性能
-- 考虑迁移到 PostgreSQL 等专业数据库
+v3.0.0 使用 Python 标准 `logging` 模块统一日志输出:
 
-### Q5: 内存数据库的使用场景
+```bash
+# 设置日志级别
+export LOG_LEVEL=DEBUG  # DEBUG / INFO / WARNING / ERROR
+
+# 查看日志
+hermes-evolution check
+# [DEBUG] evolution.db_utils: 创建数据库连接: ~/.hermes/data/evolution/tools.db (WAL模式)
+```
+
+在代码中:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.info("进化引擎启动")
+```
+
+### Q5: SQLite 并发写入问题
+
+SQLite 启用 WAL 模式后支持并发读取且写入不阻塞读取。`db_utils.get_evolution_db()` 自动配置:
+
+- `PRAGMA journal_mode=WAL` — 并发读写
+- `PRAGMA busy_timeout=30000` — 30秒忙等重试
+- `PRAGMA cache_size=-8000` — 8MB缓存
+
+如果在高并发场景下仍有瓶颈，考虑迁移到 PostgreSQL。
+
+### Q6: 内存数据库的使用场景
 
 ```python
 # 测试环境 — 每次运行都是全新的数据库
@@ -522,7 +653,7 @@ registry = ToolRegistry(db_path=":memory:")
 registry = ToolRegistry(db_path="data/production_tools.db")
 ```
 
-### Q6: 如何启用/禁用学习系统集成
+### Q7: 如何启用/禁用学习系统集成
 
 学习系统默认启用。如果不需要，在创建进化引擎时关闭：
 
@@ -532,6 +663,36 @@ engine = ToolEvolutionEngine(config=config)
 ```
 
 缺省学习模块时，系统会自动检测并打印提示。
+
+### Q8: Makefile 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `make install` | 安装开发依赖 (可编辑模式) |
+| `make test` | 运行全量测试 (快速模式) |
+| `make test-v` | 运行全量测试 (详细模式) |
+| `make test-cov` | 运行测试 + 覆盖率报告 |
+| `make lint` | 代码检查 (ruff) |
+| `make format` | 代码格式化 (ruff) |
+| `make fix` | 自动修复 lint 问题 |
+| `make check` | 环境自检 |
+| `make build` | 构建 PyPI 包 |
+| `make clean` | 清理构建产物 |
+
+### Q9: hermes-evolution CLI 报 command not found
+
+**原因**: 未安装或虚拟环境未激活。
+
+**解决方法**:
+
+```bash
+# 激活虚拟环境后重新安装
+source .venv/bin/activate
+pip install -e .
+
+# 或直接使用 Makefile
+make check
+```
 
 ---
 

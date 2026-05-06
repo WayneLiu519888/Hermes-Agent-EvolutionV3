@@ -39,6 +39,57 @@ HermesAgentEvolution 是一个面向 AI Agent 的**自我进化框架**，核心
 
 ## 2. 整体架构概览
 
+### 2.0 V3 融合架构总览
+
+v3.0.0 采用 **V1/V2/V3 三位一体融合架构**，通过 `fusion/` 桥接层将 V1 单体模块与 V2 微服务无缝集成：
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     V3 融合架构 (Hybrid Mode)                     │
+│                                                                   │
+│  ┌─────────────────────┐          ┌──────────────────────────┐   │
+│  │    V1 单体核心        │          │    V2 微服务体系          │   │
+│  │  ┌───────────────┐  │          │  ┌────────────────────┐ │   │
+│  │  │ tools/        │  │          │  │ ServiceManager     │ │   │
+│  │  │ learning/     │  │  ◄══►   │  │ EventBus           │ │   │
+│  │  │ memory/       │──┼──────────┼──│ ToolManager        │ │   │
+│  │  │ security/     │  │  fusion/ │  │ LearningOrch.      │ │   │
+│  │  │ collaboration/│  │  bridge  │  │ MonitoringService  │ │   │
+│  │  │ closed_loop/  │  │          │  │ ConfigManager      │ │   │
+│  │  └───────────────┘  │          │  └────────────────────┘ │   │
+│  └─────────────────────┘          └──────────────────────────┘   │
+│              │                              │                     │
+│              └──────────┬───────────────────┘                     │
+│                         ▼                                         │
+│              ┌─────────────────────┐                              │
+│              │  UnifiedAgent 统一入口│  ← V3 融合入口              │
+│              │  - V1_ONLY 模式      │                              │
+│              │  - V2_ONLY 模式      │                              │
+│              │  - HYBRID 融合模式    │                              │
+│              └─────────────────────┘                              │
+│                         │                                         │
+│                         ▼                                         │
+│              ┌─────────────────────┐                              │
+│              │  ~/.hermes/data/     │  ← 统一数据层 (DB路径隔离)   │
+│              │  evolution/*.db      │                              │
+│              └─────────────────────┘                              │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**融合桥 (`fusion/bridge.py`)** 核心功能：
+- **事件转换**: V1 经验事件 ↔ V2 EventBus 消息，自动推断类型和优先级
+- **服务映射**: V1 模块 ↔ V2 微服务双向映射表 (如 `learning.observer` → `LearningOrchestrator`)
+- **数据格式转换**: V1 dataclass ↔ V2 JSON/dict 双向转换
+- **健康检查**: V1 健康报告 → V2 服务状态列表
+
+**融合入口 (`fusion/unified_entry.py`)** 支持三种运行模式：
+
+| 模式 | 说明 |
+|------|------|
+| `V1_ONLY` | 纯 V1 单体模块，零外部依赖 |
+| `V2_ONLY` | 纯 V2 微服务，适合分布式部署 |
+| `HYBRID` | V1+V2 协同，自动检测可用模块，API降级 |
+
 ### 2.1 架构层次
 
 ```
@@ -332,7 +383,59 @@ HermesAgentEvolution 是一个面向 AI Agent 的**自我进化框架**，核心
 3. 生成改进计划
 4. 记录监控历史
 
-### 3.8 记忆系统
+### 3.8 融合桥接层 (`fusion/`)
+
+**文件**: `src/evolution/fusion/bridge.py`, `src/evolution/fusion/unified_entry.py`, `src/evolution/fusion/compatibility.py`
+
+v3.0.0 核心组件，实现 V1 单体架构与 V2 微服务架构的双向桥接。
+
+#### 3.8.1 V1V2Bridge (桥接器)
+
+**文件**: `src/evolution/fusion/bridge.py`
+
+| 组件 | 职责 |
+|------|------|
+| `V1V2Bridge` | 主桥接类，管理所有转换、映射和健康检查 |
+| `ServiceMapping` | 服务映射条目数据类 |
+| `V1ExperienceData` | V1 经验数据中间表示 (JSON可序列化) |
+| `V2EventData` | V2 事件数据中间表示 |
+| `DataFormatConverter` | V1 dataclass ↔ V2 JSON/dict 双向转换器 |
+
+**服务映射表** (`SERVICE_MAP_V1_TO_V2`): 定义 V1 模块到 V2 微服务的完整映射关系：
+
+| V1 模块 | V2 微服务 |
+|---------|----------|
+| `learning.*` | `LearningOrchestrator` |
+| `tools.*` | `ToolManager` |
+| `memory.*` | `MonitoringService` |
+| `self_monitor` | `MonitoringService` |
+| `collaboration.*` | `ServiceManager` / `EventBus` |
+| `security.*` | `MonitoringService` / `ConfigManager` |
+
+**事件转换**:
+- `v1_to_v2_event()`: V1 经验/健康报告 → V2 EventBus 兼容事件
+- `v2_to_v1_callback()`: V2 EventBus 消息 → V1 兼容回调
+
+#### 3.8.2 兼容层
+
+**文件**: `src/evolution/fusion/compatibility.py`
+
+| 组件 | 职责 |
+|------|------|
+| `StatusMapper` | V1/V2 状态枚举双向映射 |
+| `EnumMapper` | 通用 V1/V2 枚举注册与转换 |
+| `CompatibilityLayer` | 统一兼容层，管理降级规则 |
+| `APIGateway` | 统一 API 网关，自动路由 V1/V2 请求 |
+| `DegradationHandler` | 服务降级处理 (V2不可用时回退V1) |
+| `VersionDetector` | 自动检测 V1/V2 模块可用性 |
+
+#### 3.8.3 统一入口
+
+**文件**: `src/evolution/fusion/unified_entry.py`
+
+`UnifiedAgent` 是 v3.0.0 的统一入口点，支持三种运行模式并通过 `CapabilityRequest` 自动路由能力请求到合适的后端 (V1/V2/Hybrid)。
+
+### 3.9 记忆系统
 
 **文件**: `src/evolution/memory/`
 
@@ -474,30 +577,37 @@ SelfMonitor
 
 ## 7. 架构演进路线
 
-### V1 (当前实现 ✓)
+### V1 (已实现 ✓)
 - 单体模块化架构
 - 基础工具注册和创建
 - 简单的模式识别
 - SQLite 持久化
 
-### V2 (规划中)
+### V2 (已实现 ✓)
 - **事件驱动微服务架构**
 - 异步高性能处理 (asyncio)
 - 配置管理系统
-- 完整可观测性 (Prometheus + 结构化日志 + 分布式追踪)
-- 强化学习 + 元学习 + 反思机制
-- 知识图谱 + 向量数据库
-- 容器化部署 (Docker + Kubernetes)
+- 基础可观测性
+- 容器化部署 (Docker)
 
-### 关键改进领域
+### V3 (当前 — v3.0.0 ✓)
+- **V1/V2/V3 融合架构** — 单体+微服务混合，通过 `fusion/` 桥接层无缝集成
+- **统一 CLI** — `hermes-evolution` 命令行工具 (check/setup/status/test)
+- **DB 路径隔离** — 统一 `~/.hermes/data/evolution/` 路径，`db_utils` 连接工厂
+- **日志统一** — Python `logging` 模块标准化输出
+- **Makefile** — 标准化构建/测试/lint/formatter 工作流
+- **插件部署** — `hermes-evolution setup` 一键部署到 Hermes Gateway
+- **API降级** — V2 不可用时自动回退 V1 (兼容层)
 
-| 维度 | V1 (当前) | V2 (目标) |
-|------|-----------|-----------|
-| 学习机制 | 基础模式识别 | 强化学习 + 元学习 + 反思 |
-| 工具系统 | 动态工具注册 | 工具发现 + 智能组合 |
-| 记忆系统 | SQLite 存储 | 知识图谱 + 向量 DB |
-| 部署方式 | 单机 | 容器化 + 分布式 |
-| 监控 | 基础日志 | 完整可观测性 |
+### V2 规划演进 → V3 实现
+
+| 维度 | V2 (目标) | V3 (当前实现) |
+|------|-----------|---------------|
+| 学习机制 | 强化学习 + 元学习 + 反思 | 融合架构，学习层可独立运行 |
+| 工具系统 | 工具发现 + 智能组合 | 完整工具进化引擎 + 融合桥 |
+| 记忆系统 | 知识图谱 + 向量 DB | SQLite 持久化 + 路径隔离 |
+| 部署方式 | 容器化 + 分布式 | Docker + 本地CLI + 插件部署 |
+| 监控 | 完整可观测性 | logging + CLI status + DB统计 |
 
 ---
 

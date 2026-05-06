@@ -55,6 +55,9 @@ build: ## 构建 PyPI 包
 check: ## 环境自检
 	$(PYTHON) -c "from src.evolution.cli import cmd_check; exit(0 if cmd_check() else 1)"
 
+setup: ## 一键部署 Hermes 插件
+	$(PYTHON) -c "from src.evolution.cli import cmd_setup; exit(0 if cmd_setup() else 1)"
+
 check-all: lint test ## 全量检查 (lint + test)
 	@echo ""
 	@echo "✅ 全量检查通过"
