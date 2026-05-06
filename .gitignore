@@ -42,3 +42,8 @@ htmlcov/
 
 # Temporary / utility scripts
 _check_v2_imports.py
+
+# 备份目录
+backup_*/
+*.db
+*.jsonl
