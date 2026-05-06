@@ -34,13 +34,13 @@ install_requires = parse_requirements()
 
 setup(
     name="hermes-agent-evolution",
-    version="2.0.0",
+    version="3.0.0",
     author="HermesAgentEvolution Team",
     author_email="contact@example.com",
-    description="AI助手自我进化系统 - 使AI助手能够从经验中学习并持续改进自身能力",
+    description="AI自我进化系统 V1/V2/V3 融合版 — 单体+微服务混合架构",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/HermesAgentEvolution",
+    url="https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,

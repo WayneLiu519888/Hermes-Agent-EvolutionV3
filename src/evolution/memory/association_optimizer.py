@@ -43,7 +43,7 @@ class AssociationOptimizer:
     def _connect(self):
         """连接到数据库"""
         try:
-            self.connection = get_evolution_db(os.path.basename(self.db_path))
+            self.connection = get_evolution_db(self.db_path)
             self.connection.row_factory = sqlite3.Row
             logger.info(f"连接到数据库: {self.db_path}")
         except sqlite3.Error as e:

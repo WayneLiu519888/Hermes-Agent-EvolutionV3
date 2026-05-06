@@ -92,7 +92,7 @@ class ToolDefinition:
 class ToolRegistry:
     """工具注册表"""
     
-    def __init__(self, db_path: str = "data/tools.db"):
+    def __init__(self, db_path: str = "tools.db"):
         """
         初始化工具注册表
         
@@ -107,7 +107,7 @@ class ToolRegistry:
         """获取数据库连接（支持内存数据库）"""
         if self._memory_conn:
             return self._memory_conn
-        return get_evolution_db('tools.db')
+        return get_evolution_db(self.db_path)
     
     def _init_database(self):
         """初始化数据库"""

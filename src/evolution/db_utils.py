@@ -61,7 +61,9 @@ def get_evolution_db(db_name: str) -> sqlite3.Connection:
     获取线程安全的 SQLite 连接。
     
     Args:
-        db_name: 数据库文件名 (如 "tools.db", "learning_experiences.db")
+        db_name: 数据库文件名或绝对路径
+                 - 相对名 (如 "tools.db") → 解析到数据目录
+                 - 绝对路径 (如 "/tmp/test.db") → 直接使用 (测试隔离)
     
     Returns:
         sqlite3.Connection: 已配置 WAL + 线程安全 + 忙等的连接
@@ -74,10 +76,15 @@ def get_evolution_db(db_name: str) -> sqlite3.Connection:
         - PRAGMA foreign_keys=ON         (外键约束)
         - check_same_thread=False        (跨线程安全)
     
-    连接按 db_name 缓存复用。缓存是线程安全的。
+    连接按 db_path 缓存复用。缓存是线程安全的。
     """
-    data_dir = _resolve_data_dir()
-    db_path = str(data_dir / db_name)
+    # 绝对路径 → 直接使用 (测试隔离/自定义路径)
+    if os.path.isabs(db_name):
+        db_path = db_name
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    else:
+        data_dir = _resolve_data_dir()
+        db_path = str(data_dir / db_name)
     
     with _cache_lock:
         if db_path in _connection_cache:

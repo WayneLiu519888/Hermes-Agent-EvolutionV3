@@ -45,7 +45,7 @@ class RetrievalFeedback:
 class RetrievalOptimizer:
     """检索策略优化器"""
     
-    def __init__(self, association_db=None, db_path: str = "data/retrieval_optimization.db"):
+    def __init__(self, association_db=None, db_path: str = "retrieval_optimization.db"):
         """
         初始化优化器
         
@@ -66,7 +66,7 @@ class RetrievalOptimizer:
         
     def _init_database(self):
         """初始化数据库表"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 创建配置历史表
@@ -111,7 +111,7 @@ class RetrievalOptimizer:
         
     def save_config(self, performance_score: Optional[float] = None):
         """保存当前配置到历史"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         config_json = json.dumps(asdict(self.current_config))
@@ -127,7 +127,7 @@ class RetrievalOptimizer:
         """记录检索反馈"""
         self.feedback_history.append(feedback)
         
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute(
@@ -146,7 +146,7 @@ class RetrievalOptimizer:
         
     def calculate_performance_metrics(self, config_id: Optional[int] = None) -> Dict[str, float]:
         """计算性能指标"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 获取最近的反馈数据
@@ -206,7 +206,7 @@ class RetrievalOptimizer:
         
         # 保存性能指标
         if config_id is not None:
-            conn = get_evolution_db(os.path.basename(self.db_path))
+            conn = get_evolution_db(self.db_path)
             cursor = conn.cursor()
             cursor.execute(
                 '''INSERT INTO performance_metrics 
@@ -273,7 +273,7 @@ class RetrievalOptimizer:
     
     def get_optimal_config(self) -> RetrievalConfig:
         """获取最优配置"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 查找性能最好的配置
@@ -297,7 +297,7 @@ class RetrievalOptimizer:
     
     def analyze_trends(self) -> Dict[str, Any]:
         """分析性能趋势"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 获取最近的性能数据

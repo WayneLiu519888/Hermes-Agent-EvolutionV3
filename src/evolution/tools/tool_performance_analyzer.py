@@ -95,7 +95,7 @@ class ToolPerformanceAnalyzer:
         """初始化数据库"""
         import sqlite3
         
-        conn = get_evolution_db('tool_performance.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 创建性能记录表
@@ -138,7 +138,7 @@ class ToolPerformanceAnalyzer:
             import sqlite3
             import json
             
-            conn = get_evolution_db('tool_performance.db')
+            conn = get_evolution_db(self.db_path)
             cursor = conn.cursor()
             
             metadata_json = json.dumps(metadata) if metadata else "{}"
@@ -416,7 +416,7 @@ class ToolPerformanceAnalyzer:
         import sqlite3
         import json
         
-        conn = get_evolution_db('tool_performance.db')
+        conn = get_evolution_db(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         

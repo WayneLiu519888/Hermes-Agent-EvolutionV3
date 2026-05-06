@@ -712,14 +712,14 @@ Week 2 — 发布 + CI (19h)
 
 请对以下决策给出你的意见：
 
-1. **setup.py 去留**: 删除 setup.py 只保留 pyproject.toml？（现代 Python 打包推荐）还是保留 setup.py 兼容旧 pip？
+1. **setup.py 去留**: ✅ 保留 setup.py，兼容旧 pip
 
-2. **支持 Python 版本范围**: 当前声明 3.9-3.12，是否要加入 3.13？（需在 CI matrix 中增加，但部分依赖可能未适配）
+2. **支持 Python 版本范围**: ✅ 加入 3.13，CI matrix 覆盖 3.9/3.10/3.11/3.12/3.13
 
-3. **Docker 镜像发布**: 是否同时发布到 Docker Hub (`wayneliu519888/hermes-agent-evolution`)？还是只提供 Dockerfile 让用户自构建？
+3. **Docker 镜像发布**: ✅ 方案二：只提供 Dockerfile 供高级用户自构建，不推 Docker Hub。主推 `pip install` + `hermes-evolution setup` 一键安装
 
-4. **CLI 语言**: CLI 输出用中文还是英文？（影响 `hermes-evolution --help` 和 `check` 输出）
+4. **CLI 语言**: ✅ 中文
 
-5. **文档语言策略**: 当前 README + 架构文档用中文，API_REFERENCE 用中英混合。是否统一？（如：README中文、API英文、教程中文）
+5. **文档语言策略**: ✅ 全部中文（README + 架构 + API + 教程统一中文）
 
-6. **发布节奏**: 是所有组全部完成再发 v3.0.0，还是分组发布（如先发 v3.0.0-alpha 包含组A+C，再发 beta 包含 D+E，最后 GA）？
+6. **发布节奏**: ✅ 一次性 GA，全部组完成后发布 v3.0.0

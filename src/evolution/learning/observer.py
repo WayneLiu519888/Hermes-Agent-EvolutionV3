@@ -39,7 +39,7 @@ class LearningObserver:
     
     def _init_database(self):
         """初始化数据库表结构"""
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 创建经验表
@@ -99,7 +99,7 @@ class LearningObserver:
         experience.confidence = experience.calculate_confidence()
         
         # 保存到数据库
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -149,7 +149,7 @@ class LearningObserver:
         if experience_id in self._experiences_cache:
             return self._experiences_cache[experience_id]
         
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('SELECT * FROM experiences WHERE id = ?', (experience_id,))
@@ -223,7 +223,7 @@ class LearningObserver:
         Returns:
             经验列表
         """
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         # 构建查询条件
@@ -292,7 +292,7 @@ class LearningObserver:
         if self._statistics_cache is not None:
             return self._statistics_cache.copy()
         
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         statistics = {}
@@ -349,7 +349,7 @@ class LearningObserver:
         Returns:
             学习模式分析结果
         """
-        conn = get_evolution_db('learning_experiences.db')
+        conn = get_evolution_db(self.db_path)
         cursor = conn.cursor()
         
         start_time = datetime.now() - timedelta(days=window_days)

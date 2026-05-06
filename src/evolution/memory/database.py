@@ -26,7 +26,7 @@ class AssociationDatabase:
     def _init_database(self):
         """初始化数据库表结构"""
         try:
-            self.connection = get_evolution_db("associations.db")
+            self.connection = get_evolution_db(self.db_path)
             self.connection.row_factory = sqlite3.Row
             
             cursor = self.connection.cursor()

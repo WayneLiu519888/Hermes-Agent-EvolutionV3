@@ -141,7 +141,7 @@ class AuditLogger:
     @contextmanager
     def _get_connection(self):
         """获取数据库连接上下文管理器"""
-        conn = get_evolution_db(os.path.basename(self.db_path))
+        conn = get_evolution_db(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
             yield conn
