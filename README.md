@@ -1,8 +1,9 @@
 # HermesAgentEvolution
 
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-beta-orange)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Tests](https://img.shields.io/badge/tests-374%20passed-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-lightgrey)
 
 **AI助手自我进化系统** — 使AI助手能够从经验中学习并持续改进自身能力。  
@@ -205,14 +206,14 @@ engine.start()
 ## 🧪 测试
 
 ```bash
-# 运行所有测试
-python -m pytest tests/ -v
+# 运行所有测试（374+ 用例）
+python3 -m pytest tests/ -v
 
 # 运行特定测试
-python -m pytest tests/test_learning_evolution_integration.py -v
+python3 -m pytest tests/test_closed_loop.py -v
 
 # 带覆盖率报告
-python -m pytest tests/ --cov=src/evolution --cov-report=term-missing
+python3 -m pytest tests/ --cov=src/evolution --cov-report=term-missing
 ```
 
 ---
@@ -345,16 +346,22 @@ observer = LearningObserver(db_path="/custom/path/database.db")
 
 ## 📈 项目状态
 
-### ✅ 已完成
-- 学习能力进化（经验观察、分析、模式识别、策略学习）
-- 工具能力进化（注册、创建、性能分析、自动生成）
-- 记忆系统进化（存储、检索优化、关联发现）
-- 自我监控与反馈循环
-- 集成测试框架
-- pip 安装支持
+### ✅ 已完成 (迭代1-6)
+- 学习能力进化（经验观察、分析、模式识别、策略学习）— iteration 2
+- 工具能力进化（注册、创建、性能分析、自动生成、进化引擎）— iteration 3
+- 记忆系统进化（存储、检索优化、关联发现）— iteration 2
+- 安全增强（审计日志、权限管理、沙箱执行、威胁检测）— iteration 4
+- 协作引擎（多Agent编排、消息总线、任务分发）— iteration 4
+- V1/V2融合层（桥接、统一入口、兼容层）— iteration 4
+- 闭环自主进化守护进程（6阶段编排、自适应间隔）— iteration 5
+- Hermes Agent 插件集成（6 tools + 1 hook）— iteration 6
+- 数据库WAL迁移（db_utils统一连接工厂）— iteration 6
+- 374+ 测试用例，22 测试文件
+- pip 安装 / pyproject.toml 标准化打包
 
 ### 🔄 进行中
-- 文档完善和示例丰富
+- 测试覆盖补齐（刚完成 closed_loop / pattern_recognizer / tool_integration / db_utils / self_monitor）
+- 文档完善（CHANGELOG / CONTRIBUTING / TESTING）
 
 ### ⏳ 计划中
 - 模式识别强化和自动策略生成

@@ -4,8 +4,11 @@
 """
 
 import json
+import os
 import sqlite3
 from dataclasses import dataclass, asdict
+
+from ..db_utils import get_evolution_db
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
@@ -104,7 +107,7 @@ class ToolRegistry:
         """获取数据库连接（支持内存数据库）"""
         if self._memory_conn:
             return self._memory_conn
-        return sqlite3.connect(self.db_path)
+        return get_evolution_db('tools.db')
     
     def _init_database(self):
         """初始化数据库"""

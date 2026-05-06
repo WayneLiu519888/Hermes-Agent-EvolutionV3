@@ -15,10 +15,14 @@ import json
 import os
 import shutil
 import logging
+import uuid
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Any, Optional, Union
-from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Any, Set, Union
+import threading
+
+from ..db_utils import get_evolution_db
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -137,7 +141,7 @@ class AuditLogger:
     @contextmanager
     def _get_connection(self):
         """获取数据库连接上下文管理器"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db(os.path.basename(self.db_path))
         conn.row_factory = sqlite3.Row
         try:
             yield conn

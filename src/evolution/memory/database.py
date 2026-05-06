@@ -5,9 +5,12 @@
 import sqlite3
 import json
 import logging
+from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import hashlib
+
+from ..db_utils import get_evolution_db
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ class AssociationDatabase:
     def _init_database(self):
         """初始化数据库表结构"""
         try:
-            self.connection = sqlite3.connect(self.db_path)
+            self.connection = get_evolution_db("associations.db")
             self.connection.row_factory = sqlite3.Row
             
             cursor = self.connection.cursor()

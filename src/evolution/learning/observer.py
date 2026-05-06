@@ -6,9 +6,11 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
+import os
 import hashlib
 import uuid
 
+from ..db_utils import get_evolution_db
 from .experience import Experience, ExperienceType, Outcome
 
 
@@ -37,7 +39,7 @@ class LearningObserver:
     
     def _init_database(self):
         """初始化数据库表结构"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         # 创建经验表
@@ -97,7 +99,7 @@ class LearningObserver:
         experience.confidence = experience.calculate_confidence()
         
         # 保存到数据库
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -147,7 +149,7 @@ class LearningObserver:
         if experience_id in self._experiences_cache:
             return self._experiences_cache[experience_id]
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         cursor.execute('SELECT * FROM experiences WHERE id = ?', (experience_id,))
@@ -221,7 +223,7 @@ class LearningObserver:
         Returns:
             经验列表
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         # 构建查询条件
@@ -290,7 +292,7 @@ class LearningObserver:
         if self._statistics_cache is not None:
             return self._statistics_cache.copy()
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         statistics = {}
@@ -347,7 +349,7 @@ class LearningObserver:
         Returns:
             学习模式分析结果
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('learning_experiences.db')
         cursor = conn.cursor()
         
         start_time = datetime.now() - timedelta(days=window_days)

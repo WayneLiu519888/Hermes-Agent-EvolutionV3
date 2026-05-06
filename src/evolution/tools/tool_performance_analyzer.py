@@ -5,9 +5,12 @@
 
 import time
 import statistics
+import os
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+
+from ..db_utils import get_evolution_db
 from enum import Enum
 
 from .tool_registry import ToolDefinition, ToolRegistry, ToolStatus
@@ -92,7 +95,7 @@ class ToolPerformanceAnalyzer:
         """初始化数据库"""
         import sqlite3
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('tool_performance.db')
         cursor = conn.cursor()
         
         # 创建性能记录表
@@ -135,7 +138,7 @@ class ToolPerformanceAnalyzer:
             import sqlite3
             import json
             
-            conn = sqlite3.connect(self.db_path)
+            conn = get_evolution_db('tool_performance.db')
             cursor = conn.cursor()
             
             metadata_json = json.dumps(metadata) if metadata else "{}"
@@ -413,7 +416,7 @@ class ToolPerformanceAnalyzer:
         import sqlite3
         import json
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_evolution_db('tool_performance.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
