@@ -11,9 +11,9 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 
 # 导入核心组件
-from src.core.events.event_bus import event_bus, Event, EventType, EventPriority
-from src.core.services.service_manager import service_manager, ServiceType, ServiceStatus
-from src.core.config.config_manager import config_manager
+from src.services.core.events.event_bus import event_bus, Event, EventType, EventPriority
+from src.services.core.services.service_manager import service_manager, ServiceType, ServiceStatus
+from src.services.core.config.config_manager import config_manager
 
 logger = logging.getLogger(__name__)
 

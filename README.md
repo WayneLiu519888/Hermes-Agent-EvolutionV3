@@ -2,11 +2,11 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
 ![Tests](https://img.shields.io/badge/tests-374%20passed-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-lightgrey)
 
-**AI助手自我进化系统** — 使AI助手能够从经验中学习并持续改进自身能力。  
+**AI助手自我进化系统 V1/V2/V3 融合版** — 使AI助手能够从经验中学习并持续改进自身能力。
 本项目专为 HermesAgent 生态设计，同时可作为独立库移植到任何 Python 项目中。
 
 ---
@@ -59,42 +59,56 @@ HermesAgentEvolution 是一个元学习（meta-learning）框架，赋予 AI 助
 ### 模块结构
 
 ```
-src/evolution/                    # 进化系统核心
-├── __init__.py                   # 包入口
-├── self_monitor.py               # 自我监控器
-├── learning/                     # 学习能力进化
-│   ├── __init__.py
-│   ├── experience.py             # 经验数据模型
-│   ├── observer.py               # 经验观察者
-│   ├── analyzer.py               # 经验分析器
-│   ├── pattern_recognizer.py     # 模式识别器
-│   └── tool_strategy_learner.py  # 工具策略学习器
-├── memory/                       # 记忆系统进化
-│   ├── __init__.py
-│   ├── database.py               # 经验数据库
-│   ├── retrieval_optimizer.py    # 检索优化器
-│   ├── association_discoverer.py # 关联发现器
-│   └── association_optimizer.py  # 关联优化器
-└── tools/                        # 工具能力进化
-    ├── __init__.py
-    ├── tool_registry.py          # 工具注册表
-    ├── tool_creator.py           # 工具创建器
-    ├── enhanced_tool_creator.py  # 增强工具创建器
-    ├── tool_performance_analyzer.py  # 性能分析器
-    ├── tool_auto_generator.py    # 自动生成器
-    └── tool_integration.py       # 引擎与集成
+src/
+├── evolution/                    # V1 单体进化引擎
+│   ├── __init__.py               # 包入口 (v3.0.0)
+│   ├── self_monitor.py           # 自我监控器
+│   ├── db_utils.py               # WAL数据库连接工厂
+│   ├── learning/                 # 学习能力进化
+│   │   ├── observer.py           # 经验观察者
+│   │   ├── analyzer.py           # 经验分析器
+│   │   ├── pattern_recognizer.py # 模式识别器
+│   │   ├── experience.py         # 经验数据模型
+│   │   └── tool_strategy_learner.py  # 工具策略学习器
+│   ├── memory/                   # 记忆系统进化
+│   │   ├── database.py           # 关联数据库 (WAL)
+│   │   ├── retrieval_optimizer.py
+│   │   ├── association_discoverer.py
+│   │   └── association_optimizer.py
+│   ├── tools/                    # 工具能力进化
+│   │   ├── tool_registry.py
+│   │   ├── tool_creator.py
+│   │   ├── tool_performance_analyzer.py
+│   │   ├── tool_auto_generator.py
+│   │   ├── tool_integration.py
+│   │   └── enhanced_tool_creator.py
+│   ├── security/                 # 安全子系统
+│   ├── collaboration/            # 多Agent协作
+│   ├── closed_loop/              # 闭环自主进化守护进程
+│   └── fusion/                   # V1/V2桥接层
+├── services/                     # V2 微服务层 (从v2_project迁移)
+│   ├── core/                     # 核心基础设施
+│   │   ├── events/event_bus.py   # 事件总线
+│   │   ├── services/service_manager.py  # 服务管理器
+│   │   └── config/config_manager.py     # 配置管理器
+│   ├── learning/                 # 学习服务
+│   │   ├── meta/meta_learning_service.py
+│   │   ├── reflection/reflection_service.py
+│   │   └── reinforcement/rl_service.py
+│   ├── tools/                    # 工具服务
+│   │   ├── discovery/tool_discovery_service.py
+│   │   └── composition/tool_composition_service.py
+│   └── system/                   # 系统服务
+│       ├── deployment/deployment_service.py
+│       ├── monitoring/monitoring_service.py
+│       └── testing/test_service.py
+└── utils/                        # 共享工具
+    ├── feishu_notifier.py        # 飞书通知
+    └── progress_reporter.py      # 进度报告
 
-tests/                            # 测试目录
-├── test_tool_evolution.py
-├── test_tool_performance.py
-├── test_tool_auto_generator.py
-├── test_enhanced_tool_creator.py
-├── test_learning_evolution_integration.py
-└── test_simple_integration.py
-
-data/                             # 运行时数据（自动创建）
-├── tools.db                      # 工具数据库
-└── tool_performance.db           # 性能数据库
+docker/                           # V2 Docker部署
+├── Dockerfile
+└── docker-compose.yml
 ```
 
 ---
@@ -346,7 +360,7 @@ observer = LearningObserver(db_path="/custom/path/database.db")
 
 ## 📈 项目状态
 
-### ✅ 已完成 (迭代1-6)
+### ✅ 已完成 (迭代1-6 + V1/V2/V3融合)
 - 学习能力进化（经验观察、分析、模式识别、策略学习）— iteration 2
 - 工具能力进化（注册、创建、性能分析、自动生成、进化引擎）— iteration 3
 - 记忆系统进化（存储、检索优化、关联发现）— iteration 2
@@ -356,6 +370,7 @@ observer = LearningObserver(db_path="/custom/path/database.db")
 - 闭环自主进化守护进程（6阶段编排、自适应间隔）— iteration 5
 - Hermes Agent 插件集成（6 tools + 1 hook）— iteration 6
 - 数据库WAL迁移（db_utils统一连接工厂）— iteration 6
+- **V1/V2/V3 结构融合** — V2微服务代码从 v2_project/ 迁入 src/services/ ; Docker部署移至根目录 ; 导入路径全量更新 ; 版本升至 3.0.0
 - 374+ 测试用例，22 测试文件
 - pip 安装 / pyproject.toml 标准化打包
 

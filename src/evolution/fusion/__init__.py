@@ -1,7 +1,7 @@
 """
 V1/V2 融合模块 - HermesAgentEvolution 架构桥接层
 
-核心思路：V1 是单体模块化架构（src/evolution/），V2 是微服务架构（v2_project/src/）。
+核心思路：V1 是单体模块化架构（src/evolution/），V2 是微服务架构（src/services/）。
 融合层让两者无缝协作，支持三种运行模式：
   - V1_ONLY: 仅使用V1单体模块
   - V2_ONLY: 仅使用V2微服务

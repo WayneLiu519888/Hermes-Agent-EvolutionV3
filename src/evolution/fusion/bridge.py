@@ -168,7 +168,7 @@ class DataFormatConverter:
     def dict_to_v2_event(data: Dict[str, Any]):
         """dict → V2 Event dataclass"""
         try:
-            from v2_project.src.core.events.event_bus import Event, EventType, EventPriority
+            from src.services.core.events.event_bus import Event, EventType, EventPriority
             event_type = EventType(data.get("event_type", "task.received"))
             priority = EventPriority(data.get("priority", 1))
             return Event(
@@ -312,14 +312,14 @@ class V1V2Bridge:
             pass
 
         try:
-            from v2_project.src.core.events.event_bus import EventType, EventPriority
+            from src.services.core.events.event_bus import EventType, EventPriority
             self.enum_mapper.register_v2_enum("EventType", EventType)
             self.enum_mapper.register_v2_enum("EventPriority", EventPriority)
         except ImportError:
             pass
 
         try:
-            from v2_project.src.core.services.service_manager import ServiceStatus, ServiceType
+            from src.services.core.services.service_manager import ServiceStatus, ServiceType
             self.enum_mapper.register_v2_enum("ServiceStatus", ServiceStatus)
             self.enum_mapper.register_v2_enum("ServiceType", ServiceType)
         except ImportError:
@@ -560,9 +560,9 @@ class V1V2Bridge:
 
         # 尝试导入V2核心模块
         services_to_check = [
-            ("event_bus", "v2_project.src.core.events.event_bus"),
-            ("service_manager", "v2_project.src.core.services.service_manager"),
-            ("config_manager", "v2_project.src.core.config.config_manager"),
+            ("event_bus", "src.services.core.events.event_bus"),
+            ("service_manager", "src.services.core.services.service_manager"),
+            ("config_manager", "src.services.core.config.config_manager"),
         ]
 
         for name, import_path in services_to_check:
