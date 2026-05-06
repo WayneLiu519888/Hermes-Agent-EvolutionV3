@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -61,3 +62,6 @@ where = ["src"]
 [tool.setuptools.package-data]
 evolution = ["data/*.db", "config/*.json"]
 services = ["config/*.yaml"]
+
+[project.scripts]
+hermes-evolution = "evolution.cli:main"
