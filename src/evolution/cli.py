@@ -115,37 +115,55 @@ def cmd_setup() -> bool:
     """一键部署：复制插件到 ~/.hermes/plugins/"""
     _add_src_to_path()
     
-    project_root = Path(__file__).resolve().parent.parent.parent
-    plugin_src = project_root / "hermes-plugin"
+    # 从包内资源读取插件文件（pip/pipx 安装后也能工作）
+    try:
+        from importlib.resources import files
+        plugin_pkg = files("evolution._plugin")
+    except ImportError:
+        # Python < 3.9 fallback
+        import pkg_resources
+        plugin_pkg = pkg_resources.resource_filename("evolution._plugin", "")
+        plugin_pkg = Path(plugin_pkg)
+    
     plugin_dst = Path.home() / ".hermes" / "plugins" / "hermes-evolution"
     
-    if not plugin_src.exists():
-        print(f"❌ 源目录不存在: {plugin_src}")
-        return False
-    
     print("🚀 HermesAgentEvolution 插件部署")
-    print(f"   源: {plugin_src}")
     print(f"   目标: {plugin_dst}")
     
     # 复制文件
     import shutil
     plugin_dst.mkdir(parents=True, exist_ok=True)
     
-    for item in plugin_src.iterdir():
-        dst = plugin_dst / item.name
-        if item.is_file():
-            shutil.copy2(item, dst)
-        elif item.is_dir():
-            if dst.exists():
-                shutil.rmtree(dst)
-            shutil.copytree(item, dst)
+    # plugin.yaml 和 __init__.py 从包资源复制
+    for name in ("plugin.yaml", "__init__.py"):
+        src = plugin_pkg / name if isinstance(plugin_pkg, Path) else plugin_pkg.joinpath(name)
+        if hasattr(src, 'read_bytes'):
+            # importlib.resources.Traversable
+            content = src.read_bytes()
+            (plugin_dst / name).write_bytes(content)
+        elif src.exists():
+            shutil.copy2(src, plugin_dst / name)
+        else:
+            print(f"   ⚠️  缺少插件文件: {name}")
+            return False
     
     print(f"   ✅ 插件已部署")
     
+    # 尝试启用插件
+    import subprocess
+    try:
+        subprocess.run(
+            ["hermes", "plugins", "enable", "hermes-evolution"],
+            capture_output=True, timeout=10
+        )
+        print(f"   ✅ 插件已启用")
+    except Exception:
+        print(f"   ⚠️  请手动启用: hermes plugins enable hermes-evolution")
+    
     # 提示重启
     print()
-    print("   ⚠️  请重启 Hermes Gateway 使插件生效:")
-    print("       hermes gateway restart")
+    print("   ⚠️  插件将在下次 Hermes 会话生效")
+    print("   如需立即生效: hermes gateway restart (会断开当前会话)")
     
     return True
 

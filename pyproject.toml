@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-agent-evolution"
-version = "3.0.0"
+version = "3.0.2"
 authors = [
     { name = "HermesAgentEvolution Team", email = "contact@example.com" },
 ]
@@ -60,7 +60,7 @@ v2 = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-evolution = ["data/*.db", "config/*.json"]
+evolution = ["_plugin/*", "data/*.db", "config/*.json"]
 services = ["config/*.yaml"]
 
 [project.scripts]
