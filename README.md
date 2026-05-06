@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-3.0.0-blue)
-![Tests](https://img.shields.io/badge/tests-374%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-422%20passed-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-lightgrey)
 
 **AI助手自我进化系统 V1/V2/V3 融合版** — 使AI助手能够从经验中学习并持续改进自身能力。
