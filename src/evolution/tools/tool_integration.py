@@ -4,11 +4,14 @@
 """
 
 import json
+import logging
 import time
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+
+log = logging.getLogger("hermes_evo.tools")
 
 from .tool_registry import ToolDefinition, ToolRegistry, ToolCategory, ToolStatus
 from .enhanced_tool_creator import EnhancedToolCreator, CreationSource, ToolQuality
@@ -72,7 +75,7 @@ class ToolLearningIntegrator:
     def _init_learning_modules(self):
         """初始化学习模块"""
         if not LEARNING_AVAILABLE:
-            print("学习系统模块未加载，工具-学习集成功能受限")
+            log.info("学习系统模块未加载，工具-学习集成功能受限")
             return
         
         try:
@@ -80,9 +83,9 @@ class ToolLearningIntegrator:
             self.analyzer = ExperienceAnalyzer()
             self.strategy_learner = ToolStrategyLearner(self.registry)
             self.pattern_recognizer = PatternRecognizer()
-            print("工具-学习集成模块初始化成功")
+            log.info("工具-学习集成模块初始化成功")
         except Exception as e:
-            print(f"学习模块初始化失败: {e}")
+            log.error("学习模块初始化失败: %s", e)
     
     def record_tool_execution(self, tool_name: str, 
                               success: bool,

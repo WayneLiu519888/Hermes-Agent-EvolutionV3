@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from collections import deque
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("hermes_evo.closed_loop")
 
 
 class SystemMetricsCollector:
@@ -40,7 +40,7 @@ class SystemMetricsCollector:
         collector.start()  # 启动后台采集
         
         metrics = collector.collect_all()
-        print(metrics['system.cpu_percent'])
+        logger.info(metrics['system.cpu_percent'])
         
         collector.stop()
     """

@@ -6,12 +6,15 @@
 import json
 import os
 import sqlite3
+import logging
 from dataclasses import dataclass, asdict
 
 from ..db_utils import get_evolution_db
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
+
+log = logging.getLogger("hermes_evo.tools.registry")
 
 
 class ToolCategory(Enum):
@@ -232,7 +235,7 @@ class ToolRegistry:
             return True
             
         except Exception as e:
-            print(f"注册工具失败: {e}")
+            log.error("注册工具失败: %s", e)
             return False
     
     def get(self, name: str) -> Optional[ToolDefinition]:
@@ -282,7 +285,7 @@ class ToolRegistry:
             return ToolDefinition.from_dict(tool_dict)
             
         except Exception as e:
-            print(f"获取工具失败: {e}")
+            log.error("获取工具失败: %s", e)
             return None
     
     def list_all(self, category: Optional[str] = None, 
@@ -352,7 +355,7 @@ class ToolRegistry:
             return tools
             
         except Exception as e:
-            print(f"列出工具失败: {e}")
+            log.error("列出工具失败: %s", e)
             return []
     
     def update_usage_stats(self, name: str, success: bool = True):
@@ -386,7 +389,7 @@ class ToolRegistry:
                 conn.close()
             
         except Exception as e:
-            print(f"更新使用统计失败: {e}")
+            log.error("更新使用统计失败: %s", e)
     
     def delete(self, name: str) -> bool:
         """
@@ -413,7 +416,7 @@ class ToolRegistry:
             return deleted
             
         except Exception as e:
-            print(f"删除工具失败: {e}")
+            log.error("删除工具失败: %s", e)
             return False
     
     def get_statistics(self) -> Dict[str, Any]:
@@ -461,7 +464,7 @@ class ToolRegistry:
             }
             
         except Exception as e:
-            print(f"获取统计信息失败: {e}")
+            log.error("获取统计信息失败: %s", e)
             return {}
     
     def search(self, query: str) -> List[ToolDefinition]:
@@ -518,5 +521,5 @@ class ToolRegistry:
             return tools
             
         except Exception as e:
-            print(f"搜索工具失败: {e}")
+            log.error("搜索工具失败: %s", e)
             return []

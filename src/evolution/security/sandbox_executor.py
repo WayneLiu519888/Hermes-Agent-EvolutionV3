@@ -26,7 +26,7 @@ from typing import Dict, Any, Optional, Tuple, List, Set
 from dataclasses import dataclass, field
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("hermes_evo.security")
 
 
 # ============================================================

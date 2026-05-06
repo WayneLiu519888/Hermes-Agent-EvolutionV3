@@ -8,9 +8,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import os
 import hashlib
+import logging
 import uuid
 
 from ..db_utils import get_evolution_db
+
+log = logging.getLogger("hermes_evo.learning")
 from .experience import Experience, ExperienceType, Outcome
 
 
@@ -458,7 +461,7 @@ class LearningObserver:
             return True
             
         except Exception as e:
-            print(f"导出失败: {e}")
+            log.error("导出失败: %s", e)
             return False
     
     def clear_cache(self):

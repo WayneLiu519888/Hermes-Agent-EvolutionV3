@@ -16,7 +16,7 @@ import statistics
 import traceback
 import sys
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("hermes_evo.services")
 
 
 class TestStatus(Enum):
@@ -427,32 +427,32 @@ class TestRunner:
     
     def _print_summary(self, suite_result: TestSuiteResult) -> None:
         """输出测试摘要"""
-        print("\n" + "="*60)
-        print(f"测试套件: {suite_result.suite_name}")
-        print(f"运行时间: {suite_result.duration:.2f}秒")
-        print(f"测试总数: {suite_result.total_tests}")
-        print(f"通过: {suite_result.passed_tests} | 失败: {suite_result.failed_tests} | "
-              f"错误: {suite_result.error_tests} | 超时: {suite_result.timeout_tests} | "
-              f"跳过: {suite_result.skipped_tests}")
-        print("="*60)
+        logger.info("\n" + "="*60)
+        logger.info("测试套件: %s", suite_result.suite_name)
+        logger.info("运行时间: %.2f秒", suite_result.duration)
+        logger.info("测试总数: %s", suite_result.total_tests)
+        logger.info("通过: %s | 失败: %s | 错误: %s | 超时: %s | 跳过: %s",
+                    suite_result.passed_tests, suite_result.failed_tests,
+                    suite_result.error_tests, suite_result.timeout_tests, suite_result.skipped_tests)
+        logger.info("="*60)
         
         # 输出失败测试详情
         failed_tests = [r for r in suite_result.test_results 
                        if r.status in [TestStatus.FAILED, TestStatus.ERROR, TestStatus.TIMEOUT]]
         
         if failed_tests:
-            print("\n失败测试详情:")
+            logger.info("\n失败测试详情:")
             for result in failed_tests:
-                print(f"  - {result.test_name}: {result.status.value}")
+                logger.info("  - %s: %s", result.test_name, result.status.value)
                 if result.error_message:
-                    print(f"    错误: {result.error_message}")
+                    logger.info("    错误: %s", result.error_message)
         
         # 输出通过率
         if suite_result.total_tests > 0:
             pass_rate = (suite_result.passed_tests / suite_result.total_tests) * 100
-            print(f"\n通过率: {pass_rate:.1f}%")
+            logger.info("\n通过率: %.1f%%", pass_rate)
         
-        print("="*60)
+        logger.info("="*60)
     
     def clear_results(self) -> None:
         """清空测试结果"""
@@ -515,17 +515,17 @@ class PerformanceTest(TestCase):
     
     def _print_performance_report(self) -> None:
         """输出性能报告"""
-        print(f"\n性能测试报告: {self.name}")
-        print(f"迭代次数: {self.performance_metrics['iterations']}")
-        print(f"总时间: {self.performance_metrics['total_time']:.4f}秒")
-        print(f"平均时间: {self.performance_metrics['avg_time']:.4f}秒")
-        print(f"最小时间: {self.performance_metrics['min_time']:.4f}秒")
-        print(f"最大时间: {self.performance_metrics['max_time']:.4f}秒")
-        print(f"标准差: {self.performance_metrics['std_dev']:.4f}秒")
-        print(f"中位数: {self.performance_metrics['p50']:.4f}秒")
-        print(f"P95: {self.performance_metrics['p95']:.4f}秒")
-        print(f"P99: {self.performance_metrics['p99']:.4f}秒")
-        print(f"操作/秒: {self.performance_metrics['operations_per_second']:.2f}")
+        logger.info("\n性能测试报告: %s", self.name)
+        logger.info("迭代次数: %s", self.performance_metrics['iterations'])
+        logger.info("总时间: %.4f秒", self.performance_metrics['total_time'])
+        logger.info("平均时间: %.4f秒", self.performance_metrics['avg_time'])
+        logger.info("最小时间: %.4f秒", self.performance_metrics['min_time'])
+        logger.info("最大时间: %.4f秒", self.performance_metrics['max_time'])
+        logger.info("标准差: %.4f秒", self.performance_metrics['std_dev'])
+        logger.info("中位数: %.4f秒", self.performance_metrics['p50'])
+        logger.info("P95: %.4f秒", self.performance_metrics['p95'])
+        logger.info("P99: %.4f秒", self.performance_metrics['p99'])
+        logger.info("操作/秒: %.2f", self.performance_metrics['operations_per_second'])
 
 
 class IntegrationTest(TestCase):

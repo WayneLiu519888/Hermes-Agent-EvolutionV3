@@ -9,7 +9,10 @@ import textwrap
 import json
 import yaml
 import re
+import logging
 from typing import Dict, Any, Callable, Optional, List, Union, Tuple
+
+log = logging.getLogger("hermes_evo.tools")
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -724,7 +727,7 @@ def {name}(file_path: str, content: Optional[str] = None) -> bool:
                 f.write(content)
             return True
     except Exception as e:
-        print(f"文件操作失败: {{e}}")
+        log.error("文件操作失败: %s", e)
         return False
 ''',
             "data_processing": '''
@@ -754,7 +757,7 @@ def {name}(data: List[Any], operation: str = "sum") -> Any:
         else:
             raise ValueError(f"不支持的操作: {{operation}}")
     except Exception as e:
-        print(f"数据处理失败: {{e}}")
+        log.error("数据处理失败: %s", e)
         return None
 ''',
             "http_request": '''
@@ -789,7 +792,7 @@ def {name}(url: str, method: str = "GET", data: Optional[Dict] = None,
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"HTTP请求失败: {{e}}")
+        log.error("HTTP请求失败: %s", e)
         return None
 '''
         }
@@ -842,7 +845,7 @@ def {name}():
     # 这是一个根据需求自动生成的工具
     # 需求: {requirements}
     
-    print("工具已生成，但需要手动实现功能")
+    log.info("工具已生成，但需要手动实现功能")
     return None
 '''
         

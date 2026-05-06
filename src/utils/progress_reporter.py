@@ -2,9 +2,12 @@ import os
 import sys
 import time
 import json
+import logging
 from datetime import datetime, timedelta
 import threading
 from typing import Dict, List, Any
+
+log = logging.getLogger("hermes_evo.utils")
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -24,7 +27,7 @@ class ProgressReporter:
     def start_reporting(self):
         """开始定时汇报"""
         if self.is_running:
-            print("⚠️ 汇报器已在运行中")
+            log.warning("⚠️ 汇报器已在运行中")
             return
             
         self.is_running = True
@@ -34,9 +37,9 @@ class ProgressReporter:
         self.report_thread = threading.Thread(target=self._report_loop, daemon=True)
         self.report_thread.start()
         
-        print(f"✅ 定时汇报系统已启动")
-        print(f"   • 汇报间隔: 每2小时")
-        print(f"   • 开始时间: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        log.info("✅ 定时汇报系统已启动")
+        log.info("   • 汇报间隔: 每2小时")
+        log.info("   • 开始时间: %s", self.start_time.strftime('%Y-%m-%d %H:%M:%S'))
         
         # 发送启动通知
         self.send_start_notification()
@@ -46,7 +49,7 @@ class ProgressReporter:
         self.is_running = False
         if self.report_thread:
             self.report_thread.join(timeout=5)
-        print("⏹️ 定时汇报系统已停止")
+        log.info("⏹️ 定时汇报系统已停止")
         
     def _report_loop(self):
         """汇报循环"""
@@ -59,7 +62,7 @@ class ProgressReporter:
                     self.send_progress_report()
                     
             except Exception as e:
-                print(f"❌ 汇报循环出错: {e}")
+                log.error("❌ 汇报循环出错: %s", e)
                 time.sleep(60)  # 出错后等待1分钟重试
                 
     def update_task_progress(self, task_name: str, status: str, 
@@ -263,4 +266,4 @@ if __name__ == "__main__":
     # 发送测试报告
     reporter.send_progress_report()
     
-    print("✅ 进度汇报系统测试完成")
+    log.info("✅ 进度汇报系统测试完成")

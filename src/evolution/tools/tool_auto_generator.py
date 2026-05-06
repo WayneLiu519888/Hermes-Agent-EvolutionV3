@@ -5,10 +5,13 @@
 
 import ast
 import re
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+
+log = logging.getLogger("hermes_evo.tools")
 
 from .tool_registry import ToolDefinition, ToolRegistry, ToolCategory, ToolStatus
 
@@ -59,14 +62,14 @@ class ToolAutoGenerator:
     import os
     
     if not os.path.exists(file_path):
-        print(f"文件不存在: {file_path}")
+        log.error("文件不存在: %s", file_path)
         return None
     
     try:
         with open(file_path, 'r', encoding=encoding) as f:
             return f.read()
     except Exception as e:
-        print(f"读取文件失败: {e}")
+        log.error("读取文件失败: %s", e)
         return None
 '''
         },
@@ -95,7 +98,7 @@ class ToolAutoGenerator:
             f.write(content)
         return True
     except Exception as e:
-        print(f"写入文件失败: {e}")
+        log.error("写入文件失败: %s", e)
         return False
 '''
         },
@@ -122,7 +125,7 @@ class ToolAutoGenerator:
         pred = eval(predicate)
         return [item for item in data if pred(item)]
     except Exception as e:
-        print(f"数据过滤失败: {e}")
+        log.error("数据过滤失败: %s", e)
         return data
 '''
         },
@@ -191,10 +194,10 @@ class ToolAutoGenerator:
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
-        print(f"请求超时: {url}")
+        log.error("请求超时: %s", url)
         return None
     except requests.exceptions.RequestException as e:
-        print(f"请求失败: {e}")
+        log.error("请求失败: %s", e)
         return None
 '''
         },
@@ -227,10 +230,10 @@ class ToolAutoGenerator:
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
-        print(f"请求超时: {url}")
+        log.error("请求超时: %s", url)
         return None
     except requests.exceptions.RequestException as e:
-        print(f"请求失败: {e}")
+        log.error("请求失败: %s", e)
         return None
 '''
         },
@@ -266,7 +269,7 @@ class ToolAutoGenerator:
             })
         return matches
     except re.error as e:
-        print(f"正则表达式错误: {e}")
+        log.error("正则表达式错误: %s", e)
         return []
 '''
         },
@@ -339,7 +342,7 @@ class ToolAutoGenerator:
     import os
     
     if not os.path.exists(file_path):
-        print(f"文件不存在: {file_path}")
+        log.error("文件不存在: %s", file_path)
         return None
     
     try:
@@ -356,7 +359,7 @@ class ToolAutoGenerator:
                     return [dict(zip(headers, row)) for row in rows]
                 return []
     except Exception as e:
-        print(f"读取CSV失败: {e}")
+        log.error("读取CSV失败: %s", e)
         return None
 '''
         }
@@ -565,10 +568,10 @@ class ToolAutoGenerator:
             }
             return True
         except SyntaxError as e:
-            print(f"模板代码语法错误: {e}")
+            log.error("模板代码语法错误: %s", e)
             return False
         except Exception as e:
-            print(f"添加模板失败: {e}")
+            log.error("添加模板失败: %s", e)
             return False
     
     # ========== 私有方法 ==========

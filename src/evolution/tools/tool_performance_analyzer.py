@@ -3,6 +3,7 @@
 负责分析工具的使用性能、效率和效果，为工具优化提供数据支持
 """
 
+import logging
 import time
 import statistics
 import os
@@ -14,6 +15,8 @@ from ..db_utils import get_evolution_db
 from enum import Enum
 
 from .tool_registry import ToolDefinition, ToolRegistry, ToolStatus
+
+log = logging.getLogger("hermes_evo.tools")
 
 
 class PerformanceMetric(Enum):
@@ -157,7 +160,7 @@ class ToolPerformanceAnalyzer:
             return True
             
         except Exception as e:
-            print(f"Failed to record performance: {e}")
+            log.error("Failed to record performance: %s", e)
             return False
     
     def analyze_tool_performance(self, tool_name: str, 
@@ -211,7 +214,7 @@ class ToolPerformanceAnalyzer:
             )
             
         except Exception as e:
-            print(f"Failed to analyze tool performance: {e}")
+            log.error("Failed to analyze tool performance: %s", e)
             # 返回默认摘要
             return ToolPerformanceSummary(
                 tool_name=tool_name,
@@ -241,7 +244,7 @@ class ToolPerformanceAnalyzer:
                 summary = self.analyze_tool_performance(tool.name)
                 summaries[tool.name] = summary
             except Exception as e:
-                print(f"Failed to analyze tool {tool.name}: {e}")
+                log.error("Failed to analyze tool %s: %s", tool.name, e)
         
         return summaries
     
@@ -780,13 +783,13 @@ def monitor_performance(metric: PerformanceMetric = PerformanceMetric.EXECUTION_
                 
                 # 记录性能数据
                 # 这里需要访问分析器实例，实际使用时需要调整
-                print(f"[Performance] {func.__name__}: {execution_time:.3f}s")
+                log.info("[Performance] %s: %.3fs", func.__name__, execution_time)
                 
                 return result
                 
             except Exception as e:
                 execution_time = time.time() - start_time
-                print(f"[Performance] {func.__name__} failed: {execution_time:.3f}s, error: {e}")
+                log.error("[Performance] %s failed: %.3fs, error: %s", func.__name__, execution_time, e)
                 raise
         
         return wrapper
