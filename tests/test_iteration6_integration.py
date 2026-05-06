@@ -40,7 +40,7 @@ class MockCtx:
         self.tools = {}   # name → (schema, handler)
         self.hooks = {}   # name → callback
 
-    def register_tool(self, name, schema, handler):
+    def register_tool(self, name, schema, handler, toolset=None):
         self.tools[name] = (schema, handler)
 
     def register_hook(self, name, callback):
