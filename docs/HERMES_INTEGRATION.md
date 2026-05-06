@@ -100,8 +100,8 @@
 pip install hermes-agent-evolution
 
 # 方式 B: 从源码安装（开发模式）
-git clone https://github.com/yourusername/HermesAgentEvolution.git
-cd HermesAgentEvolution
+git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
+cd Hermes-Agent-EvolutionV3
 pip install -e .
 
 # 验证安装

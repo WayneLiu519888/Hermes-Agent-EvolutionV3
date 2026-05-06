@@ -57,8 +57,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/hermes_agent_evolution.git
-cd hermes_agent_evolution
+git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
+cd Hermes-Agent-EvolutionV3
 
 # 创建虚拟环境 (推荐)
 python -m venv .venv
@@ -94,8 +94,8 @@ pip install -e ".[dev]"
 ### 3.1 克隆仓库
 
 ```bash
-git clone https://github.com/your-org/hermes_agent_evolution.git
-cd hermes_agent_evolution
+git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
+cd Hermes-Agent-EvolutionV3
 ```
 
 ### 3.2 项目结构

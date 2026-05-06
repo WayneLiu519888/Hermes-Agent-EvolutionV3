@@ -111,8 +111,8 @@ data/                             # 运行时数据（自动创建）
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/HermesAgentEvolution.git
-cd HermesAgentEvolution
+git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
+cd Hermes-Agent-EvolutionV3
 
 # 交互式安装
 bash setup.sh
@@ -390,9 +390,9 @@ observer = LearningObserver(db_path="/custom/path/database.db")
 
 ## 📞 联系
 
-- **问题报告**: [GitHub Issues](https://github.com/yourusername/HermesAgentEvolution/issues)
-- **讨论区**: [GitHub Discussions](https://github.com/yourusername/HermesAgentEvolution/discussions)
-- **文档**: [项目Wiki](https://github.com/yourusername/HermesAgentEvolution/wiki)
+- **问题报告**: [GitHub Issues](https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3/issues)
+- **讨论区**: [GitHub Discussions](https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3/discussions)
+- **文档**: [项目Wiki](https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3/wiki)
 
 ---
 
