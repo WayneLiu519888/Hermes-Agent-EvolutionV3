@@ -12,3 +12,6 @@ Hermes Agent Evolution - AI助手自我进化系统 V1/V2/V3 融合版
 __version__ = "3.0.0"
 __author__ = "HermesAgentEvolution Team"
 __description__ = "AI助手自我进化系统 - V1/V2/V3融合版"
+
+# Re-export key classes that plugins import directly from the evolution package
+from .self_monitor import SelfMonitor
