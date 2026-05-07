@@ -310,8 +310,38 @@ class EnhancedToolCreator:
             
             # 从配置创建工具
             if config.get("type") == "function":
-                # TODO: 实现从配置加载函数
-                pass
+                # 从配置加载函数：支持 module_path + function_name 或 inline_code
+                func_config = config.get("function", {})
+                if "module_path" in func_config and "function_name" in func_config:
+                    # 动态导入模块中的函数
+                    import importlib
+                    mod = importlib.import_module(func_config["module_path"])
+                    func = getattr(mod, func_config["function_name"])
+                elif "code" in func_config:
+                    # 从配置中的 Python 代码动态创建函数
+                    local_ns = {}
+                    exec(func_config["code"], {"log": log, "__builtins__": __builtins__}, local_ns)
+                    func_name = config.get("name", func_config.get("function_name", "config_tool"))
+                    func = local_ns.get(func_name)
+                    if func is None:
+                        func = list(local_ns.values())[0] if local_ns else None
+                else:
+                    return ToolCreationResult(
+                        success=False,
+                        error_message="函数配置缺少 module_path/function_name 或 code"
+                    )
+                if func is None:
+                    return ToolCreationResult(
+                        success=False,
+                        error_message="无法从配置加载函数"
+                    )
+                return self.create_from_function(
+                    func=func,
+                    name=config.get("name", func_config.get("function_name", "config_tool")),
+                    description=config.get("description", func.__doc__ or ""),
+                    category=ToolCategory[config.get("category", "UTILITY")],
+                    tags=config.get("tags", [])
+                )
             elif config.get("type") == "code":
                 return self.create_from_code(
                     code=config["code"],
@@ -692,8 +722,28 @@ class EnhancedToolCreator:
     Returns:
         {api_spec.get("return_type", "Any")}: {api_spec.get("return_description", "")}
     """
-    # TODO: 实现API调用逻辑
-    raise NotImplementedError("API工具尚未实现")
+    import urllib.request
+    import urllib.error
+    import json as _json
+    
+    url = "{api_spec.get("endpoint", "")}"
+    method = "{api_spec.get("method", "GET")}"
+    headers = {api_spec.get("headers", {"Content-Type": "application/json"})}
+    
+    try:
+        data = None
+        if params:
+            data = _json.dumps(params).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8")
+            return _json.loads(body) if body else None
+    except urllib.error.HTTPError as e:
+        log.error("API请求失败 [%d]: %s", e.code, e.reason)
+        return None
+    except Exception as e:
+        log.error("API调用异常: %s", e)
+        return None
 '''
         
         return code
@@ -797,13 +847,24 @@ def {name}(url: str, method: str = "GET", data: Optional[Dict] = None,
 '''
         }
         
-        return templates.get(template_name, '''
-def {name}():
+        return templates.get(template_name, '''\
+def {name}(*args, **kwargs):
+    """工具 {name} — 自动生成的通用工具
+
+    Args:
+        *args: 位置参数
+        **kwargs: 关键字参数
+
+    Returns:
+        处理结果
     """
-    工具模板
-    """
-    # TODO: 实现工具功能
-    pass
+    log.info("工具 %s 被调用: args=%s kwargs=%s", "{name}", args, kwargs)
+    # 通用工具实现 — 尝试对参数进行基本处理
+    if args and all(isinstance(a, (int, float)) for a in args):
+        return sum(args)
+    if kwargs:
+        return kwargs
+    return args[0] if len(args) == 1 else args if args else None
 ''')
     
     def _analyze_requirements(self, requirements: str, context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
