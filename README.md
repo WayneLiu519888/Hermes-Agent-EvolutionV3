@@ -2,7 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![Version](https://img.shields.io/badge/version-3.0.3-blue)
 ![Tests](https://img.shields.io/badge/tests-422%20passed-brightgreen)
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
 

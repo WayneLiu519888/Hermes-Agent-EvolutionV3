@@ -15,6 +15,8 @@
   - L313: `create_from_config` 支持 `module_path`/`function_name` 动态加载函数
   - L695: `_generate_api_code` 实现 `urllib.error` 真实API调用（替代 NotImplementedError）
   - L805: `_get_template` 默认模板改为带日志的通用工具
+- `tests/test_iteration6_integration.py` MockCtx.register_tool 签名添加 `toolset` 参数 — 修复 hermes-plugin 新增 toolset 关键字调用后 11 个测试失败
+- 全项目版本号同步: `__init__.py` / `README.md` / `plugin.yaml` / `install.sh` / `Makefile` / `CONTRIBUTING.md` / `docs/CONFIGURATION.md` → 统一 v3.0.3
 
 ## [3.0.2] — 2026-05-07
 

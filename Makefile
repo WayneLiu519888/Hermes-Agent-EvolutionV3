@@ -1,7 +1,7 @@
 .PHONY: install test lint format clean build check help
 
 # ═══════════════════════════════════════════════════════════════════
-# HermesAgentEvolution v3.0.0 — Makefile
+# HermesAgentEvolution v3.0.3 — Makefile
 # ═══════════════════════════════════════════════════════════════════
 
 PYTHON = python3
@@ -10,7 +10,7 @@ PYTEST = $(PYTHON) -m pytest
 RUFF = $(PYTHON) -m ruff
 
 help: ## 显示可用命令
-	@echo "HermesAgentEvolution v3.0.0"
+	@echo "HermesAgentEvolution v3.0.3"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -67,7 +67,7 @@ pre-commit-install: ## 安装 pre-commit hooks
 	pre-commit install
 
 docker-build: ## 构建 Docker 镜像 (高级用户)
-	docker build -t hermes-agent-evolution:3.0.0 -f docker/Dockerfile .
+	docker build -t hermes-agent-evolution:3.0.3 -f docker/Dockerfile .
 
 version: ## 显示当前版本
 	@$(PYTHON) -c "from pathlib import Path; import re; \
