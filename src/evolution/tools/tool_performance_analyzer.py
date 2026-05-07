@@ -149,7 +149,7 @@ class ToolPerformanceAnalyzer:
             cursor.execute('''
                 INSERT INTO performance_records (tool_name, metric, value, timestamp, metadata)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (tool_name, metric.value, value, datetime.now(), metadata_json))
+            ''', (tool_name, metric.value, value, datetime.now().isoformat(), metadata_json))
             
             conn.commit()
             conn.close()
