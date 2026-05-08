@@ -509,7 +509,7 @@ class ClosedLoopOrchestrator:
         Returns:
             反馈结果
         """
-        logger.info("📝 [Feedback] 记录学习经验... V2-DEBUG-MARKER")
+        logger.info("📝 [Feedback] 记录学习经验...")
         
         feedback = {
             'recorded': False,
@@ -573,18 +573,7 @@ class ClosedLoopOrchestrator:
                 logger.info(f"  学习经验已记录: {feedback['experience_id']}")
                 
             except Exception as e:
-                import traceback, sys
                 logger.warning("记录学习经验异常: %s", e)
-                # Write full diagnostic to a temp file for debugging
-                try:
-                    with open("/tmp/evolution_feedback_error.txt", "w") as f:
-                        f.write(f"Error: {e}\n")
-                        f.write(f"sys.path:\n")
-                        for i, p in enumerate(sys.path):
-                            f.write(f"  [{i}] {p}\n")
-                        f.write(f"\nTraceback:\n{traceback.format_exc()}\n")
-                except:
-                    pass
                 feedback['error'] = str(e)
         
         return feedback
