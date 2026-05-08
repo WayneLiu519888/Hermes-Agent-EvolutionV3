@@ -179,7 +179,7 @@ TOOL_RUN_CYCLE_SCHEMA = {
 }
 
 
-def _handle_run_cycle(ctx, params, **kwargs):
+def _handle_run_cycle(params, **kwargs):
     """Handler for evolution_run_cycle."""
     try:
         orchestrator = _get_orchestrator()
@@ -244,7 +244,7 @@ TOOL_CREATE_TOOL_SCHEMA = {
 }
 
 
-def _handle_create_tool(ctx, params, **kwargs):
+def _handle_create_tool(params, **kwargs):
     """Handler for evolution_create_tool."""
     try:
         tool_name = params.get("tool_name", "")
@@ -332,7 +332,7 @@ TOOL_ANALYZE_PERFORMANCE_SCHEMA = {
 }
 
 
-def _handle_analyze_performance(ctx, params, **kwargs):
+def _handle_analyze_performance(params, **kwargs):
     """Handler for evolution_analyze_performance."""
     try:
         analyzer = _get_tool_performance_analyzer()
@@ -451,7 +451,7 @@ TOOL_LEARN_SCHEMA = {
 }
 
 
-def _handle_learn(ctx, params, **kwargs):
+def _handle_learn(params, **kwargs):
     """Handler for evolution_learn."""
     try:
         from evolution.learning import Experience, ExperienceType, Outcome
@@ -543,7 +543,7 @@ TOOL_SELF_MONITOR_SCHEMA = {
 }
 
 
-def _handle_self_monitor(ctx, params, **kwargs):
+def _handle_self_monitor(params, **kwargs):
     """Handler for evolution_self_monitor."""
     try:
         self_monitor = _get_self_monitor()
@@ -618,7 +618,7 @@ TOOL_MEMORY_DISCOVER_SCHEMA = {
 }
 
 
-def _handle_memory_discover(ctx, params, **kwargs):
+def _handle_memory_discover(params, **kwargs):
     """Handler for evolution_memory_discover."""
     try:
         discoverer = _get_association_discoverer()
