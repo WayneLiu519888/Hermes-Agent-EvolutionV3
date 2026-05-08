@@ -720,7 +720,7 @@ def register(ctx):
 
     Args:
         ctx: The plugin registration context provided by the Hermes runtime.
-             Provides ctx.register_tool(name, schema, handler) and
+             Provides ctx.register_tool(name=..., toolset=\"hermes-evolution\", schema=..., handler=...) and
              ctx.register_hook(hook_name, callback).
     """
     # Ensure project root is importable

@@ -257,6 +257,29 @@ def cmd_setup() -> bool:
             return False
     
     print(f"   ✅ 插件已部署")
+
+    # ── 部署后校验：确认部署文件与包资源一致 ─────────────────────────
+    try:
+        import hashlib
+
+        def _file_hash(path):
+            with open(path, "rb") as f:
+                return hashlib.sha256(f.read()).hexdigest()[:16]
+
+        for name in ("plugin.yaml", "__init__.py"):
+            src = plugin_pkg / name if isinstance(plugin_pkg, Path) else plugin_pkg.joinpath(name)
+            dst = plugin_dst / name
+            src_content = src.read_bytes() if hasattr(src, 'read_bytes') else src.read_bytes()
+            dst_content = dst.read_bytes()
+            if src_content != dst_content:
+                print(f"   ⚠️  部署校验不匹配: {name}")
+                print(f"      源: {_file_hash(str(src))} , 目标: {_file_hash(str(dst))}")
+                print(f"      请重新运行: hermes-evolution setup")
+                return False
+        print(f"   ✅ 部署校验通过 (hash一致)")
+    except Exception as e:
+        print(f"   ⚠️  部署校验跳过: {e}")
+    # ─────────────────────────────────────────────────────────────────
     
     # 尝试启用插件
     import subprocess

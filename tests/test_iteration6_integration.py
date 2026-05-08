@@ -349,3 +349,51 @@ class TestGracefulDegradation:
         # The handler requires tool_name, description, api_spec — it should fail gracefully
         assert isinstance(result, dict)
         assert "success" in result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Iteration 7: Plugin API 同步守卫 (防止 register_tool 签名漂移)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_plugin_copies_identical():
+    """【迭代7 CI守卫】hermes-plugin/ 和 src/evolution/_plugin/ 的 __init__.py 必须一致"""
+    import hashlib
+
+    def _md5(p):
+        with open(p, "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()
+
+    canon = PROJECT_ROOT / "hermes-plugin" / "__init__.py"
+    deployed = PROJECT_ROOT / "src" / "evolution" / "_plugin" / "__init__.py"
+
+    canon_hash = _md5(canon)
+    deployed_hash = _md5(deployed)
+
+    assert canon_hash == deployed_hash, (
+        f"❌ Plugin API drift detected!\n"
+        f"   Canonical:  {canon}  (md5: {canon_hash})\n"
+        f"   Deployed:   {deployed}  (md5: {deployed_hash})\n"
+        f"   Fix: cp {canon} {deployed}\n"
+        f"   根因: hermes-plugin/ 和 _plugin/ 的 register_tool 签名不一致,\n"
+        f"   导致 pip install 后插件注册全部失败。"
+    )
+
+
+def test_register_tool_uses_toolset_keyword():
+    """【迭代7 CI守卫】所有 register_tool 调用必须包含 toolset= 关键字参数"""
+    canon = PROJECT_ROOT / "hermes-plugin" / "__init__.py"
+    content = canon.read_text()
+
+    # Find all register_tool calls
+    import re
+    calls = re.findall(r'ctx\.register_tool\([^)]+\)', content, re.DOTALL)
+
+    assert len(calls) > 0, "未找到任何 register_tool 调用"
+
+    for call in calls:
+        assert "toolset" in call, (
+            f"❌ register_tool 调用缺少 toolset 参数:\n"
+            f"   {call[:120]}...\n"
+            f"   请改用: ctx.register_tool(name=..., toolset='hermes-evolution', schema=..., handler=...)\n"
+            f"   根因: Hermes Agent API 升级后 register_tool 签名改为 (name, toolset, schema, handler, ...)"
+        )
