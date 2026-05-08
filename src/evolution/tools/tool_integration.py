@@ -80,12 +80,17 @@ class ToolLearningIntegrator:
         
         try:
             self.observer = LearningObserver()
-            self.analyzer = ExperienceAnalyzer()
+            self.analyzer = ExperienceAnalyzer(self.observer)
             self.strategy_learner = ToolStrategyLearner(self.registry)
             self.pattern_recognizer = PatternRecognizer()
             log.info("工具-学习集成模块初始化成功")
         except Exception as e:
             log.error("学习模块初始化失败: %s", e)
+            # 重置已部分初始化的属性，保持一致性
+            self.observer = None
+            self.analyzer = None
+            self.strategy_learner = None
+            self.pattern_recognizer = None
     
     def record_tool_execution(self, tool_name: str, 
                               success: bool,

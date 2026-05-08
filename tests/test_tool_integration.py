@@ -20,7 +20,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 先 patch 掉 learning 模块的导入
-with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
     try:
         from evolution.tools.tool_integration import (
         EvolutionConfig,
@@ -67,8 +67,8 @@ def config():
 @pytest.fixture
 def engine(mock_registry, config):
     """创建 ToolEvolutionEngine"""
-    with patch('src.evolution.tools.tool_integration.ToolPerformanceAnalyzer') as mock_pa, \
-         patch('src.evolution.tools.tool_integration.ToolAutoGenerator') as mock_ag:
+    with patch('evolution.tools.tool_integration.ToolPerformanceAnalyzer') as mock_pa, \
+         patch('evolution.tools.tool_integration.ToolAutoGenerator') as mock_ag:
 
         # Mock performance analyzer
         analyzer_instance = MagicMock()
@@ -192,8 +192,8 @@ class TestToolEvolutionEngine:
     def test_run_evolution_cycle_failure_handling(self, mock_registry):
         """进化周期异常处理"""
         mock_registry.list_all.side_effect = RuntimeError("模拟错误")
-        with patch('src.evolution.tools.tool_integration.ToolPerformanceAnalyzer'), \
-             patch('src.evolution.tools.tool_integration.ToolAutoGenerator'):
+        with patch('evolution.tools.tool_integration.ToolPerformanceAnalyzer'), \
+             patch('evolution.tools.tool_integration.ToolAutoGenerator'):
             eng = ToolEvolutionEngine(registry=mock_registry, config=EvolutionConfig())
             result = eng.run_evolution_cycle()
             assert result["success"] is False
@@ -232,7 +232,7 @@ class TestToolLearningIntegrator:
 
     def test_init_without_learning(self, mock_registry):
         """无学习模块时初始化"""
-        with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+        with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
             integrator = ToolLearningIntegrator(mock_registry)
             assert integrator.observer is None
             assert integrator.analyzer is None
@@ -241,21 +241,21 @@ class TestToolLearningIntegrator:
 
     def test_record_tool_execution_no_observer(self, mock_registry):
         """无 observer 时记录返回 False"""
-        with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+        with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
             integrator = ToolLearningIntegrator(mock_registry)
             result = integrator.record_tool_execution("test", True, 0.5)
             assert result is False
 
     def test_analyze_tool_patterns_no_pattern_recognizer(self, mock_registry):
         """无 pattern_recognizer 时返回空"""
-        with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+        with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
             integrator = ToolLearningIntegrator(mock_registry)
             result = integrator.analyze_tool_patterns()
             assert result == []
 
     def test_optimize_tool_strategy_no_learner(self, mock_registry):
         """无 strategy_learner 时返回原因"""
-        with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+        with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
             integrator = ToolLearningIntegrator(mock_registry)
             result = integrator.optimize_tool_strategy("test_tool")
             assert result["optimized"] is False
@@ -264,7 +264,7 @@ class TestToolLearningIntegrator:
     def test_optimize_tool_strategy_nonexistent_tool(self, mock_registry):
         """工具不存在"""
         mock_registry.get_tool.return_value = None
-        with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
+        with patch('evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
             integrator = ToolLearningIntegrator(mock_registry)
             result = integrator.optimize_tool_strategy("nonexistent")
             assert result["optimized"] is False
@@ -277,8 +277,8 @@ class TestAutoGenerateTool:
 
     def test_auto_generate_success(self, mock_registry):
         """自动生成工具成功"""
-        with patch('src.evolution.tools.tool_integration.ToolPerformanceAnalyzer'), \
-             patch('src.evolution.tools.tool_integration.ToolAutoGenerator') as mock_ag:
+        with patch('evolution.tools.tool_integration.ToolPerformanceAnalyzer'), \
+             patch('evolution.tools.tool_integration.ToolAutoGenerator') as mock_ag:
             gen_instance = MagicMock()
             mock_result = MagicMock()
             mock_result.success = True

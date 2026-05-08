@@ -327,7 +327,7 @@ class TestActionExecutor:
 class TestSystemMetricsCollector:
     """系统指标采集器测试"""
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_init(self, mock_psutil):
         """测试初始化"""
         mock_process = MagicMock()
@@ -338,7 +338,7 @@ class TestSystemMetricsCollector:
         assert collector.history_size == 100
         assert collector._running is False
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_init_custom_config(self, mock_psutil):
         """测试自定义配置初始化"""
         mock_process = MagicMock()
@@ -351,7 +351,7 @@ class TestSystemMetricsCollector:
         assert collector.collection_interval == 10
         assert collector.history_size == 50
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_collect_system_metrics(self, mock_psutil):
         """测试采集系统指标（内部方法）"""
         mock_process = MagicMock()
@@ -374,7 +374,7 @@ class TestSystemMetricsCollector:
         assert 'system.memory_mb' in metrics
         assert metrics['system.cpu_percent'] == 12.5
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_record_tool_call(self, mock_psutil):
         """测试记录工具调用"""
         mock_process = MagicMock()
@@ -391,7 +391,7 @@ class TestSystemMetricsCollector:
         assert stats['total_calls'] == 1
         assert stats['success_calls'] == 1
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_record_experience(self, mock_psutil):
         """测试记录经验"""
         mock_process = MagicMock()
@@ -401,7 +401,7 @@ class TestSystemMetricsCollector:
         collector.record_experience()
         assert collector._experience_count == 1
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_get_system_health(self, mock_psutil):
         """测试获取系统健康快照"""
         mock_process = MagicMock()
@@ -419,7 +419,7 @@ class TestSystemMetricsCollector:
         assert health['status'] in ('healthy', 'warning', 'critical')
         assert 0 <= health['score'] <= 100
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_get_tool_stats_unknown(self, mock_psutil):
         """测试获取不存在的工具统计"""
         mock_process = MagicMock()
@@ -429,7 +429,7 @@ class TestSystemMetricsCollector:
         result = collector.get_tool_stats('nonexistent_tool')
         assert result is None
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_collect_all(self, mock_psutil):
         """测试全量采集"""
         mock_process = MagicMock()
@@ -452,7 +452,7 @@ class TestSystemMetricsCollector:
         assert 'system.cpu_percent' in result
         assert 'system.memory_mb' in result
 
-    @patch('src.evolution.closed_loop.metrics_collector.psutil')
+    @patch('evolution.closed_loop.metrics_collector.psutil')
     def test_start_stop_lifecycle(self, mock_psutil):
         """测试采集器启停生命周期"""
         mock_process = MagicMock()
