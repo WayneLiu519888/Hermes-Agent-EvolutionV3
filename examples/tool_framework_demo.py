@@ -9,13 +9,22 @@ from datetime import datetime
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.tools import (
+try:
+    from evolution.tools import (
     ToolDefinition,
     ToolRegistry,
     ToolCategory,
     ToolStatus,
     ToolCreator
-)
+    )
+except ImportError:
+    from src.evolution.tools import (
+    ToolDefinition,
+    ToolRegistry,
+    ToolCategory,
+    ToolStatus,
+    ToolCreator
+    )
 
 
 def calculate_area(length: float, width: float) -> float:

@@ -22,14 +22,24 @@ import pytest
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.closed_loop.action_executor import ActionExecutor
-from src.evolution.closed_loop.metrics_collector import SystemMetricsCollector
-from src.evolution.closed_loop.orchestrator import (
+try:
+    from evolution.closed_loop.action_executor import ActionExecutor
+    from evolution.closed_loop.metrics_collector import SystemMetricsCollector
+    from evolution.closed_loop.orchestrator import (
     ClosedLoopOrchestrator, ImprovementAction
-)
-from src.evolution.closed_loop.daemon import (
+    )
+    from evolution.closed_loop.daemon import (
     EvolutionDaemon, EvolutionPhase, LoopState, EvolutionSnapshot
-)
+    )
+except ImportError:
+    from src.evolution.closed_loop.action_executor import ActionExecutor
+    from src.evolution.closed_loop.metrics_collector import SystemMetricsCollector
+    from src.evolution.closed_loop.orchestrator import (
+    ClosedLoopOrchestrator, ImprovementAction
+    )
+    from src.evolution.closed_loop.daemon import (
+    EvolutionDaemon, EvolutionPhase, LoopState, EvolutionSnapshot
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════

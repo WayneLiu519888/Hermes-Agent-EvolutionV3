@@ -12,8 +12,12 @@ from datetime import datetime, timedelta
 # 添加项目路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.evolution.memory.database import AssociationDatabase
-from src.evolution.memory.association_optimizer import AssociationOptimizer, OptimizationResult
+try:
+    from evolution.memory.database import AssociationDatabase
+    from evolution.memory.association_optimizer import AssociationOptimizer, OptimizationResult
+except ImportError:
+    from src.evolution.memory.database import AssociationDatabase
+    from src.evolution.memory.association_optimizer import AssociationOptimizer, OptimizationResult
 
 class TestAssociationOptimizer(unittest.TestCase):
     """测试关联优化器"""

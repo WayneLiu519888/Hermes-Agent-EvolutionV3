@@ -158,7 +158,7 @@ class DataFormatConverter:
     def dict_to_v1_experience(data: Dict[str, Any]):
         """dict → V1 Experience dataclass"""
         try:
-            from src.evolution.learning.experience import Experience
+            from evolution.learning.experience import Experience
             return Experience.from_dict(data)
         except ImportError:
             logger.warning("无法导入V1 Experience，返回字典")
@@ -305,7 +305,7 @@ class V1V2Bridge:
     def _register_enum_mappings(self) -> None:
         """注册V1和V2枚举映射"""
         try:
-            from src.evolution.learning.experience import Outcome, ExperienceType
+            from evolution.learning.experience import Outcome, ExperienceType
             self.enum_mapper.register_v1_enum("Outcome", Outcome)
             self.enum_mapper.register_v1_enum("ExperienceType", ExperienceType)
         except ImportError:

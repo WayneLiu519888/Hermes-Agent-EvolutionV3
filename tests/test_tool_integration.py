@@ -21,12 +21,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 先 patch 掉 learning 模块的导入
 with patch('src.evolution.tools.tool_integration.LEARNING_AVAILABLE', False):
-    from src.evolution.tools.tool_integration import (
+    try:
+        from evolution.tools.tool_integration import (
         EvolutionConfig,
         EvolutionStatus,
         ToolEvolutionEngine,
         ToolLearningIntegrator,
-    )
+        )
+    except ImportError:
+        from src.evolution.tools.tool_integration import (
+        EvolutionConfig,
+        EvolutionStatus,
+        ToolEvolutionEngine,
+        ToolLearningIntegrator,
+        )
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -94,7 +102,10 @@ class TestEvolutionConfig:
         assert config.enable_performance_monitoring is True
         assert config.enable_optimization is True
         # learning_integration_enabled=True 但因为 LEARNING_AVAILABLE=False 会变成 False
-        from src.evolution.tools import tool_integration
+        try:
+            from evolution.tools import tool_integration
+        except ImportError:
+            from src.evolution.tools import tool_integration
         if tool_integration.LEARNING_AVAILABLE:
             assert config.learning_integration_enabled is True
         else:

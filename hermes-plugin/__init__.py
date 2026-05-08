@@ -29,6 +29,23 @@ logger = logging.getLogger("hermes_evolution_plugin")
 _engine_instances = {}
 
 # ---------------------------------------------------------------------------
+# Helper: resolve evolution data directory (shared with db_utils)
+# ---------------------------------------------------------------------------
+def _get_data_dir():
+    """Get the evolution data directory (~/.hermes/data/evolution/).
+    
+    Mirrors db_utils._resolve_data_dir() to avoid import dependency.
+    Uses EVOLUTION_DATA_DIR env var if set, otherwise ~/.hermes/data/evolution/.
+    """
+    env_dir = os.environ.get("EVOLUTION_DATA_DIR")
+    if env_dir:
+        return Path(env_dir)
+    hermes_home = os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))
+    data_dir = Path(hermes_home) / "data" / "evolution"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
+
+# ---------------------------------------------------------------------------
 # Lazy engine initializers — create instances on demand with fallbacks
 # ---------------------------------------------------------------------------
 def _get_tool_registry():
@@ -36,8 +53,7 @@ def _get_tool_registry():
     if "tool_registry" not in _engine_instances:
         try:
             from evolution.tools import ToolRegistry
-            project_root = Path(__file__).resolve().parent.parent
-            db_path = str(project_root / "data" / "tools.db")
+            db_path = str(_get_data_dir() / "tools.db")
             _engine_instances["tool_registry"] = ToolRegistry(db_path=db_path)
         except Exception as e:
             logger.warning("Failed to create ToolRegistry: %s", e)
@@ -50,8 +66,7 @@ def _get_learning_observer():
     if "learning_observer" not in _engine_instances:
         try:
             from evolution.learning import LearningObserver
-            project_root = Path(__file__).resolve().parent.parent
-            db_path = str(project_root / "data" / "learning_experiences.db")
+            db_path = str(_get_data_dir() / "learning_experiences.db")
             _engine_instances["learning_observer"] = LearningObserver(db_path=db_path)
         except Exception as e:
             logger.warning("Failed to create LearningObserver: %s", e)
@@ -75,8 +90,7 @@ def _get_orchestrator():
             )
             from evolution import SelfMonitor  # top-level import
 
-            project_root = Path(__file__).resolve().parent.parent
-            db_base = str(project_root / "data")
+            db_base = str(_get_data_dir())
 
             # Wire dependencies
             observer = LearningObserver(db_path=os.path.join(db_base, "learning_experiences.db"))
@@ -125,8 +139,7 @@ def _get_tool_performance_analyzer():
             if registry is None:
                 _engine_instances["tool_performance_analyzer"] = None
             else:
-                project_root = Path(__file__).resolve().parent.parent
-                db_path = str(project_root / "data" / "tool_performance.db")
+                db_path = str(_get_data_dir() / "tool_performance.db")
                 _engine_instances["tool_performance_analyzer"] = ToolPerformanceAnalyzer(
                     registry=registry, db_path=db_path
                 )
@@ -141,8 +154,7 @@ def _get_association_discoverer():
     if "association_discoverer" not in _engine_instances:
         try:
             from evolution.memory import AssociationDatabase, AssociationDiscoverer
-            project_root = Path(__file__).resolve().parent.parent
-            db_path = str(project_root / "data" / "associations.db")
+            db_path = str(_get_data_dir() / "associations.db")
             db = AssociationDatabase(db_path=db_path)
             discoverer = AssociationDiscoverer(db=db)
             _engine_instances["association_discoverer"] = discoverer
@@ -269,9 +281,7 @@ def _handle_create_tool(params, **kwargs):
         result = creator.create_from_api_description(
             api_spec=api_spec,
             name=tool_name,
-            description=description,
             category=tool_category,
-            tags=tags,
         )
 
         return json.dumps({
@@ -717,10 +727,8 @@ def register(ctx):
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
 
-    # Ensure project root is importable
-    project_root = Path(__file__).resolve().parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
+    # Ensure data directory exists (uses EVOLUTION_DATA_DIR or ~/.hermes/data/evolution/)
+    _get_data_dir()
 
     # ── Register Tools ──────────────────────────────────────────────────
     tools = [
@@ -749,5 +757,5 @@ def register(ctx):
 
     manifest_version = "3.0.3"  # read from plugin.yaml
     logger.info(
-        "Hermes Evolution Plugin v%s registered — 6 tools + 1 hook", manifest_version
+"Hermes Evolution Plugin v3.0.3 registered — 6 tools + 1 hook"
     )

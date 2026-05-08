@@ -27,19 +27,34 @@ from typing import Optional
 # 确保项目路径
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.evolution.learning.observer import LearningObserver
-from src.evolution.learning.analyzer import ExperienceAnalyzer
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner
-from src.evolution.learning.pattern_recognizer import PatternRecognizer
-from src.evolution.memory.database import AssociationDatabase
-from src.evolution.self_monitor import SelfMonitor
-from src.evolution.tools.tool_registry import ToolRegistry
-from src.evolution.tools.tool_integration import ToolEvolutionEngine, EvolutionConfig
-from src.evolution.closed_loop.daemon import EvolutionDaemon, EvolutionPhase
-from src.evolution.closed_loop.orchestrator import ClosedLoopOrchestrator
-from src.evolution.closed_loop.metrics_collector import SystemMetricsCollector
-from src.evolution.closed_loop.action_executor import ActionExecutor
+try:
+    from evolution.learning.observer import LearningObserver
+    from evolution.learning.analyzer import ExperienceAnalyzer
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.tool_strategy_learner import ToolStrategyLearner
+    from evolution.learning.pattern_recognizer import PatternRecognizer
+    from evolution.memory.database import AssociationDatabase
+    from evolution.self_monitor import SelfMonitor
+    from evolution.tools.tool_registry import ToolRegistry
+    from evolution.tools.tool_integration import ToolEvolutionEngine, EvolutionConfig
+    from evolution.closed_loop.daemon import EvolutionDaemon, EvolutionPhase
+    from evolution.closed_loop.orchestrator import ClosedLoopOrchestrator
+    from evolution.closed_loop.metrics_collector import SystemMetricsCollector
+    from evolution.closed_loop.action_executor import ActionExecutor
+except ImportError:
+    from src.evolution.learning.observer import LearningObserver
+    from src.evolution.learning.analyzer import ExperienceAnalyzer
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner
+    from src.evolution.learning.pattern_recognizer import PatternRecognizer
+    from src.evolution.memory.database import AssociationDatabase
+    from src.evolution.self_monitor import SelfMonitor
+    from src.evolution.tools.tool_registry import ToolRegistry
+    from src.evolution.tools.tool_integration import ToolEvolutionEngine, EvolutionConfig
+    from src.evolution.closed_loop.daemon import EvolutionDaemon, EvolutionPhase
+    from src.evolution.closed_loop.orchestrator import ClosedLoopOrchestrator
+    from src.evolution.closed_loop.metrics_collector import SystemMetricsCollector
+    from src.evolution.closed_loop.action_executor import ActionExecutor
 
 # 飞书通知（可选）
 try:

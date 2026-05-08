@@ -202,9 +202,9 @@ class UnifiedAgent:
         """初始化V1组件连接"""
         try:
             # 导入V1核心模块
-            from src.evolution.learning.observer import LearningObserver
-            from src.evolution.learning.analyzer import ExperienceAnalyzer
-            from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner
+            from evolution.learning.observer import LearningObserver
+            from evolution.learning.analyzer import ExperienceAnalyzer
+            from evolution.learning.tool_strategy_learner import ToolStrategyLearner
 
             # 创建V1组件实例
             self._v1_observer = LearningObserver()
@@ -213,7 +213,7 @@ class UnifiedAgent:
 
             # 尝试初始化SelfMonitor
             try:
-                from src.evolution.self_monitor import SelfMonitor
+                from evolution.self_monitor import SelfMonitor
                 self._v1_self_monitor = SelfMonitor(
                     self._v1_observer,
                     self._v1_analyzer,
@@ -448,7 +448,7 @@ class UnifiedAgent:
         if not self._v1_observer:
             return {"success": False, "error": "V1 Observer不可用"}
         try:
-            from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+            from evolution.learning.experience import Experience, ExperienceType, Outcome
             exp = Experience(
                 id=params.get("id", str(uuid.uuid4())),
                 experience_type=ExperienceType(params.get("experience_type", "tool_usage")),
@@ -699,7 +699,7 @@ class UnifiedAgent:
                 # 如果V1可用，记录为经验
                 if self._v1_observer:
                     try:
-                        from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+                        from evolution.learning.experience import Experience, ExperienceType, Outcome
                         exp = Experience(
                             id=v1_callback["id"],
                             experience_type=ExperienceType(v1_callback["experience_type"]),

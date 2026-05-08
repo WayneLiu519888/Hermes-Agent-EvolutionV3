@@ -10,8 +10,12 @@ from datetime import datetime, timedelta
 # 添加项目路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.observer import LearningObserver
+try:
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.observer import LearningObserver
+except ImportError:
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.observer import LearningObserver
 
 def demonstrate_learning_observer():
     """演示学习观察器的使用"""

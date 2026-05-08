@@ -12,7 +12,7 @@ Evolution Database Utilities — 统一数据库连接工厂
   - 连接缓存: 同一进程内复用连接 (thread-safe)
 
 用法:
-    from src.evolution.db_utils import get_evolution_db
+    from .db_utils import get_evolution_db
     
     conn = get_evolution_db("tools.db")
     conn.execute("SELECT ...")

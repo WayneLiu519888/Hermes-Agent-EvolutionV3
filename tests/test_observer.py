@@ -9,8 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.observer import LearningObserver
+try:
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.observer import LearningObserver
+except ImportError:
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.observer import LearningObserver
 
 
 class TestExperience:

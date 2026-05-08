@@ -5,7 +5,7 @@
 支持按模块层级配置日志级别、输出到控制台和文件。
 
 用法:
-    from src.evolution.logging_config import setup_logging, get_logger
+    from .logging_config import setup_logging, get_logger
     
     # 应用启动时初始化（只需一次）
     setup_logging(level="INFO", log_file="logs/evolution.log")
@@ -54,7 +54,7 @@ def get_logger(name: str) -> logging.Logger:
         logging.Logger 实例
     
     用法:
-        from src.evolution.logging_config import get_logger
+        from .logging_config import get_logger
         log = get_logger(__name__)
         log.info("操作成功")
     """

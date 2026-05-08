@@ -443,7 +443,7 @@ class VersionDetector:
     def detect_v1_version(self) -> VersionInfo:
         """检测V1版本"""
         try:
-            from src.evolution import __version__ as v1_ver
+            from .. import __version__ as v1_ver
             self._v1_version = VersionInfo.parse(v1_ver, "v1_monolith")
         except ImportError:
             logger.warning("无法导入V1版本信息，使用默认值")

@@ -7,10 +7,16 @@ import tempfile
 import pytest
 from datetime import datetime
 
-from src.evolution.tools.tool_registry import (
+try:
+    from evolution.tools.tool_registry import (
     ToolDefinition, ToolRegistry, ToolCategory, ToolStatus
-)
-from src.evolution.tools.tool_creator import ToolCreator, ToolCreationResult
+    )
+    from evolution.tools.tool_creator import ToolCreator, ToolCreationResult
+except ImportError:
+    from src.evolution.tools.tool_registry import (
+    ToolDefinition, ToolRegistry, ToolCategory, ToolStatus
+    )
+    from src.evolution.tools.tool_creator import ToolCreator, ToolCreationResult
 
 
 # 测试用辅助函数（不以test_开头，避免被pytest识别为测试用例）

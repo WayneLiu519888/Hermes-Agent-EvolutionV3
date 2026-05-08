@@ -23,14 +23,24 @@ import pytest
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.learning.pattern_recognizer import (
+try:
+    from evolution.learning.pattern_recognizer import (
     PatternRecognizer,
     PatternCategory,
     StrategyType,
     RecognizedPattern,
     GeneratedStrategy,
-)
-from src.evolution.learning.experience import ExperienceType, Outcome
+    )
+    from evolution.learning.experience import ExperienceType, Outcome
+except ImportError:
+    from src.evolution.learning.pattern_recognizer import (
+    PatternRecognizer,
+    PatternCategory,
+    StrategyType,
+    RecognizedPattern,
+    GeneratedStrategy,
+    )
+    from src.evolution.learning.experience import ExperienceType, Outcome
 
 
 # ══════════════════════════════════════════════════════════════════════

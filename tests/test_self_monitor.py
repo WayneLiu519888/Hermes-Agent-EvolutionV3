@@ -17,7 +17,10 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.self_monitor import SelfMonitor
+try:
+    from evolution.self_monitor import SelfMonitor
+except ImportError:
+    from src.evolution.self_monitor import SelfMonitor
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

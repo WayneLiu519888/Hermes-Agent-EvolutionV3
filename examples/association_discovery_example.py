@@ -9,9 +9,14 @@ import logging
 # 添加项目路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.memory.database import AssociationDatabase
-from src.evolution.memory.association_discoverer import AssociationDiscoverer
-from src.evolution.memory.association_optimizer import AssociationOptimizer
+try:
+    from evolution.memory.database import AssociationDatabase
+    from evolution.memory.association_discoverer import AssociationDiscoverer
+    from evolution.memory.association_optimizer import AssociationOptimizer
+except ImportError:
+    from src.evolution.memory.database import AssociationDatabase
+    from src.evolution.memory.association_discoverer import AssociationDiscoverer
+    from src.evolution.memory.association_optimizer import AssociationOptimizer
 
 # 配置日志
 logging.basicConfig(

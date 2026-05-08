@@ -16,7 +16,10 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.utils.feishu_notifier import init_notifier, get_notifier
-from src.evolution.self_monitor import SelfMonitor, MetricType
+try:
+    from evolution.self_monitor import SelfMonitor, MetricType
+except ImportError:
+    from src.evolution.self_monitor import SelfMonitor, MetricType
 
 
 class HermesAgentEvolution:

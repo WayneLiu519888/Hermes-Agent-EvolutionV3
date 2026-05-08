@@ -21,34 +21,64 @@ from unittest.mock import Mock, MagicMock, patch
 # 确保项目在sys.path中
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.security.audit_logger import (
+try:
+    from evolution.security.audit_logger import (
     AuditLogger,
     AuditLogLevel,
     EventType,
     AuditEntry,
     AuditQueryResult,
-)
-from src.evolution.security.permission_manager import (
+    )
+    from evolution.security.permission_manager import (
     PermissionManager,
     Operation,
     Role,
     AgentPermission,
     PermissionCheckResult,
-)
-from src.evolution.security.sandbox_executor import (
+    )
+    from evolution.security.sandbox_executor import (
     SandboxExecutor,
     SandboxStatus,
     SandboxResult,
     CodeSafetyAnalyzer,
     analyze_code_safety,
-)
-from src.evolution.security.threat_detector import (
+    )
+    from evolution.security.threat_detector import (
     ThreatDetector,
     ThreatLevel,
     ThreatCategory,
     ThreatAlert,
     DetectionRule,
-)
+    )
+except ImportError:
+    from src.evolution.security.audit_logger import (
+    AuditLogger,
+    AuditLogLevel,
+    EventType,
+    AuditEntry,
+    AuditQueryResult,
+    )
+    from src.evolution.security.permission_manager import (
+    PermissionManager,
+    Operation,
+    Role,
+    AgentPermission,
+    PermissionCheckResult,
+    )
+    from src.evolution.security.sandbox_executor import (
+    SandboxExecutor,
+    SandboxStatus,
+    SandboxResult,
+    CodeSafetyAnalyzer,
+    analyze_code_safety,
+    )
+    from src.evolution.security.threat_detector import (
+    ThreatDetector,
+    ThreatLevel,
+    ThreatCategory,
+    ThreatAlert,
+    DetectionRule,
+    )
 
 
 # ============================================================
@@ -624,12 +654,20 @@ class TestSecurityIntegration:
 
     def test_security_module_imports(self):
         """测试安全模块所有导入"""
-        from src.evolution.security import (
+        try:
+            from evolution.security import (
             AuditLogger, AuditLogLevel, EventType, AuditEntry, AuditQueryResult,
             PermissionManager, Operation, Role, AgentPermission, PermissionCheckResult,
             SandboxExecutor, SandboxStatus, SandboxResult, CodeSafetyAnalyzer, analyze_code_safety,
             ThreatDetector, ThreatLevel, ThreatCategory, ThreatAlert, DetectionRule,
-        )
+            )
+        except ImportError:
+            from src.evolution.security import (
+            AuditLogger, AuditLogLevel, EventType, AuditEntry, AuditQueryResult,
+            PermissionManager, Operation, Role, AgentPermission, PermissionCheckResult,
+            SandboxExecutor, SandboxStatus, SandboxResult, CodeSafetyAnalyzer, analyze_code_safety,
+            ThreatDetector, ThreatLevel, ThreatCategory, ThreatAlert, DetectionRule,
+            )
         # 所有导入成功
         assert True
 
@@ -640,7 +678,10 @@ class TestSecurityIntegration:
 
 def test_security_init_exports():
     """测试__init__.py正确导出所有公共符号"""
-    from src.evolution.security import __all__ as exports
+    try:
+        from evolution.security import __all__ as exports
+    except ImportError:
+        from src.evolution.security import __all__ as exports
 
     required = [
         "AuditLogger", "AuditLogLevel", "EventType",

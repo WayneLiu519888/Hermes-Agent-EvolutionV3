@@ -16,7 +16,8 @@ from unittest.mock import MagicMock, patch, AsyncMock
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.fusion.compatibility import (
+try:
+    from evolution.fusion.compatibility import (
     StatusMapper,
     EnumMapper,
     APIGateway,
@@ -31,8 +32,8 @@ from src.evolution.fusion.compatibility import (
     v2_status_to_v1_status,
     v1_outcome_to_v2_priority,
     v2_priority_to_v1_confidence,
-)
-from src.evolution.fusion.bridge import (
+    )
+    from evolution.fusion.bridge import (
     V1V2Bridge,
     ServiceMapping,
     DataFormatConverter,
@@ -42,14 +43,49 @@ from src.evolution.fusion.bridge import (
     V2_SERVICE_TYPE,
     SERVICE_MAP_V1_TO_V2,
     SERVICE_MAP_V2_TO_V1,
-)
-from src.evolution.fusion.unified_entry import (
+    )
+    from evolution.fusion.unified_entry import (
     UnifiedAgent,
     RunMode,
     CapabilityRequest,
     CapabilityResponse,
     UnifiedStatusReport,
-)
+    )
+except ImportError:
+    from src.evolution.fusion.compatibility import (
+    StatusMapper,
+    EnumMapper,
+    APIGateway,
+    DegradationHandler,
+    DegradationRule,
+    VersionDetector,
+    VersionInfo,
+    CompatibilityLayer,
+    UnifiedAPIRequest,
+    UnifiedAPIResponse,
+    v1_status_to_v2_status,
+    v2_status_to_v1_status,
+    v1_outcome_to_v2_priority,
+    v2_priority_to_v1_confidence,
+    )
+    from src.evolution.fusion.bridge import (
+    V1V2Bridge,
+    ServiceMapping,
+    DataFormatConverter,
+    V1ExperienceData,
+    V2EventData,
+    V1_STATUS_ENUM,
+    V2_SERVICE_TYPE,
+    SERVICE_MAP_V1_TO_V2,
+    SERVICE_MAP_V2_TO_V1,
+    )
+    from src.evolution.fusion.unified_entry import (
+    UnifiedAgent,
+    RunMode,
+    CapabilityRequest,
+    CapabilityResponse,
+    UnifiedStatusReport,
+    )
 
 
 # ============================================================================
@@ -289,7 +325,10 @@ class TestDataFormatConverter(unittest.TestCase):
 
     def test_experience_to_dict(self):
         """测试V1 Experience → dict 转换"""
-        from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+        try:
+            from evolution.learning.experience import Experience, ExperienceType, Outcome
+        except ImportError:
+            from src.evolution.learning.experience import Experience, ExperienceType, Outcome
 
         exp = Experience(
             id="test_123",
@@ -760,7 +799,8 @@ class TestFusionModuleExports(unittest.TestCase):
 
     def test_module_imports(self):
         """测试模块导入"""
-        from src.evolution.fusion import (
+        try:
+            from evolution.fusion import (
             V1V2Bridge,
             UnifiedAgent,
             CompatibilityLayer,
@@ -770,7 +810,19 @@ class TestFusionModuleExports(unittest.TestCase):
             StatusMapper,
             DegradationHandler,
             VersionDetector,
-        )
+            )
+        except ImportError:
+            from src.evolution.fusion import (
+            V1V2Bridge,
+            UnifiedAgent,
+            CompatibilityLayer,
+            RunMode,
+            CapabilityRequest,
+            CapabilityResponse,
+            StatusMapper,
+            DegradationHandler,
+            VersionDetector,
+            )
         # 验证主要类可导入
         self.assertTrue(callable(V1V2Bridge))
         self.assertTrue(callable(UnifiedAgent))
@@ -778,12 +830,18 @@ class TestFusionModuleExports(unittest.TestCase):
 
     def test_version(self):
         """测试模块版本"""
-        from src.evolution.fusion import __version__
+        try:
+            from evolution.fusion import __version__
+        except ImportError:
+            from src.evolution.fusion import __version__
         self.assertEqual(__version__, "1.0.0")
 
     def test_all_exports(self):
         """测试__all__导出列表"""
-        from src.evolution.fusion import __all__
+        try:
+            from evolution.fusion import __all__
+        except ImportError:
+            from src.evolution.fusion import __all__
         expected_exports = [
             'V1V2Bridge', 'ServiceMapping',
             'V1_STATUS_ENUM', 'V2_SERVICE_TYPE',

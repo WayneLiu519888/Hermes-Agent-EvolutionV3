@@ -10,10 +10,16 @@ import sys
 # 添加项目路径
 sys.path.append('.')
 
-from src.evolution.learning.observer import LearningObserver
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.analyzer import ExperienceAnalyzer
-from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+try:
+    from evolution.learning.observer import LearningObserver
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.analyzer import ExperienceAnalyzer
+    from evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+except ImportError:
+    from src.evolution.learning.observer import LearningObserver
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.analyzer import ExperienceAnalyzer
+    from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
 
 
 class TestSimpleIntegration(unittest.TestCase):

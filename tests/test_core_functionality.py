@@ -11,8 +11,12 @@ import json
 # 添加项目路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.memory.database import AssociationDatabase
-from src.evolution.memory.association_optimizer import AssociationOptimizer
+try:
+    from evolution.memory.database import AssociationDatabase
+    from evolution.memory.association_optimizer import AssociationOptimizer
+except ImportError:
+    from src.evolution.memory.database import AssociationDatabase
+    from src.evolution.memory.association_optimizer import AssociationOptimizer
 
 def test_database_operations():
     """测试数据库基本操作"""

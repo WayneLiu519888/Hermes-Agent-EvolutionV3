@@ -7,12 +7,20 @@ import tempfile
 import os
 import json
 import time
-from src.evolution.memory.retrieval_optimizer import (
+try:
+    from evolution.memory.retrieval_optimizer import (
     RetrievalOptimizer,
     RetrievalConfig,
     RetrievalFeedback,
     create_feedback_from_query
-)
+    )
+except ImportError:
+    from src.evolution.memory.retrieval_optimizer import (
+    RetrievalOptimizer,
+    RetrievalConfig,
+    RetrievalFeedback,
+    create_feedback_from_query
+    )
 
 
 class TestRetrievalConfig(unittest.TestCase):

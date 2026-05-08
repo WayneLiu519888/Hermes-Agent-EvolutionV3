@@ -20,12 +20,20 @@ import shutil
 # 添加项目路径
 sys.path.append('.')
 
-from src.evolution.learning.observer import LearningObserver
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.analyzer import ExperienceAnalyzer
-from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
-from src.evolution.learning.pattern_recognizer import PatternRecognizer, PatternCategory, StrategyType
-from src.evolution.self_monitor import SelfMonitor
+try:
+    from evolution.learning.observer import LearningObserver
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.analyzer import ExperienceAnalyzer
+    from evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+    from evolution.learning.pattern_recognizer import PatternRecognizer, PatternCategory, StrategyType
+    from evolution.self_monitor import SelfMonitor
+except ImportError:
+    from src.evolution.learning.observer import LearningObserver
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.analyzer import ExperienceAnalyzer
+    from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+    from src.evolution.learning.pattern_recognizer import PatternRecognizer, PatternCategory, StrategyType
+    from src.evolution.self_monitor import SelfMonitor
 
 
 class FileProcessingAssistant:
@@ -398,7 +406,10 @@ class LearningEvolutionDemo:
         print("  当前使用模拟数据进行模式识别演示")
         
         # 创建模拟经验数据用于演示
-        from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+        try:
+            from evolution.learning.experience import Experience, ExperienceType, Outcome
+        except ImportError:
+            from src.evolution.learning.experience import Experience, ExperienceType, Outcome
         from datetime import datetime, timedelta
         
         simulated_experiences = []

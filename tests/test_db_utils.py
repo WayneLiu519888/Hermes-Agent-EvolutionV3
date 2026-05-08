@@ -23,7 +23,8 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.evolution.db_utils import (
+try:
+    from evolution.db_utils import (
     get_data_dir,
     get_evolution_db,
     close_all_connections,
@@ -33,7 +34,19 @@ from src.evolution.db_utils import (
     db_get_stats,
     _connection_cache,
     _cache_lock,
-)
+    )
+except ImportError:
+    from src.evolution.db_utils import (
+    get_data_dir,
+    get_evolution_db,
+    close_all_connections,
+    vacuum_database,
+    retry_on_db_error,
+    db_table_exists,
+    db_get_stats,
+    _connection_cache,
+    _cache_lock,
+    )
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

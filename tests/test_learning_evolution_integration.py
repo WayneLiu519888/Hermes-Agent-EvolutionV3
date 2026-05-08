@@ -15,12 +15,20 @@ from unittest.mock import Mock, patch, MagicMock
 import sys
 sys.path.append('.')
 
-from src.evolution.learning.observer import LearningObserver
-from src.evolution.learning.experience import Experience, ExperienceType, Outcome
-from src.evolution.learning.analyzer import ExperienceAnalyzer, AnalysisPatternType
-from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
-from src.evolution.memory.database import AssociationDatabase
-from src.evolution.self_monitor import SelfMonitor
+try:
+    from evolution.learning.observer import LearningObserver
+    from evolution.learning.experience import Experience, ExperienceType, Outcome
+    from evolution.learning.analyzer import ExperienceAnalyzer, AnalysisPatternType
+    from evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+    from evolution.memory.database import AssociationDatabase
+    from evolution.self_monitor import SelfMonitor
+except ImportError:
+    from src.evolution.learning.observer import LearningObserver
+    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
+    from src.evolution.learning.analyzer import ExperienceAnalyzer, AnalysisPatternType
+    from src.evolution.learning.tool_strategy_learner import ToolStrategyLearner, ToolStrategyType
+    from src.evolution.memory.database import AssociationDatabase
+    from src.evolution.self_monitor import SelfMonitor
 
 
 class TestLearningEvolutionIntegration(unittest.TestCase):
