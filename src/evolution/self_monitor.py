@@ -159,19 +159,37 @@ class SelfMonitor:
         
         return improvements
     
+    def _count_tools_from_db(self) -> int:
+        """从 tools.db 统计已注册工具数量（重启后策略学习器内存为空时的回退）"""
+        try:
+            import sqlite3, os
+            db_path = os.path.join(os.path.expanduser("~/.hermes"), "data", "evolution", "tools.db")
+            if not os.path.exists(db_path):
+                return 0
+            conn = sqlite3.connect(db_path)
+            count = conn.execute("SELECT COUNT(*) FROM tools").fetchone()[0]
+            conn.close()
+            return count
+        except Exception:
+            return 0
+
     def get_monitoring_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取监控历史"""
         return self.monitoring_history[-limit:] if self.monitoring_history else []
     
     def get_system_health_report(self) -> Dict[str, Any]:
         """获取系统健康报告"""
-        analysis = self.analyzer.analyze_recent_experiences(days=1)
+        analysis = self.analyzer.analyze_recent_experiences(days=7)
         tool_summary = self.strategy_learner.get_tool_performance_summary()
         
         # 计算健康分数 (0-100)
         success_score = min(100, analysis.success_rate * 100)
         experience_score = min(100, analysis.total_experiences * 2)  # 每50条经验得100分
-        tool_diversity_score = min(100, len(tool_summary) * 20)  # 每5个工具得100分
+        # Fallback: if strategy_learner is empty (just restarted), count tools from db
+        tool_count = len(tool_summary)
+        if tool_count == 0:
+            tool_count = self._count_tools_from_db()
+        tool_diversity_score = min(100, tool_count * 20)  # 每5个工具得100分
         
         health_score = int((success_score * 0.5 + experience_score * 0.3 + tool_diversity_score * 0.2))
         
@@ -181,13 +199,13 @@ class SelfMonitor:
             'metrics': {
                 'success_rate': analysis.success_rate,
                 'total_experiences': analysis.total_experiences,
-                'monitored_tools': len(tool_summary),
+                'monitored_tools': tool_count,
                 'current_strategy': self.strategy_learner.get_current_strategy().value
             },
             'status': 'healthy' if health_score >= 70 else 'needs_attention' if health_score >= 50 else 'unhealthy',
             'recommendations': [
                 f'健康分数: {health_score}/100',
                 f'成功率: {analysis.success_rate:.1%}',
-                f'监控工具数: {len(tool_summary)}'
+                f'监控工具数: {tool_count}'
             ]
         }

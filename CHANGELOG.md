@@ -2,6 +2,42 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范。
 
+## [3.0.4] — 2026-05-09
+
+### 迭代8: 插件部署审计修复 (Iteration 8)
+
+#### 修复 (Fixed)
+
+**P0 — 健康评分始终为0/100:**
+- `self_monitor.py` L168: `analyze_recent_experiences(days=1)` → `days=7`
+  - 根因: 网关重启后仅1条当天经验(failure)，days=1 过滤导致 success_rate=0%
+  - 修复: 窗口扩大至7天，充分利用历史121条经验数据
+- `self_monitor.py` 新增 `_count_tools_from_db()` 方法
+  - 根因: `ToolStrategyLearner` 纯内存无持久化，重启后 `get_tool_performance_summary()` 返回空
+  - 回退方案: 策略学习器为空时从 `tools.db` 直接统计工具数（当前32个）
+- `plugin/__init__.py` `_handle_self_monitor`: 绕过 SelfMonitor，直接计算健康评分
+  - 新增 `_get_experience_analyzer()` 辅助函数
+  - 评分公式: success_score(0.5) + experience_score(0.3) + tool_diversity_score(0.2)
+  - 预期效果: 健康评分从 0/100 → ~55/100 (needs_attention)
+
+**P1 — associations.db 膨胀至1.3GB:**
+- 清空 826 个测试残留 db 文件（test_audit_*.db + tmp*.db），回收 ~1.3GB
+- `~/.hermes/data/evolution/` 从 848 文件缩至 22 文件
+- 注意: 空间需等进程释放文件句柄后回收（下次重启生效）
+
+**P1 — 工具性能数据缺失:**
+- 32个注册工具中28个显示"尚无性能数据"
+- 仅 metric_tool(100)、search_data(91.4)、test_tool(80)、perf_tool(75.6) 有评分
+- 原因: 均为测试数据，生产环境尚无实际工具调用记录
+
+**P2 — ~/.hermes/plugins/data/ 数据库残留:**
+- 4个db文件(300KB)，仅1条经验0工具 — 实际插件使用 `~/.hermes/data/evolution/`
+- 已识別为清理目标（非紧急）
+
+#### 已知问题 (Known Issues)
+- 健康评分修复代码已就绪，但 gateway 工具调度缓存导致 handler 未即时生效
+- 需等 Hermes 全量重启（含 pyc 清理）后验证
+
 ## [3.0.3] — 2026-05-07
 
 ### 新增 (Added)
