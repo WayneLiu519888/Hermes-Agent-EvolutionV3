@@ -2,7 +2,7 @@
 set -e
 
 # ═══════════════════════════════════════════════════════════════════
-# HermesAgentEvolution v3.0.3 — 一键安装脚本
+# HermesAgentEvolution v3.0.4 — 一键安装脚本
 # ═══════════════════════════════════════════════════════════════════
 
 RED='\033[0;31m'
@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo "🚀 HermesAgentEvolution v3.0.3 安装程序"
+echo "🚀 HermesAgentEvolution v3.0.4 安装程序"
 echo "=========================================="
 echo ""
 
@@ -53,16 +53,34 @@ else
     echo -e "${GREEN}✅ PyPI 安装完成${NC}"
 fi
 
-# ── 3. 环境自检 ──
-echo "🔍 环境自检..."
-$PYTHON -c "
+# ── 3. pipx 兼容层 & 依赖修复 ──
+echo "🔧 依赖检查与修复..."
+# 检测是否为 pipx 安装
+if which pipx &>/dev/null && pipx list 2>/dev/null | grep -q hermes-agent-evolution; then
+    echo "   📌 检测到 pipx 安装，注入扩展依赖..."
+    pipx ensurepath 2>/dev/null || true
+    pipx inject hermes-agent-evolution pyyaml numpy 2>/dev/null && \
+        echo -e "   ${GREEN}✅ pipx 依赖注入完成${NC}" || \
+        echo -e "   ${YELLOW}⚠️  pipx 注入失败，部分功能可能受限${NC}"
+else
+    echo "   ℹ️  非 pipx 安装，跳过注入"
+fi
+
+# 运行自检 + 自动修复
+echo "   🔍 运行环境自检（自动修复）..."
+if hermes-evolution check --fix 2>/dev/null; then
+    echo -e "   ${GREEN}✅ 环境自检通过${NC}"
+else
+    # 兜底：Python 直调
+    $PYTHON -c "
 import sys
 sys.path.insert(0, '$PROJECT_DIR/src')
 from evolution.cli import cmd_check
 ok = cmd_check()
-" || {
-    echo -e "${YELLOW}⚠️  部分检查未通过，但核心功能可能仍可用${NC}"
-}
+" 2>/dev/null || {
+        echo -e "${YELLOW}⚠️  部分检查未通过，但核心功能可能仍可用${NC}"
+    }
+fi
 
 # ── 4. 插件部署 ──
 echo ""

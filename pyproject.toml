@@ -28,6 +28,8 @@ classifiers = [
 ]
 dependencies = [
     "psutil>=5.8.0",
+    "pyyaml>=6.0",
+    "numpy>=1.19.0",
 ]
 
 [project.urls]
@@ -43,12 +45,10 @@ dev = [
 ]
 full = [
     "requests>=2.25.0",
-    "numpy>=1.19.0",
     "scikit-learn>=0.24.0",
 ]
 # V2 微服务依赖
 v2 = [
-    "pyyaml>=6.0",
     "docker>=6.0",
     "gitpython>=3.1",
 ]

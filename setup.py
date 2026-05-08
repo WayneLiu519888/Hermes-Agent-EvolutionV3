@@ -69,8 +69,11 @@ setup(
         ],
         "full": [
             "requests>=2.25.0",
-            "numpy>=1.19.0",
             "scikit-learn>=0.24.0",
+        ],
+        "v2": [
+            "docker>=6.0",
+            "gitpython>=3.1",
         ],
     },
     project_urls={

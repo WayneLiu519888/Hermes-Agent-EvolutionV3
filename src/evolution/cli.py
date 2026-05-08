@@ -17,6 +17,20 @@ _project_root = Path(__file__).resolve().parent.parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
+# 延迟导入，避免循环依赖和启动时即检查
+_dep_manager = None
+
+def _get_dep_manager():
+    """延迟加载 dependency_manager"""
+    global _dep_manager
+    if _dep_manager is None:
+        from evolution.dependency_manager import (
+            detect_env, find_missing_modules, auto_fix_missing,
+            get_pipx_package
+        )
+        _dep_manager = (detect_env, find_missing_modules, auto_fix_missing, get_pipx_package)
+    return _dep_manager
+
 
 def _add_src_to_path():
     """确保 src/ 可导入"""
@@ -25,12 +39,17 @@ def _add_src_to_path():
         sys.path.insert(0, str(src_dir))
 
 
-def cmd_check() -> bool:
-    """环境自检：Python版本、模块导入、DB连接、插件部署"""
+def cmd_check(fix: bool = False) -> bool:
+    """环境自检：Python版本、模块导入、DB连接、插件部署
+    
+    Args:
+        fix: 如果 True，自动修复缺失的依赖
+    """
     _add_src_to_path()
     
     all_ok = True
     results = []
+    module_checks = []  # 记录模块检查结果，便于后续修复
     
     def _check(name: str, ok: bool, detail: str = ""):
         nonlocal all_ok
@@ -62,8 +81,10 @@ def cmd_check() -> bool:
         try:
             __import__(mod_name)
             _check(f"模块 {desc}", True)
+            module_checks.append((mod_name, desc, True))
         except ImportError as e:
             _check(f"模块 {desc}", False, str(e))
+            module_checks.append((mod_name, desc, False))
     
     # 3. DB 可读写
     try:
@@ -92,6 +113,77 @@ def cmd_check() -> bool:
     data_dir = _resolve_data_dir()
     _check(f"数据目录: {data_dir}", data_dir.exists())
     
+    # ── 自动修复模式 ────────────────────────────────────────────────────────────
+    if fix and not all_ok:
+        detect_env, find_missing_modules, auto_fix_missing, _ = _get_dep_manager()
+        env_type = detect_env()
+        
+        print()
+        print("🔧 自动修复模式启动 (--fix)")
+        print(f"   环境类型: {env_type}")
+        
+        # 1. 用 dependency_manager 扫描第三方依赖
+        missing = find_missing_modules()
+        if missing:
+            print(f"   缺失依赖: {', '.join(missing)}")
+            fix_results = auto_fix_missing(missing)
+            for mod, ok, msg in fix_results:
+                if ok:
+                    print(f"   ✅ {mod} 已安装")
+                else:
+                    print(f"   ❌ {mod} 安装失败: {msg}")
+        else:
+            print("   ✅ 第三方依赖完整")
+        
+        # 2. 对失败的模块尝试 pip 安装
+        failed_modules = [(name, desc) for name, desc, ok in module_checks if not ok]
+        for mod_name, desc in failed_modules:
+            # 尝试通过 pip 安装（模块名可能与包名不同，取最后一段）
+            pkg_candidate = mod_name.split(".")[-1]
+            try:
+                import subprocess as _sp
+                result = _sp.run(
+                    [sys.executable, "-m", "pip", "install", "--quiet", pkg_candidate],
+                    capture_output=True, text=True, timeout=60
+                )
+                if result.returncode == 0:
+                    print(f"   🔄 尝试安装 {pkg_candidate}... 成功")
+                else:
+                    print(f"   ⚠️  无法自动安装 {pkg_candidate}: {result.stderr.strip()[:100]}")
+            except Exception as e:
+                print(f"   ⚠️  安装异常 {pkg_candidate}: {e}")
+        
+        # 3. 重新检查
+        print()
+        print("🔍 修复后重新自检...")
+        all_ok = True
+        results.clear()
+        
+        for mod_name, desc, _ in module_checks:
+            try:
+                __import__(mod_name)
+                _check(f"模块 {desc}", True)
+            except ImportError as e:
+                _check(f"模块 {desc}", False, str(e))
+        
+        # 重新检查 DB
+        try:
+            from evolution.db_utils import get_evolution_db, close_all_connections
+            conn = get_evolution_db("_cli_check.db")
+            conn.execute("CREATE TABLE IF NOT EXISTS _check (id INTEGER)")
+            conn.execute("INSERT INTO _check VALUES (1)")
+            conn.execute("DROP TABLE _check")
+            conn.commit()
+            close_all_connections()
+            _check("DB 可读写", True)
+        except Exception as e:
+            _check("DB 可读写", False, str(e))
+        
+        # 重新检查 插件/数据目录
+        _check("Hermes 插件已部署", plugin_yaml.exists(),
+               f"未找到 {plugin_yaml}" if not plugin_yaml.exists() else "")
+        _check(f"数据目录: {data_dir}", data_dir.exists())
+    
     # 输出
     print()
     print("🔍 HermesAgentEvolution 环境自检")
@@ -112,10 +204,27 @@ def cmd_check() -> bool:
 
 
 def cmd_setup() -> bool:
-    """一键部署：复制插件到 ~/.hermes/plugins/"""
+    """一键部署：检查依赖 → 自愈修复 → 复制插件到 ~/.hermes/plugins/"""
     _add_src_to_path()
     
-    # 从包内资源读取插件文件（pip/pipx 安装后也能工作）
+    # ── 0. 环境检测 & pipx 警告 ──────────────────────────────────────────────
+    detect_env = _get_dep_manager()[0]
+    env_type = detect_env()
+    
+    if env_type == "pipx":
+        print("⚠️  检测到 pipx 环境")
+        print("   pipx 使用独立 venv，第三方依赖需通过 `pipx inject` 安装")
+        print("   自动修复将使用 pipx inject，可能需要 sudo 权限")
+        print()
+    
+    # ── 1. 自动修复依赖 ──────────────────────────────────────────────────
+    print("🔍 检查依赖...")
+    if not cmd_check(fix=True):
+        print()
+        print("⚠️  部分依赖修复失败，继续部署（可能功能受限）")
+    else:
+        print()
+        print("✅ 依赖检查通过")
     try:
         from importlib.resources import files
         plugin_pkg = files("evolution._plugin")
@@ -249,10 +358,19 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
         print("HermesAgentEvolution CLI v3.0.0")
         print()
-        print("用法: python3 -m src.evolution.cli <命令>")
+        print("用法: python3 -m src.evolution.cli <命令> [选项]")
         print()
+        print("命令:")
         for name, (_, desc) in COMMANDS.items():
             print(f"  {name:<10s}  {desc}")
+        print()
+        print("选项:")
+        print("  --fix              自动修复缺失依赖 (仅 check / setup 有效)")
+        print()
+        print("示例:")
+        print("  python3 -m src.evolution.cli check")
+        print("  python3 -m src.evolution.cli check --fix")
+        print("  python3 -m src.evolution.cli setup")
         sys.exit(0)
     
     cmd = sys.argv[1]
@@ -261,8 +379,14 @@ def main():
         print(f"   可用: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
     
+    # 解析 --fix 选项
+    fix_mode = "--fix" in sys.argv
+    
     func, _ = COMMANDS[cmd]
-    success = func()
+    if cmd == "check" and fix_mode:
+        success = cmd_check(fix=True)
+    else:
+        success = func()
     sys.exit(0 if success else 1)
 
 
