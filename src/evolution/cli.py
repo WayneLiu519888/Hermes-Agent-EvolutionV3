@@ -355,6 +355,56 @@ def cmd_status() -> bool:
     return True
 
 
+def cmd_clean(dry_run: bool = False) -> bool:
+    """清理测试残留：DB存档、__pycache__"""
+    _add_src_to_path()
+
+    from pathlib import Path
+    import shutil
+
+    freed_bytes = 0
+    removed_files = 0
+
+    # 1. 清理 audit_archives（保留最近10个）
+    audit_dir = _project_root / "data" / "audit_archives"
+    if audit_dir.exists():
+        archives = sorted(audit_dir.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in archives[10:]:
+            freed_bytes += old.stat().st_size
+            removed_files += 1
+            if not dry_run:
+                old.unlink()
+        print(f"  {'[DRY RUN] ' if dry_run else ''}审计存档: 保留 {min(len(archives),10)}, "
+              f"清理 {removed_files} ({freed_bytes/1024:.0f} KB)")
+
+    # 2. 清理根目录孤立 DB
+    stray = _project_root / "tool_performance.db"
+    if stray.exists():
+        freed_bytes += stray.stat().st_size
+        removed_files += 1
+        if not dry_run:
+            stray.unlink()
+        print(f"  {'[DRY RUN] ' if dry_run else ''}孤立DB: {stray.name}")
+
+    # 3. 清理 __pycache__
+    pycache_count = 0
+    for pc in list(_project_root.rglob("__pycache__")):
+        if '.git' in str(pc):
+            continue
+        pycache_count += 1
+        if not dry_run:
+            shutil.rmtree(pc, ignore_errors=True)
+    if pycache_count:
+        print(f"  {'[DRY RUN] ' if dry_run else ''}__pycache__: {pycache_count} 个目录")
+
+    if dry_run:
+        print(f"\n  💡 使用 'check --clean' 执行实际清理")
+    else:
+        print(f"\n  ✅ 清理完成: {removed_files} 文件 + {pycache_count} pycache 目录 "
+              f"({freed_bytes/1024:.0f} KB)")
+    return True
+
+
 def cmd_test() -> bool:
     """运行自测"""
     import subprocess

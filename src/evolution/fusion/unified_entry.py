@@ -238,9 +238,9 @@ class UnifiedAgent:
     async def _initialize_v2(self) -> None:
         """初始化V2服务连接"""
         try:
-            from src.services.core.events.event_bus import event_bus, EventBus
-            from src.services.core.services.service_manager import service_manager, ServiceManager
-            from src.services.core.config.config_manager import config_manager, ConfigManager
+            from services.core.events.event_bus import event_bus, EventBus
+            from services.core.services.service_manager import service_manager, ServiceManager
+            from services.core.config.config_manager import config_manager, ConfigManager
 
             self._v2_event_bus = event_bus
             self._v2_service_manager = service_manager
@@ -565,7 +565,7 @@ class UnifiedAgent:
         if not self._v2_event_bus:
             return {"success": False, "error": "V2 EventBus不可用"}
         try:
-            from src.services.core.events.event_bus import Event, EventType, EventPriority
+            from services.core.events.event_bus import Event, EventType, EventPriority
             event_type = EventType(params.get("event_type", "task.received"))
             priority = EventPriority(params.get("priority", 1))
             event = Event(

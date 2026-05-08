@@ -168,7 +168,7 @@ class DataFormatConverter:
     def dict_to_v2_event(data: Dict[str, Any]):
         """dict → V2 Event dataclass"""
         try:
-            from src.services.core.events.event_bus import Event, EventType, EventPriority
+            from services.core.events.event_bus import Event, EventType, EventPriority
             event_type = EventType(data.get("event_type", "task.received"))
             priority = EventPriority(data.get("priority", 1))
             return Event(
@@ -312,14 +312,14 @@ class V1V2Bridge:
             pass
 
         try:
-            from src.services.core.events.event_bus import EventType, EventPriority
+            from services.core.events.event_bus import EventType, EventPriority
             self.enum_mapper.register_v2_enum("EventType", EventType)
             self.enum_mapper.register_v2_enum("EventPriority", EventPriority)
         except ImportError:
             pass
 
         try:
-            from src.services.core.services.service_manager import ServiceStatus, ServiceType
+            from services.core.services.service_manager import ServiceStatus, ServiceType
             self.enum_mapper.register_v2_enum("ServiceStatus", ServiceStatus)
             self.enum_mapper.register_v2_enum("ServiceType", ServiceType)
         except ImportError:

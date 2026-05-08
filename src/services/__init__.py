@@ -8,6 +8,6 @@ HermesAgentEvolution V2 微服务层
   - system/: 系统服务（部署、监控、测试）
 
 用法：
-    from src.services.core.events import event_bus
-    from src.services.core.services import service_manager
+    from services.core.events import event_bus
+    from services.core.services import service_manager
 """

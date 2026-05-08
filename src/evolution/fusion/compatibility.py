@@ -454,7 +454,7 @@ class VersionDetector:
         """检测V2版本"""
         try:
             # V2 版本信息可能在 config_manager 或 main 中
-            from src.services.core.config.config_manager import config_manager
+            from services.core.config.config_manager import config_manager
             v2_ver = config_manager.get("app.version", "2.0.0")
             self._v2_version = VersionInfo.parse(v2_ver, "v2_microservice")
         except ImportError:

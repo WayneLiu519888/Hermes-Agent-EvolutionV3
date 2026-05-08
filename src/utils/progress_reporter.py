@@ -11,7 +11,7 @@ log = logging.getLogger("hermes_evo.utils")
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.utils.feishu_notifier import FeishuNotifier
+from utils.feishu_notifier import FeishuNotifier
 
 class ProgressReporter:
     """进度汇报器 - 每2小时自动汇报"""
