@@ -65,7 +65,7 @@ def _get_handler(ctx, tool_name):
 def _invoke(ctx, tool_name, params=None):
     """Invoke a tool handler and parse the JSON result."""
     handler = _get_handler(ctx, tool_name)
-    raw = handler(ctx, params or {})
+    raw = handler(params or {})
     return json.loads(raw)
 
 
@@ -178,8 +178,8 @@ class TestToolInvocation:
     def test_all_tools_produce_parsable_json(self, ctx):
         """Verify every single tool returns parseable JSON (belt-and-suspenders)."""
         for tool_name in ctx.tools:
-            handler = _get_handler(ctx, tool_name)
-            raw = handler(ctx, {})
+            handler = _get_handler(ctx,tool_name)
+            raw = handler( {})
             try:
                 parsed = json.loads(raw)
                 assert isinstance(parsed, dict), f"{tool_name} did not return a JSON object"
@@ -281,8 +281,8 @@ class TestGracefulDegradation:
     def test_missing_params_returns_error_json(self, ctx):
         """Calling every tool with no params at all should not crash."""
         for tool_name in ctx.tools:
-            handler = _get_handler(ctx, tool_name)
-            raw = handler(ctx, {})
+            handler = _get_handler(ctx,tool_name)
+            raw = handler( {})
             parsed = json.loads(raw)
             assert isinstance(parsed, dict), (
                 f"{tool_name} with empty params did not return a dict: {type(parsed)}"
@@ -291,9 +291,9 @@ class TestGracefulDegradation:
     def test_none_params_handled(self, ctx):
         """Calling handlers with explicit None params should not crash."""
         for tool_name in ctx.tools:
-            handler = _get_handler(ctx, tool_name)
+            handler = _get_handler(ctx,tool_name)
             try:
-                raw = handler(ctx, None)
+                raw = handler( None)
                 parsed = json.loads(raw)
                 assert isinstance(parsed, dict)
             except Exception as e:
@@ -309,9 +309,9 @@ class TestGracefulDegradation:
             "include_history": "not_a_bool",  # should be boolean
         }
         for tool_name in ctx.tools:
-            handler = _get_handler(ctx, tool_name)
+            handler = _get_handler(ctx,tool_name)
             try:
-                raw = handler(ctx, bad_params)
+                raw = handler( bad_params)
                 parsed = json.loads(raw)
                 assert isinstance(parsed, dict)
             except Exception as e:
@@ -325,9 +325,9 @@ class TestGracefulDegradation:
             "__internal__": True,
         }
         for tool_name in ctx.tools:
-            handler = _get_handler(ctx, tool_name)
+            handler = _get_handler(ctx,tool_name)
             try:
-                raw = handler(ctx, extra_params)
+                raw = handler( extra_params)
                 parsed = json.loads(raw)
                 assert isinstance(parsed, dict)
             except Exception as e:
@@ -335,8 +335,8 @@ class TestGracefulDegradation:
 
     def test_run_cycle_no_params_does_not_crash(self, ctx):
         """evolution_run_cycle with empty params returns error JSON, not a traceback."""
-        handler = _get_handler(ctx, "evolution_run_cycle")
-        raw = handler(ctx, {})
+        handler = _get_handler(ctx,"evolution_run_cycle")
+        raw = handler( {})
         parsed = json.loads(raw)
         assert isinstance(parsed, dict)
 

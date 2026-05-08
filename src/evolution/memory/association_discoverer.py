@@ -16,6 +16,9 @@ from .database import AssociationDatabase
 
 logger = logging.getLogger(__name__)
 
+# Maximum number of associations allowed before cleanup triggers
+MAX_ASSOCIATIONS = 100000
+
 
 class AssociationDiscoverer:
     """记忆关联发现器
@@ -139,6 +142,7 @@ class AssociationDiscoverer:
                 results["methods"][method] = {"error": str(exc)}
 
         logger.info("批量关联发现完成，共发现 %d 条关联", results["total_associations"])
+        self._enforce_association_limit()
         return results
 
     def discover_for_entry(
@@ -237,6 +241,7 @@ class AssociationDiscoverer:
                 )
                 results["methods"][method] = {"error": str(exc)}
 
+        self._enforce_association_limit()
         return results
 
     # ------------------------------------------------------------------
@@ -688,6 +693,38 @@ class AssociationDiscoverer:
     # ------------------------------------------------------------------
     # 内部工具方法
     # ------------------------------------------------------------------
+
+    def _enforce_association_limit(self) -> None:
+        """Enforce a maximum limit on the number of associations.
+
+        If the total association count exceeds MAX_ASSOCIATIONS,
+        the oldest associations (by discovery_time) are pruned.
+        A VACUUM is run after cleanup to reclaim disk space.
+        """
+        try:
+            cursor = self.db.connection.cursor()
+            cursor.execute("SELECT COUNT(*) FROM associations")
+            count = cursor.fetchone()[0]
+
+            if count > MAX_ASSOCIATIONS:
+                excess = count - MAX_ASSOCIATIONS
+                logger.warning(
+                    "Association count (%d) exceeds limit (%d), pruning %d oldest associations",
+                    count, MAX_ASSOCIATIONS, excess,
+                )
+                cursor.execute(
+                    "DELETE FROM associations WHERE id IN ("
+                    "SELECT id FROM associations ORDER BY discovery_time ASC LIMIT ?"
+                    ")", (excess,)
+                )
+                self.db.connection.commit()
+
+                # Reclaim disk space
+                cursor.execute("VACUUM")
+                self.db.connection.commit()
+                logger.info("VACUUM complete after association cleanup")
+        except Exception as exc:
+            logger.error("Failed to enforce association limit: %s", exc)
 
     def _fetch_all_entries(self) -> List[Dict[str, Any]]:
         """从数据库获取全部记忆条目

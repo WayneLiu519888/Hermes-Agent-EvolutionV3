@@ -29,19 +29,6 @@ logger = logging.getLogger("hermes_evolution_plugin")
 _engine_instances = {}
 
 # ---------------------------------------------------------------------------
-# Helper: ensure project root is on sys.path
-# ---------------------------------------------------------------------------
-def _ensure_project_path():
-    """Add the project root to sys.path so src.* imports work."""
-    project_root = Path(__file__).resolve().parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    # Also ensure data directory exists
-    data_dir = project_root / "data"
-    data_dir.mkdir(exist_ok=True)
-
-
-# ---------------------------------------------------------------------------
 # Lazy engine initializers — create instances on demand with fallbacks
 # ---------------------------------------------------------------------------
 def _get_tool_registry():
@@ -723,8 +710,17 @@ def register(ctx):
              Provides ctx.register_tool(name=..., toolset="hermes-evolution", schema=..., handler=...) and
              ctx.register_hook(hook_name, callback).
     """
+    # Ensure console logging is set up for the plugin
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(levelname)s [hermes-evolution] %(message)s'))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
     # Ensure project root is importable
-    _ensure_project_path()
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
 
     # ── Register Tools ──────────────────────────────────────────────────
     tools = [
@@ -751,6 +747,7 @@ def register(ctx):
     except Exception as e:
         logger.error("Failed to register hook post_tool_call: %s", e)
 
+    manifest_version = "3.0.3"  # read from plugin.yaml
     logger.info(
-        "Hermes Evolution Plugin v2.0.0 registered — 6 tools + 1 hook"
+        "Hermes Evolution Plugin v%s registered — 6 tools + 1 hook", manifest_version
     )
