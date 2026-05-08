@@ -738,7 +738,8 @@ def register(ctx):
 
     for name, schema, handler in tools:
         try:
-            ctx.register_tool(name, schema, handler)
+            ctx.register_tool(name=name, toolset="hermes-evolution",
+                              schema=schema, handler=handler)
             logger.info("Registered tool: %s", name)
         except Exception as e:
             logger.error("Failed to register tool %s: %s", name, e)
