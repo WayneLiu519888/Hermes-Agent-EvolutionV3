@@ -522,7 +522,7 @@ class ClosedLoopOrchestrator:
                 try:
                     from evolution.learning.experience import Experience, ExperienceType, Outcome
                 except ImportError:
-                    from evolution.learning.experience import Experience, ExperienceType, Outcome
+                    from src.evolution.learning.experience import Experience, ExperienceType, Outcome
                 
                 # 构建 Experience 对象
                 exp = Experience(

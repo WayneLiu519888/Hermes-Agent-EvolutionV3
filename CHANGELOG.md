@@ -38,6 +38,15 @@
 - 健康评分修复代码已就绪，但 gateway 工具调度缓存导致 handler 未即时生效
 - 需等 Hermes 全量重启（含 pyc 清理）后验证
 
+#### 修复 (2026-05-09 持续推进)
+
+- **orchestrator.py Feedback 导入重复bug**: `feedback()` 方法 try/except 两条分支导入路径完全一致，except 分支修正为 `from src.evolution.learning.experience import ...`
+- **插件版本号同步**: `hermes-plugin/plugin.yaml` + `src/evolution/_plugin/plugin.yaml` v3.0.3 → v3.0.4
+- **文档版本号同步**: `docs/CONFIGURATION.md` + `README.md` badge v3.0.3 → v3.0.4
+- **数据目录清理**: 删除 388 个测试残留临时文件（tmp*db-shm/wal + test_*.db）
+- **associations.db WAL 压缩**: WAL checkpoint 将 4.1GB WAL 文件归零，节省 3.9GB
+- **测试**: 428/428 全通过 (26.75s)
+
 ## [3.0.3] — 2026-05-07
 
 ### 新增 (Added)
