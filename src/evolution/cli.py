@@ -39,11 +39,12 @@ def _add_src_to_path():
         sys.path.insert(0, str(src_dir))
 
 
-def cmd_check(fix: bool = False) -> bool:
+def cmd_check(fix: bool = False, clean: bool = False) -> bool:
     """环境自检：Python版本、模块导入、DB连接、插件部署
     
     Args:
         fix: 如果 True，自动修复缺失的依赖
+        clean: 如果 True，清理测试残留
     """
     _add_src_to_path()
     
@@ -199,6 +200,11 @@ def cmd_check(fix: bool = False) -> bool:
         print("  🎉 环境就绪，可以正常使用")
     else:
         print("  ⚠️  存在异常，请根据上述提示修复")
+    
+    # ── 清理模式 ────────────────────────────────────────────────────────────────
+    if clean:
+        print()
+        cmd_clean(dry_run=False)
     
     return all_ok
 
@@ -420,6 +426,7 @@ def cmd_test() -> bool:
 
 COMMANDS = {
     "check":  (cmd_check,  "环境自检"),
+    "clean":  (cmd_clean,  "清理测试残留"),
     "setup":  (cmd_setup,  "一键部署到 Hermes"),
     "status": (cmd_status, "查看系统状态"),
     "test":   (cmd_test,   "运行自测"),
@@ -429,7 +436,7 @@ COMMANDS = {
 def main():
     """CLI 主入口"""
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
-        print("HermesAgentEvolution CLI v3.0.0")
+        print("HermesAgentEvolution CLI v3.0.4")
         print()
         print("用法: python3 -m src.evolution.cli <命令> [选项]")
         print()
@@ -439,10 +446,13 @@ def main():
         print()
         print("选项:")
         print("  --fix              自动修复缺失依赖 (仅 check / setup 有效)")
+        print("  --clean            清理测试残留 (仅 check / clean 有效)")
         print()
         print("示例:")
         print("  python3 -m src.evolution.cli check")
         print("  python3 -m src.evolution.cli check --fix")
+        print("  python3 -m src.evolution.cli check --clean")
+        print("  python3 -m src.evolution.cli clean --dry-run")
         print("  python3 -m src.evolution.cli setup")
         sys.exit(0)
     
@@ -452,12 +462,16 @@ def main():
         print(f"   可用: {', '.join(COMMANDS.keys())}")
         sys.exit(1)
     
-    # 解析 --fix 选项
+    # 解析选项
     fix_mode = "--fix" in sys.argv
-    
+    clean_mode = "--clean" in sys.argv
+    dry_run = "--dry-run" in sys.argv
+
     func, _ = COMMANDS[cmd]
-    if cmd == "check" and fix_mode:
-        success = cmd_check(fix=True)
+    if cmd == "check":
+        success = cmd_check(fix=fix_mode, clean=clean_mode)
+    elif cmd == "clean":
+        success = cmd_clean(dry_run=dry_run)
     else:
         success = func()
     sys.exit(0 if success else 1)

@@ -49,6 +49,7 @@ class TestNoBareFromSrcEvolution:
         for fp in _py_files(PROJECT):
             lines = fp.read_text().split('\n')
             in_except = False
+            in_paren_import = False
             for no, line in enumerate(lines, 1):
                 stripped = line.strip()
                 # 进入 except ImportError 块
@@ -56,10 +57,22 @@ class TestNoBareFromSrcEvolution:
                     stripped.startswith('except ') and 'ImportError' in stripped
                 ):
                     in_except = True
+                    in_paren_import = False
                     continue
-                # 离开 except 块（遇到非 from src.evolution 的非空行）
-                if in_except and stripped and not stripped.startswith('from src.evolution'):
-                    in_except = False
+                # 离开 except 块（遇到非 from src.evolution 的非空非续行）
+                if in_except and not in_paren_import and stripped:
+                    if stripped.startswith('from src.evolution'):
+                        # 检查是否是括号导入的开始
+                        if stripped.endswith('('):
+                            in_paren_import = True
+                    else:
+                        in_except = False
+                        in_paren_import = False
+                        continue
+                # 括号导入的续行
+                if in_except and in_paren_import:
+                    if ')' in stripped:
+                        in_paren_import = False
                     continue
                 if line.lstrip().startswith('from src.evolution') and not in_except:
                     violations.append(f"  {_rel(fp)}:{no}  {stripped}")

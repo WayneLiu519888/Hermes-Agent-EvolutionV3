@@ -9,7 +9,7 @@ Hermes Agent Evolution - AI助手自我进化系统 V1/V2/V3 融合版
 使AI助手能够从经验中学习并持续改进自身能力。
 """
 
-__version__ = "3.0.3"
+__version__ = "3.0.4"
 __author__ = "HermesAgentEvolution Team"
 __description__ = "AI助手自我进化系统 - V1/V2/V3融合版"
 
