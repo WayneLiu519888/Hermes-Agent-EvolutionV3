@@ -1,6 +1,6 @@
 # 配置参数完整说明
 
-> HermesAgentEvolution v3.0.4 所有可配置项
+> HermesAgentEvolution v3.0.6 所有可配置项
 
 ---
 

@@ -383,13 +383,35 @@ v3.0.0 采用 **V1/V2/V3 三位一体融合架构**，通过 `fusion/` 桥接层
 3. 生成改进计划
 4. 记录监控历史
 
-### 3.8 融合桥接层 (`fusion/`)
+### 3.8 闭循环编排器 (`ClosedLoopOrchestrator`) + 自进化审计器 (`EvolutionAuditor`) 🆕
+
+**文件**: `src/evolution/closed_loop/orchestrator.py`, `src/evolution/closed_loop/evolution_auditor.py`
+
+**ClosedLoopOrchestrator** (`orchestrator.py`) 驱动完整的自进化周期，执行6阶段闭环（健康检查→策略决策→优化执行→结果收集→闭环评估→经验记录），每次 `run_full_cycle()` 自动调用 EvolutionAuditor 记录完整审计数据。
+
+**EvolutionAuditor** (`evolution_auditor.py`, ~450行, v3.0.6) 是新模块，负责持久化记录每次进化周期的结构化审计数据：
+
+| 表 | 字段 | 说明 |
+|----|------|------|
+| `evolution_cycles` | cycle_id, start_time, end_time, phases(JSON), health_before, health_after, issue_count, action_count, improvement_count | 每次进化的完整元数据 |
+| `evolution_actions` | action_id, cycle_id, action_type, target, changed, details(JSON) | 每个进化动作的详情 |
+
+**核心能力**:
+- `record_cycle()`: 在 `run_full_cycle()` 末尾自动持久化（失败不影响主流程）
+- `query_cycles(limit, days, success_only)`: 按时间/状态查询进化历史
+- `get_cycle_detail(cycle_id)`: 单次进化的完整详情（含 phases + actions）
+- `get_summary(days)`: 统计汇总（成功率、健康分趋势、常见动作类型、按周趋势）
+- `get_latest_health_trend(limit)`: 最近N次健康分变化曲线
+
+**Hermes 集成**: `_handle_self_monitor(include_history=True)` 在返回中附加 `audit_summary`，让 LLM 能查看自进化历史趋势。
+
+### 3.9 融合桥接层 (`fusion/`)
 
 **文件**: `src/evolution/fusion/bridge.py`, `src/evolution/fusion/unified_entry.py`, `src/evolution/fusion/compatibility.py`
 
 v3.0.0 核心组件，实现 V1 单体架构与 V2 微服务架构的双向桥接。
 
-#### 3.8.1 V1V2Bridge (桥接器)
+#### 3.9.1 V1V2Bridge (桥接器)
 
 **文件**: `src/evolution/fusion/bridge.py`
 
@@ -416,7 +438,7 @@ v3.0.0 核心组件，实现 V1 单体架构与 V2 微服务架构的双向桥�
 - `v1_to_v2_event()`: V1 经验/健康报告 → V2 EventBus 兼容事件
 - `v2_to_v1_callback()`: V2 EventBus 消息 → V1 兼容回调
 
-#### 3.8.2 兼容层
+#### 3.9.2 兼容层
 
 **文件**: `src/evolution/fusion/compatibility.py`
 
@@ -429,13 +451,13 @@ v3.0.0 核心组件，实现 V1 单体架构与 V2 微服务架构的双向桥�
 | `DegradationHandler` | 服务降级处理 (V2不可用时回退V1) |
 | `VersionDetector` | 自动检测 V1/V2 模块可用性 |
 
-#### 3.8.3 统一入口
+#### 3.9.3 统一入口
 
 **文件**: `src/evolution/fusion/unified_entry.py`
 
 `UnifiedAgent` 是 v3.0.0 的统一入口点，支持三种运行模式并通过 `CapabilityRequest` 自动路由能力请求到合适的后端 (V1/V2/Hybrid)。
 
-### 3.9 记忆系统
+### 3.10 记忆系统
 
 **文件**: `src/evolution/memory/`
 

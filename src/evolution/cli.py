@@ -436,7 +436,7 @@ COMMANDS = {
 def main():
     """CLI 主入口"""
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
-        print("HermesAgentEvolution CLI v3.0.4")
+        print("HermesAgentEvolution CLI v3.0.6")
         print()
         print("用法: python3 -m src.evolution.cli <命令> [选项]")
         print()

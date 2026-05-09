@@ -1,6 +1,6 @@
 # 贡献指南 (CONTRIBUTING)
 
-> 版本: v3.0.3 (V1/V2/V3 融合架构)
+> 版本: v3.0.6 (V1/V2/V3 融合架构)
 > 最后更新: 2026-05-06
 
 欢迎为 HermesAgentEvolution 项目贡献代码！

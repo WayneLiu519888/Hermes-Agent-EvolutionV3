@@ -251,5 +251,40 @@
 ---
 
 **计划制定时间:** 2026-04-21 04:49:38  
-**最后更新:** 2026-04-29 00:11 (迭代6架构决策确认 — 方案A: 守护进程独立)  
-**项目版本:** 2.0.0  \n**预计完成时间:** 6周后  \n**当前状态:** 迭代5已完成 → 迭代6完成 ✅
+**最后更新:** 2026-05-09 (迭代10完成 — 自进化审计器)  
+**项目版本:** 3.0.6  \\n**预计完成时间:** 6周后  \\n**当前状态:** 迭代10完成 ✅
+
+---
+
+## 📋 迭代7-10: 持续进化 (2026-05-07 ~ 2026-05-09)
+
+### **迭代7: 插件部署健壮性** ✅ (2026-05-07)
+- ✅ `register_tool()` API 三副本同步（hermes-plugin / _plugin / ~/.hermes/plugins）
+- ✅ handler 签名统一 `(params, **kwargs)` 匹配 Hermes dispatch
+- ✅ CI 防回归：`test_plugin_copies_identical()` + `test_register_tool_uses_toolset_keyword()`
+- ✅ MockCtx API 漂移修复（`register_tool` 缺 `toolset` 参数）
+- ✅ setup 部署后 hash 比对验证
+
+### **迭代8: 插件部署审计修复** ✅ (2026-05-09)
+- ✅ **P0**: 健康评分从 0→~55/100（days=1→7 + DB回退 + 绕过SelfMonitor直接计算）
+- ✅ **P1**: associations.db 膨胀 1.3GB→22文件（清理826个测试残留）
+- ✅ **P1**: `from src.xxx` 导入错误 → 修复10处
+- ✅ **P2**: `~/.hermes/plugins/data/` 数据库残留识别
+- ✅ 428测试全绿，CHANGELOG v3.0.4
+
+### **迭代9: ToolStrategyLearner 持久化** ✅ (2026-05-09)
+- ✅ SQLite 持久化 `tool_usage_history` 表（最近7天工具调用记录）
+- ✅ 启动时 `_load_from_db()` 重建内存状态，解决网关重启丢失
+- ✅ `post_tool_call` hook 驱动双向记录（策略学习 + 性能分析）
+- ✅ `_count_tools_from_db()` 统一使用 `get_evolution_db()` 连接管理
+- ✅ CHANGELOG v3.0.5
+
+### **迭代10: 自进化审计器** ✅ (2026-05-09)
+- ✅ **EvolutionAuditor** 模块（`closed_loop/evolution_auditor.py`, ~450行）
+- ✅ `evolution_cycles` 表: 记录每次进化的完整元数据（6阶段状态、健康分变化、问题/动作/改进计数）
+- ✅ `evolution_actions` 表: 记录每个进化动作的详情（类型/目标/变更状态）
+- ✅ `record_cycle()` / `query_cycles()` / `get_cycle_detail()` / `get_summary()`
+- ✅ orchestrator 自动记录审计数据（失败不影响主流程）
+- ✅ `_handle_self_monitor(include_history=True)` 返回 `audit_summary`
+- ✅ 测试: `test_evolution_auditor.py` (298行)
+- ✅ CHANGELOG v3.0.6

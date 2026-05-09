@@ -2,8 +2,8 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-3.0.4-blue)
-![Tests](https://img.shields.io/badge/tests-422%20passed-brightgreen)
+![Version](https://img.shields.io/badge/version-3.0.6-blue)
+![Tests](https://img.shields.io/badge/tests-439%20passed-brightgreen)
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
 
 **AI 自我进化框架 — V1 / V2 / V3 融合架构**
@@ -73,10 +73,11 @@ pip install hermes-agent-evolution && hermes-evolution setup
 
 | 模块 | 文件数 | 代码行数 | 测试文件 | 状态 |
 |------|:------:|:--------:|:--------:|:----:|
-| V1 进化引擎 (`src/evolution/`) | 30 | ~17,500 | 22 | ✅ |
-| V2 微服务 (`src/services/`) | 11 | ~7,100 | — | ✅ |
+| V1 进化引擎 (`src/evolution/`) | 46 | ~19,500 | 24 | ✅ |
+| V2 微服务 (`src/services/`) | 16 | ~7,100 | — | ✅ |
 | 融合桥 (`src/evolution/fusion/`) | 3 | ~2,200 | — | ✅ |
-| **合计** | **44** | **~26,800** | **22** | **422 passed** |
+| 自进化审计器 (`closed_loop/`) | 2 | ~800 | 1 | ✅ |
+| **合计** | **67** | **~29,600** | **25** | **428 passed** |
 
 ---
 
