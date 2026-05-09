@@ -97,11 +97,12 @@ class TestPluginLoading:
         "evolution_learn",
         "evolution_self_monitor",
         "evolution_memory_discover",
+        "evolution_audit",
     ]
 
     def test_tool_count(self, ctx):
-        """6 tools should be registered."""
-        assert len(ctx.tools) == 6, f"Expected 6 tools, got {len(ctx.tools)}: {list(ctx.tools.keys())}"
+        """7 tools should be registered."""
+        assert len(ctx.tools) == 7, f"Expected 7 tools, got {len(ctx.tools)}: {list(ctx.tools.keys())}"
 
     def test_all_tools_registered(self, ctx):
         """Every expected tool is present by name."""

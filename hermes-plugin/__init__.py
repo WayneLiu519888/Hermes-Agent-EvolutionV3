@@ -775,6 +775,114 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
 
 
 # ---------------------------------------------------------------------------
+# Tool 7: evolution_audit
+# ---------------------------------------------------------------------------
+TOOL_AUDIT_SCHEMA = {
+    "name": "evolution_audit",
+    "description": "Query evolution audit records — cycle history, action details, summary statistics, and health trends.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["query_cycles", "get_cycle_detail", "get_summary", "get_health_trend"],
+                "description": "Audit action to perform.",
+                "default": "get_summary",
+            },
+            "cycle_id": {
+                "type": "integer",
+                "description": "Specific cycle ID (for get_cycle_detail).",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Max cycles to return (for query_cycles).",
+                "default": 10,
+            },
+            "success_only": {
+                "type": "boolean",
+                "description": "Filter to successful cycles only (for query_cycles).",
+                "default": False,
+            },
+        },
+        "required": [],
+    },
+}
+
+
+def _handle_audit(params, **kwargs):
+    """Handler for evolution_audit."""
+    try:
+        auditor = _get_evolution_auditor()
+        if auditor is None:
+            return json.dumps({
+                "success": False,
+                "error": "EvolutionAuditor could not be initialized.",
+                "timestamp": datetime.now().isoformat(),
+            })
+
+        action = params.get("action", "get_summary")
+
+        if action == "query_cycles":
+            limit = params.get("limit", 10)
+            success_only = params.get("success_only", False)
+            cycles = auditor.query_cycles(limit=limit, success_only=success_only)
+            return json.dumps({
+                "success": True,
+                "action": action,
+                "cycles": cycles,
+                "timestamp": datetime.now().isoformat(),
+            }, default=str, ensure_ascii=False)
+
+        elif action == "get_cycle_detail":
+            cycle_id = params.get("cycle_id")
+            if cycle_id is None:
+                return json.dumps({
+                    "success": False,
+                    "error": "cycle_id is required for get_cycle_detail.",
+                })
+            detail = auditor.get_cycle_detail(cycle_id)
+            return json.dumps({
+                "success": True,
+                "action": action,
+                **detail,
+                "timestamp": datetime.now().isoformat(),
+            }, default=str, ensure_ascii=False)
+
+        elif action == "get_summary":
+            summary = auditor.get_summary()
+            return json.dumps({
+                "success": True,
+                "action": action,
+                **summary,
+                "timestamp": datetime.now().isoformat(),
+            }, default=str, ensure_ascii=False)
+
+        elif action == "get_health_trend":
+            limit = params.get("limit", 10)
+            trend = auditor.get_latest_health_trend(cycles=limit)
+            return json.dumps({
+                "success": True,
+                "action": action,
+                "trend": trend,
+                "timestamp": datetime.now().isoformat(),
+            }, default=str, ensure_ascii=False)
+
+        else:
+            return json.dumps({
+                "success": False,
+                "error": f"Unknown action: {action}. Use query_cycles/get_cycle_detail/get_summary/get_health_trend.",
+            })
+
+    except Exception as e:
+        logger.exception("evolution_audit failed")
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat(),
+        })
+
+
+# ---------------------------------------------------------------------------
 # Plugin entry point: register(ctx)
 # ---------------------------------------------------------------------------
 def register(ctx):
@@ -804,6 +912,7 @@ def register(ctx):
         ("evolution_learn", TOOL_LEARN_SCHEMA, _handle_learn),
         ("evolution_self_monitor", TOOL_SELF_MONITOR_SCHEMA, _handle_self_monitor),
         ("evolution_memory_discover", TOOL_MEMORY_DISCOVER_SCHEMA, _handle_memory_discover),
+        ("evolution_audit", TOOL_AUDIT_SCHEMA, _handle_audit),
     ]
 
     for name, schema, handler in tools:
