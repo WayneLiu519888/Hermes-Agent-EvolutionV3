@@ -95,7 +95,7 @@ def _get_orchestrator():
             # Wire dependencies
             observer = LearningObserver(db_path=os.path.join(db_base, "learning_experiences.db"))
             analyzer = ExperienceAnalyzer(observer)
-            strategy_learner = ToolStrategyLearner()
+            strategy_learner = ToolStrategyLearner(db_path=str(db_base / "tools.db"))
             self_monitor = SelfMonitor(observer, analyzer, strategy_learner)
             metrics_collector = SystemMetricsCollector()
             pattern_recognizer = PatternRecognizer()
@@ -147,6 +147,14 @@ def _get_tool_performance_analyzer():
             logger.warning("Failed to create ToolPerformanceAnalyzer: %s", e)
             _engine_instances["tool_performance_analyzer"] = None
     return _engine_instances["tool_performance_analyzer"]
+
+
+def _get_strategy_learner():
+    """Get the StrategyLearner singleton (from orchestrator or standalone)."""
+    if "strategy_learner" not in _engine_instances:
+        # Ensure orchestrator init triggered it, or create standalone
+        _get_orchestrator()
+    return _engine_instances.get("strategy_learner")
 
 
 def _get_association_discoverer():
@@ -703,6 +711,33 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
         experience.calculate_confidence()
         observer.record_experience(experience)
 
+        # 🆕 驱动 strategy_learner 记录工具使用
+        strategy_learner = _get_strategy_learner()
+        if strategy_learner:
+            try:
+                strategy_learner.record_tool_usage(
+                    tool_name=tool_name,
+                    success=not bool(error),
+                    execution_time=(duration_ms or 0) / 1000.0,
+                    context={"params": str(params)[:200] if params else ""}
+                )
+            except Exception:
+                pass
+
+        # 🆕 驱动 tool_performance_analyzer 记录性能数据
+        analyzer = _get_tool_performance_analyzer()
+        if analyzer:
+            try:
+                from evolution.tools.tool_performance_analyzer import PerformanceMetric
+                analyzer.record_performance(
+                    tool_name=tool_name,
+                    metric=PerformanceMetric.EXECUTION_TIME,
+                    value=(duration_ms or 0) / 1000.0,
+                    metadata={"success": not bool(error)}
+                )
+            except Exception:
+                pass
+
     except Exception:
         # Hook must never raise — silently log and continue
         pass
@@ -755,7 +790,7 @@ def register(ctx):
     except Exception as e:
         logger.error("Failed to register hook post_tool_call: %s", e)
 
-    manifest_version = "3.0.4"  # read from plugin.yaml
+    manifest_version = "3.0.5"  # read from plugin.yaml
     logger.info(
-"Hermes Evolution Plugin v3.0.4 registered — 6 tools + 1 hook"
+        "Hermes Evolution Plugin v%s registered — 6 tools + 1 hook", manifest_version
     )

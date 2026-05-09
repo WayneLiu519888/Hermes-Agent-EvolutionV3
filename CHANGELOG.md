@@ -2,6 +2,27 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范。
 
+## [3.0.5] — 2026-05-09
+
+### 迭代9: ToolStrategyLearner 持久化 (Iteration 9)
+
+#### 新增 (Added)
+
+**ToolStrategyLearner SQLite 持久化:**
+- `tool_strategy_learner.py` 新增 `_init_db()` / `_load_from_db()` / `_persist_usage()` 三个方法
+- `tool_usage_history` 表: 记录每次工具调用的成功/失败/耗时，含索引
+- 启动时自动从 DB 加载最近7天历史数据重建内存状态
+- `record_tool_usage()` 同步写入 DB，解决网关重启后数据丢失
+
+**post_tool_call hook 驱动双向记录:**
+- `_on_post_tool_call` 新增调用 `strategy_learner.record_tool_usage()` (策略学习)
+- 新增调用 `tool_performance_analyzer.record_performance()` (性能分析)
+- 新增 `_get_strategy_learner()` 辅助函数
+
+#### 修复 (Fixed)
+
+- `_count_tools_from_db()` 裸 `sqlite3.connect` 改为 `get_evolution_db()` (统一连接管理)
+
 ## [3.0.4] — 2026-05-09
 
 ### 迭代8: 插件部署审计修复 (Iteration 8)

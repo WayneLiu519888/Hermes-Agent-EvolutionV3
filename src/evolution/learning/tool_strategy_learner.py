@@ -13,6 +13,8 @@ from collections import defaultdict
 import logging
 import random
 
+from ..db_utils import get_evolution_db
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,8 +70,13 @@ class StrategyUpdate:
 class ToolStrategyLearner:
     """工具策略学习器"""
     
-    def __init__(self):
-        """初始化学习器"""
+    def __init__(self, db_path: str = "tools.db"):
+        """初始化学习器
+        
+        Args:
+            db_path: 数据库路径（用于持久化工具使用历史）
+        """
+        self.db_path = db_path
         self.tool_performance: Dict[str, ToolPerformance] = {}
         self.strategy_performance: Dict[ToolStrategyType, StrategyPerformance] = {}
         self.current_strategy: ToolStrategyType = ToolStrategyType.ADAPTIVE
@@ -87,6 +94,64 @@ class ToolStrategyLearner:
                 avg_efficiency=0.5,  # 初始假设50%效率
                 usage_count=0
             )
+        
+        # 🆕 持久化: 初始化DB并从历史数据重建内存状态
+        self._init_db()
+        self._load_from_db()
+    
+    def _init_db(self):
+        """初始化持久化数据库表"""
+        conn = get_evolution_db(self.db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tool_usage_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tool_name TEXT NOT NULL,
+                success INTEGER NOT NULL,
+                execution_time REAL NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                context TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tool_usage_tool ON tool_usage_history(tool_name)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tool_usage_time ON tool_usage_history(timestamp)")
+        conn.commit()
+    
+    def _load_from_db(self, days: int = 7):
+        """从 DB 加载历史数据重建内存状态
+        
+        Args:
+            days: 加载最近N天的数据
+        """
+        conn = get_evolution_db(self.db_path)
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        rows = conn.execute(
+            "SELECT tool_name, success, execution_time FROM tool_usage_history "
+            "WHERE timestamp >= ? ORDER BY timestamp",
+            (cutoff,)
+        ).fetchall()
+        
+        for row in rows:
+            tool_name = row[0]
+            success = bool(row[1])
+            execution_time = row[2]
+            
+            if tool_name not in self.tool_performance:
+                self.tool_performance[tool_name] = ToolPerformance(tool_name=tool_name)
+            
+            perf = self.tool_performance[tool_name]
+            if success:
+                perf.success_count += 1
+            else:
+                perf.failure_count += 1
+            perf.total_time += execution_time
+            perf.usage_count += 1
+            
+            if perf.usage_count > 0:
+                perf.avg_time = perf.total_time / perf.usage_count
+                total = perf.success_count + perf.failure_count
+                perf.success_rate = perf.success_count / total if total > 0 else 0.0
+        
+        logger.info("从DB加载了 %d 条工具使用记录 (%d 个工具)", len(rows), len(self.tool_performance))
     
     def record_tool_usage(self, tool_name: str, success: bool, 
                          execution_time: float, context: Dict[str, Any] = None):
@@ -128,6 +193,9 @@ class ToolStrategyLearner:
         
         # 检查是否需要调整策略
         self._consider_strategy_update()
+        
+        # 🆕 同步写入持久化数据库
+        self._persist_usage(tool_name, success, execution_time, context)
     
     def recommend_tool(self, task_description: str, available_tools: List[str], 
                       context: Dict[str, Any] = None) -> List[ToolRecommendation]:
@@ -363,6 +431,21 @@ class ToolStrategyLearner:
                 return update
         
         return None
+
+    def _persist_usage(self, tool_name: str, success: bool, 
+                       execution_time: float, context: Dict[str, Any] = None):
+        """将工具使用记录写入持久化数据库"""
+        try:
+            conn = get_evolution_db(self.db_path)
+            conn.execute(
+                "INSERT INTO tool_usage_history (tool_name, success, execution_time, timestamp, context) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (tool_name, int(success), execution_time, 
+                 datetime.now().isoformat(), json.dumps(context or {}))
+            )
+            conn.commit()
+        except Exception as e:
+            logger.warning("持久化工具使用记录失败: %s", e)
 
 
 # 导出主要类

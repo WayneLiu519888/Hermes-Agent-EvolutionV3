@@ -162,13 +162,9 @@ class SelfMonitor:
     def _count_tools_from_db(self) -> int:
         """从 tools.db 统计已注册工具数量（重启后策略学习器内存为空时的回退）"""
         try:
-            import sqlite3, os
-            db_path = os.path.join(os.path.expanduser("~/.hermes"), "data", "evolution", "tools.db")
-            if not os.path.exists(db_path):
-                return 0
-            conn = sqlite3.connect(db_path)
+            from ..db_utils import get_evolution_db
+            conn = get_evolution_db("tools.db")
             count = conn.execute("SELECT COUNT(*) FROM tools").fetchone()[0]
-            conn.close()
             return count
         except Exception:
             return 0
