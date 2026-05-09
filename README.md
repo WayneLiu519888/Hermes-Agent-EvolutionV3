@@ -1,12 +1,12 @@
 # HermesAgentEvolution
 
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-3.0.6-blue)
 ![Tests](https://img.shields.io/badge/tests-439%20passed-brightgreen)
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-**AI 自我进化框架 — V1 / V2 / V3 融合架构**
+**V1 / V2 / V3 融合架构的 AI 自主进化引擎**
 
 使 AI 助手能够从经验中学习、自动优化策略、持续改进自身能力。专为 HermesAgent 生态设计，也可作为独立库移植到任何 Python 项目中。
 
@@ -15,19 +15,51 @@
 ## ⚡ 5 秒安装
 
 ```bash
-pip install hermes-agent-evolution && hermes-evolution setup
+pip install hermes-agent-evolution && hermes-evolution check
 ```
 
 ---
 
-## 🧭 快速了解
+## 📈 迭代时间线
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| 🧠 **学习进化** | 🛠️ **工具进化** | 🧩 **记忆进化** | 🔒 **安全进化** |
-| 记录交互经验 | 分析工具效果 | 关联记忆发现 | 审计日志追踪 |
-| 模式识别分析 | 动态优化选择 | 检索性能优化 | 沙箱隔离执行 |
-| 自动策略生成 | 自动创建工具 | 智能关联发现 | 威胁检测防护 |
+> 4 天 · 75 次提交 · 10 次迭代 — 从融合架构到自进化审计器
+
+| 版本 | 日期 | 迭代 | 核心成果 |
+|------|------|:----:|---------|
+| v3.0.0 | 2026-05-06 | 1–5 | V1/V2/V3 融合架构 · CLI 工具 · DB 路径隔离 · 日志统一 · CI/CD |
+| v3.0.1 | 2026-05-06 | — | 版本号同步 · 文档刷新 · 422 测试全通过 |
+| v3.0.2 | 2026-05-07 | — | 远程仓库同步 · `check` 命令验证 |
+| v3.0.3 | 2026-05-07 | 6 | TODO 空壳函数补全 · 文档四件套 · 版本号全项目同步 |
+| v3.0.4 | 2026-05-09 | 7–8 | 健康评分修复 · 插件部署审计 · DB 清理回收 1.3GB · 428 测试 |
+| v3.0.5 | 2026-05-09 | 9 | ToolStrategyLearner 持久化 · post_tool_call hook 双向记录 |
+| **v3.0.6** | **2026-05-09** | **10** | **EvolutionAuditor 自进化审计器 · 双表记录 · 4 查询接口 · 439 测试** |
+
+---
+
+## 📊 项目状态
+
+| 子系统 | 迭代覆盖 | 状态 |
+|--------|:--------:|:----:|
+| 🧠 经验学习 (`learning/`) | 1–9 | ✅ |
+| 🧩 关联记忆 (`memory/`) | 1–7 | ✅ |
+| 🛠️ 工具进化 (`tools/`) | 1–6 | ✅ |
+| 🔒 安全增强 (`security/`) | 1–4 | ✅ |
+| 🤝 多Agent协作 (`collaboration/`) | 1–4 | ✅ |
+| 🔄 闭环自主进化 (`closed_loop/`) | 1–8 | ✅ |
+| 📊 自我监控 (`self_monitor`) | 1–8 | ✅ |
+| 🌉 融合桥 (`fusion/`) | 1–3 | ✅ |
+| 📈 工具策略学习 (`tool_strategy_learner`) | 9 | ✅ |
+| 📋 自进化审计器 (`evolution_auditor`) | 10 | ✅ |
+
+| 指标 | 数值 |
+|------|:----|
+| 核心代码 | ~26,561 行 |
+| 测试代码 | ~9,700 行 |
+| 测试文件 | 24 个 |
+| 测试通过 | **439 / 439** (100%) |
+| Hermes 工具 | 7 个 |
+| 数据库 | 7 个 (SQLite WAL) |
+| Python | ≥ 3.9 |
 
 ---
 
@@ -43,6 +75,7 @@ pip install hermes-agent-evolution && hermes-evolution setup
 │   │  🧠 learning/    🧩 memory/    🛠️ tools/        │        │
 │   │  🔒 security/    🤝 collaboration/               │        │
 │   │  🔄 closed_loop/   📊 self_monitor               │        │
+│   │  📈 tool_strategy_learner  📋 evolution_auditor  │        │
 │   │                                                  │        │
 │   └──────────────────────┬───────────────────────────┘        │
 │                          │                                    │
@@ -69,15 +102,52 @@ pip install hermes-agent-evolution && hermes-evolution setup
 
 ---
 
-## 📊 项目状态
+## 🧩 10 个子系统简介
 
-| 模块 | 文件数 | 代码行数 | 测试文件 | 状态 |
-|------|:------:|:--------:|:--------:|:----:|
-| V1 进化引擎 (`src/evolution/`) | 46 | ~19,500 | 24 | ✅ |
-| V2 微服务 (`src/services/`) | 16 | ~7,100 | — | ✅ |
-| 融合桥 (`src/evolution/fusion/`) | 3 | ~2,200 | — | ✅ |
-| 自进化审计器 (`closed_loop/`) | 2 | ~800 | 1 | ✅ |
-| **合计** | **67** | **~29,600** | **25** | **428 passed** |
+| # | 子系统 | 简介 |
+|:--:|--------|------|
+| 1 | **经验学习** (`learning/`) | 记录 Agent 交互经验，模式识别分析，自动策略生成 |
+| 2 | **关联记忆** (`memory/`) | 记忆关联发现，检索性能优化，智能关联推荐 |
+| 3 | **工具进化** (`tools/`) | 工具效果分析，动态优化选择，从 API 描述自动创建工具 |
+| 4 | **安全增强** (`security/`) | 审计日志追踪，沙箱隔离执行，威胁检测防护 |
+| 5 | **多Agent协作** (`collaboration/`) | Agent 注册与发现，任务分发，消息总线 |
+| 6 | **闭环自主进化** (`closed_loop/`) | 自动化进化周期：观察→分析→规划→执行→验证→学习 |
+| 7 | **自我监控** (`self_monitor`) | 系统健康评分，组件状态检查，趋势报告 |
+| 8 | **融合桥** (`fusion/`) | V1↔V2 双向桥接，事件转换，统一入口 |
+| 9 | **工具策略学习** (`tool_strategy_learner`) | SQLite 持久化工具调用历史，自动策略推荐 |
+| 10 | **自进化审计器** (`evolution_auditor`) | 双表记录进化周期+动作，4 种查询接口，趋势分析 |
+
+---
+
+## 🔧 Hermes 集成工具（7 个）
+
+| 工具 | 功能 |
+|------|------|
+| `evolution_memory_discover` | 发现记忆之间的关联 |
+| `evolution_create_tool` | 从 API 描述自动创建工具 |
+| `evolution_run_cycle` | 触发完整进化周期（6 阶段） |
+| `evolution_learn` | 记录学习经验与教训 |
+| `evolution_self_monitor` | 获取系统健康状态 + 审计摘要 |
+| `evolution_audit` | 查询进化审计历史与趋势 |
+| `evolution_health_check` | 快速健康检查 |
+
+> 📖 完整集成指南见 **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md)**
+
+---
+
+## 🗄️ 数据库（7 个）
+
+所有数据库位于 `~/.hermes/data/evolution/`，统一使用 SQLite WAL 模式：
+
+| 数据库 | 用途 |
+|--------|------|
+| `tools.db` | 工具注册表 |
+| `tool_performance.db` | 工具性能指标 |
+| `learning_experiences.db` | 学习经验记录 |
+| `associations.db` | 记忆关联数据 |
+| `retrieval_optimization.db` | 检索优化缓存 |
+| `closed_loop.db` | 闭环进化状态 |
+| `evolution_audit.db` | 进化审计记录（v3.0.6 新增） |
 
 ---
 
@@ -89,11 +159,20 @@ pip install hermes-agent-evolution && hermes-evolution setup
 # 1. 安装
 pip install hermes-agent-evolution
 
-# 2. 部署插件到 Hermes
-cp -r hermes-plugin ~/.hermes/plugins/hermes-evolution/
+# 2. 自检
+hermes-evolution check
 
-# 3. 自检
-make check
+# 3. 部署插件到 Hermes
+cp -r hermes-plugin ~/.hermes/plugins/hermes-evolution/
+```
+
+### CLI 命令
+
+```bash
+hermes-evolution check      # 环境自检
+hermes-evolution setup      # 一键部署插件
+hermes-evolution status     # 系统状态
+hermes-evolution test       # 运行测试
 ```
 
 ### 基础用法
@@ -112,19 +191,6 @@ observer.record_experience(experience)
 analysis = analyzer.analyze_recent_experiences(days=7)
 print(f"成功率: {analysis.success_rate:.1%}")
 ```
-
-### Hermes 集成工具
-
-| 工具 | 功能 |
-|------|------|
-| `evolution_run_cycle` | 触发完整进化周期 |
-| `evolution_create_tool` | 从 API 描述自动创建工具 |
-| `evolution_analyze_performance` | 分析工具性能指标 |
-| `evolution_learn` | 记录学习经验/教训 |
-| `evolution_self_monitor` | 获取系统健康状态 |
-| `evolution_memory_discover` | 发现记忆之间的关联 |
-
-> 📖 完整集成指南见 **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md)**
 
 ---
 
@@ -160,10 +226,13 @@ print(f"成功率: {analysis.success_rate:.1%}")
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | API 参考 |
 | [docs/TESTING.md](docs/TESTING.md) | 测试指南 |
 | [docs/PORTING.md](docs/PORTING.md) | 移植到其他项目 |
-| [docs/iteration5_engineering_plan.md](docs/iteration5_engineering_plan.md) | 迭代 5 工程计划 |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | 配置参数详解 |
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | 5 分钟快速上手 |
+| [docs/LOGGING.md](docs/LOGGING.md) | 日志框架指南 |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | 发版检查清单 |
 | [docs/evolution_plan.md](docs/evolution_plan.md) | 进化路线图 |
-| [docs/v2_architecture.md](docs/v2_architecture.md) | V2 微服务架构 |
-| [docs/v2_status_report.md](docs/v2_status_report.md) | V2 状态报告 |
+| [docs/v2_architecture.md](docs/v2_architecture.md) | V2 微服务架构（已归档） |
+| [docs/v2_status_report.md](docs/v2_status_report.md) | V2 状态报告（已归档） |
 
 ---
 
@@ -176,6 +245,8 @@ print(f"成功率: {analysis.success_rate:.1%}")
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 打开 Pull Request
+
+详见 **[CONTRIBUTING.md](CONTRIBUTING.md)**
 
 ---
 

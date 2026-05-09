@@ -1,3 +1,6 @@
+> ✅ **已完成 — 2026-05-07**
+> 迭代5目标全部达成。实际成果: 422→428 测试通过, CLI 子命令模式 (check/setup/status/test), pip 一键安装 `hermes-agent-evolution`。
+
 # HermesAgentEvolution 迭代5：全面工程化 — 设计方案与实施计划
 
 > **制定日期**: 2026-05-06  

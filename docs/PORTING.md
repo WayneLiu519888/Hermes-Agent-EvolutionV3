@@ -1,7 +1,7 @@
 # HermesAgentEvolution 移植指南
 
-> 版本: v2 (Iteration 3)
-> 最后更新: 2026-04-24
+> 版本: v3.0.6
+> 最后更新: 2026-05-09
 
 ---
 
@@ -13,20 +13,20 @@
 4. [定制学习系统](#4-定制学习系统)
 5. [扩展和插件开发](#5-扩展和插件开发)
 6. [数据库迁移](#6-数据库迁移)
-7. [API 适配器模式](#7-api-适配器模式)
-8. [多语言/跨语言移植](#8-多语言跨语言移植)
+7. [多语言移植](#7-多语言移植)
 
 ---
 
 ## 1. 概述
 
-本指南涵盖三种主要的移植/扩展场景：
+本指南涵盖四种主要的移植/扩展场景：
 
 | 场景 | 说明 | 难度 |
-|------|------|------|
-| **场景 A**: 自定义工具开发 | 在现有框架内创建新的工具 | ⭐ |
+|------|------|:--:|
+| **场景 A**: 自定义工具开发 | 在现有框架内创建新工具 | ⭐ |
 | **场景 B**: 集成到现有项目 | 将 HermesAgentEvolution 作为模块嵌入 | ⭐⭐ |
 | **场景 C**: 深度定制 | 替换核心组件、添加新能力 | ⭐⭐⭐ |
+| **场景 D**: 跨语言移植 | 将核心设计移植到其他语言 | ⭐⭐⭐ |
 
 ---
 
@@ -34,10 +34,8 @@
 
 ### 2.1 从函数创建工具
 
-最简方式——只需定义一个 Python 函数：
-
 ```python
-from evolution.tools import ToolCreator, ToolRegistry, ToolCategory
+from evolution.tools import ToolRegistry, ToolCreator, ToolCategory
 
 registry = ToolRegistry()
 creator = ToolCreator(registry)
@@ -45,21 +43,20 @@ creator = ToolCreator(registry)
 def calculate_sentiment(text: str) -> dict:
     """
     分析文本情感。
-    
+
     Args:
         text: 待分析的文本
-        
+
     Returns:
         dict: 包含情感评分和关键词的字典
     """
-    # 简易实现
     positive_words = ["good", "great", "excellent", "happy"]
     negative_words = ["bad", "terrible", "sad", "angry"]
-    
+
     words = text.lower().split()
     pos_count = sum(1 for w in words if w in positive_words)
     neg_count = sum(1 for w in words if w in negative_words)
-    
+
     score = (pos_count - neg_count) / max(len(words), 1)
     return {"score": score, "positive": pos_count, "negative": neg_count}
 
@@ -77,7 +74,7 @@ else:
     print(f"创建失败: {result.error_message}")
 ```
 
-### 2.2 使用增强创建器（6种方式）
+### 2.2 使用增强创建器（6 种方式）
 
 ```python
 from evolution.tools import EnhancedToolCreator, ToolRegistry, ToolCategory
@@ -86,14 +83,14 @@ registry = ToolRegistry()
 creator = EnhancedToolCreator(registry)
 
 # 方式1: 从函数创建
-result = creator.create_from_function(my_func, name="my_tool", ...)
+result = creator.create_from_function(my_func, name="my_tool")
 
 # 方式2: 从代码字符串创建
 code = """
 def greet(name: str) -> str:
     return f"Hello, {name}!"
 """
-result = creator.create_from_code(code, name="greeter", 
+result = creator.create_from_code(code, name="greeter",
                                   description="Simple greeting tool",
                                   category=ToolCategory.UTILITY)
 
@@ -129,63 +126,16 @@ result = creator.create_from_evolution(
 ### 2.3 添加性能监控
 
 ```python
-from evolution.tools import ToolPerformanceAnalyzer, monitor_performance
+from evolution.tools import ToolPerformanceAnalyzer
 
-analyzer = ToolPerformanceAnalyzer(registry)
+analyzer = ToolPerformanceAnalyzer(registry, db_path="tool_performance.db")
 
-# 使用装饰器自动捕获性能数据
-@monitor_performance(analyzer, tool_name="my_tool")
-def my_tool_function(param1: str, param2: int) -> str:
-    # 你的工具逻辑
-    return f"Processed: {param1} x {param2}"
-```
-
-### 2.4 注册自定义模板
-
-```python
-from evolution.tools import ToolAutoGenerator
-
-generator = ToolAutoGenerator(registry)
-
-# 模板结构
-custom_template = {
-    "name": "data_transformer",
-    "description": "数据转换工具模板",
-    "code_template": """
-def {name}(data: list, transform_type: str = "{default_transform}") -> list:
-    \"\"\"
-    {description}
-    
-    Args:
-        data: 输入数据列表
-        transform_type: 转换类型 ({transform_options})
-        
-    Returns:
-        list: 转换后的数据列表
-    \"\"\"
-    transforms = {transforms_dict}
-    transform_fn = transforms.get(transform_type, lambda x: x)
-    return [transform_fn(item) for item in data]
-""",
-    "parameters": {
-        "default_transform": "identity",
-        "transform_options": "identity, normalize, scale",
-        "transforms_dict": {
-            "identity": "lambda x: x",
-            "normalize": "lambda x: x / max(data) if data else x",
-            "scale": "lambda x: x * 2"
-        }
-    }
-}
-
-# 使用自定义模板
-result = generator.generate_from_template(
-    template_name="data_transformer",
-    params={
-        "name": "double_values",
-        "description": "将列表中的每个值加倍",
-        "default_transform": "scale"
-    }
+# 记录工具执行性能
+analyzer.record_performance(
+    tool_name="my_tool",
+    metric="execution_time",
+    value=0.125,
+    metadata={"success": True}
 )
 ```
 
@@ -193,141 +143,122 @@ result = generator.generate_from_template(
 
 ## 3. 集成到现有项目
 
-### 3.1 作为子模块集成
+### 3.1 作为模块集成
 
 ```python
 # 在你的项目中
 import sys
-import os
-
-# 添加 HermesAgentEvolution 到路径
 sys.path.insert(0, "/path/to/hermes_agent_evolution/src")
 
-from evolution.tools import ToolEvolutionEngine, ToolRegistry
+from evolution.tools import ToolRegistry
+from evolution.learning.observer import LearningObserver
+from evolution.learning.tool_strategy_learner import ToolStrategyLearner
+from evolution.db_utils import get_evolution_db
 
 class YourApplication:
     def __init__(self):
         # 使用自定义数据库路径避免冲突
-        self.registry = ToolRegistry(db_path="my_app_tools.db")
-        self.engine = ToolEvolutionEngine(registry=self.registry)
-    
+        self.registry = ToolRegistry()
+        self.observer = LearningObserver()
+
+        # v3.0.6: ToolStrategyLearner 需要 db_path 参数
+        self.learner = ToolStrategyLearner(db_path="tools.db")
+
     def register_app_tools(self):
         """注册你的应用特有工具"""
-        # ... 注册自定义工具
-    
-    def run_evolution_if_needed(self):
-        """按需运行进化周期"""
-        state = self.engine.analyze_current_state()
-        print(f"当前工具数: {state['total_tools']}")
-        
-        if state['total_tools'] > 0:
-            result = self.engine.run_evolution_cycle()
-            return result
-        return None
-    
-    def get_tool_suggestions(self, task_description: str):
+        self.registry.register("app_tool", my_func, category="utility")
+
+    def record_interaction(self, tool_name, params, output, success):
+        """记录一次交互"""
+        # 记录经验
+        self.observer.record_experience(
+            tool_name=tool_name,
+            input_params=params,
+            output=output,
+            duration_ms=0.5,
+            success=success,
+            context={"app": "YourApplication"}
+        )
+
+        # 驱动策略学习器记录
+        self.learner.record_tool_usage(
+            tool_name=tool_name,
+            success=success,
+            execution_time=0.5,
+            context={"params": str(params)[:200]}
+        )
+
+    def get_tool_recommendation(self, task_description: str):
         """获取工具推荐"""
-        from evolution.learning import ToolStrategyLearner
-        
-        learner = ToolStrategyLearner()
         tools = self.registry.list_all()
-        available = [t.name for t in tools if t.status.value == "active"]
-        
-        # 加载历史性能数据
-        for tool in tools:
-            if tool.usage_count > 0:
-                learner.record_tool_usage(
-                    tool_name=tool.name,
-                    success=(tool.success_count / max(tool.usage_count, 1) > 0.5),
-                    execution_time=1.0,
-                )
-        
-        return learner.recommend_tool(
+        available = [t["name"] for t in tools if t.get("status") == "active"]
+
+        return self.learner.recommend_tool(
             task_description=task_description,
             available_tools=available
         )
 ```
 
-### 3.2 与 Web 框架集成
+### 3.2 与 Web 框架集成 (Flask)
 
 ```python
-# Flask 集成示例
 from flask import Flask, jsonify, request
-from evolution.tools import ToolEvolutionEngine, ToolRegistry
+from evolution.tools import ToolRegistry, EnhancedToolCreator, ToolCategory
 
 app = Flask(__name__)
-registry = ToolRegistry(db_path="data/web_tools.db")
-engine = ToolEvolutionEngine(registry=registry)
+registry = ToolRegistry()
 
 @app.route("/api/tools", methods=["GET"])
 def list_tools():
-    category = request.args.get("category")
-    tools = registry.list_all(category=category)
-    return jsonify([t.to_dict() for t in tools])
+    tools = registry.list_all()
+    return jsonify(tools)
 
 @app.route("/api/tools", methods=["POST"])
 def create_tool():
     data = request.json
-    from evolution.tools import EnhancedToolCreator, ToolCategory
     creator = EnhancedToolCreator(registry)
-    
+
     result = creator.create_from_description(
         description=data["description"],
         name=data["name"],
         category=ToolCategory(data.get("category", "custom"))
     )
-    
+
     return jsonify({
         "success": result.success,
         "tool": result.tool_definition.to_dict() if result.success else None,
         "error": result.error_message
     })
-
-@app.route("/api/evolve", methods=["POST"])
-def trigger_evolution():
-    result = engine.run_evolution_cycle()
-    return jsonify(result)
-
-@app.route("/api/report", methods=["GET"])
-def get_report():
-    report = engine.generate_evolution_report()
-    return jsonify({"report": report})
 ```
 
 ### 3.3 与 asyncio 应用集成
 
 ```python
 import asyncio
-from evolution.tools import ToolEvolutionEngine
+from evolution.learning.observer import LearningObserver
+from evolution.learning.tool_strategy_learner import ToolStrategyLearner
 
 class AsyncEvolutionApp:
     def __init__(self):
-        self.engine = ToolEvolutionEngine()
+        self.observer = LearningObserver()
+        self.learner = ToolStrategyLearner(db_path="tools.db")
         self._running = False
-    
-    async def start_evolution_loop(self, interval: int = 3600):
-        """后台进化循环"""
+
+    async def record_loop(self, interval: int = 3600):
+        """后台记录循环"""
         self._running = True
         while self._running:
-            print("运行进化周期...")
-            result = await asyncio.to_thread(self.engine.run_evolution_cycle)
-            
-            if result.get("success"):
-                print(f"进化完成: {len(result.get('optimizations', []))} 项优化")
-            else:
-                print(f"进化失败: {result.get('error')}")
-            
+            # 异步记录交互
+            await asyncio.to_thread(
+                self.learner.record_tool_usage,
+                tool_name="background_tool",
+                success=True,
+                execution_time=0.1
+            )
             await asyncio.sleep(interval)
-    
+
     async def stop(self):
         self._running = False
-
-# 使用
-async def main():
-    app = AsyncEvolutionApp()
-    await app.start_evolution_loop(interval=1800)  # 每30分钟
-
-asyncio.run(main())
 ```
 
 ---
@@ -337,111 +268,70 @@ asyncio.run(main())
 ### 4.1 自定义模式识别策略
 
 ```python
-from evolution.learning import PatternRecognizer, PatternCategory, RecognizedPattern
+from evolution.learning import PatternRecognizer, RecognizedPattern
+from evolution.learning.experience import Experience
 
 class CustomPatternRecognizer(PatternRecognizer):
     """支持自定义领域特定模式"""
-    
+
     def __init__(self, domain: str, **kwargs):
         super().__init__(**kwargs)
         self.domain = domain
-        self.domain_patterns = {
-            "financial": self._recognize_financial_patterns,
-            "healthcare": self._recognize_healthcare_patterns,
-        }
-    
+
     def recognize(self, experiences):
         # 先调用父类通用模式识别
         patterns = super().recognize(experiences)
-        
-        # 再添加领域特定模式
-        domain_fn = self.domain_patterns.get(self.domain)
-        if domain_fn:
-            domain_patterns = domain_fn(experiences)
-            patterns.extend(domain_patterns)
-        
+
+        # 添加领域特定模式
+        if self.domain == "financial":
+            patterns.extend(self._recognize_financial(experiences))
+
         return patterns
-    
-    def _recognize_financial_patterns(self, experiences):
-        """金融领域特定模式"""
+
+    def _recognize_financial(self, experiences):
         patterns = []
         for exp in experiences:
             if "risk_level" in exp.context:
-                # 识别风险相关模式
                 pattern = RecognizedPattern(
                     pattern_id=f"fin_{exp.id}",
-                    category=PatternCategory.CONTEXTUAL_PATTERN,
                     description=f"金融风险模式: {exp.context.get('risk_level')}",
                     confidence=0.8,
                     support_count=1,
-                    conditions={"risk_level": exp.context["risk_level"]},
-                    examples=[exp.id],
-                    implications=["需要更保守的工具选择策略"]
                 )
                 patterns.append(pattern)
         return patterns
-    
-    def _recognize_healthcare_patterns(self, experiences):
-        """医疗领域特定模式"""
-        # ... 实现医疗领域模式识别
-        return []
-
-# 使用自定义识别器
-recognizer = CustomPatternRecognizer(
-    domain="financial",
-    min_support=3,
-    min_confidence=0.7
-)
 ```
 
 ### 4.2 自定义经验分析器
 
 ```python
-from evolution.learning import ExperienceAnalyzer, AnalysisResult
-from evolution.learning.experience import Experience, Outcome
+from evolution.learning import ExperienceAnalyzer
 
 class CustomExperienceAnalyzer(ExperienceAnalyzer):
     """添加自定义分析指标"""
-    
+
     def _perform_analysis(self, experiences):
-        # 调用父类基础分析
         base_result = super()._perform_analysis(experiences)
-        
-        # 添加自定义指标
-        custom_insights = self._calculate_custom_metrics(experiences)
-        base_result.key_insights.extend(custom_insights)
-        
-        return base_result
-    
-    def _calculate_custom_metrics(self, experiences):
-        """计算自定义业务指标"""
-        insights = []
-        
+
         # 计算工具组合效率
         tool_combinations = {}
         for exp in experiences:
             tools_used = tuple(
-                a["tool_name"] for a in exp.actions 
-                if "tool_name" in a
+                a["tool_name"] for a in exp.actions if "tool_name" in a
             )
-            if tools_used in tool_combinations:
-                tool_combinations[tools_used].append(exp.outcome == Outcome.SUCCESS)
-            else:
-                tool_combinations[tools_used] = [exp.outcome == Outcome.SUCCESS]
-        
+            if tools_used:
+                tool_combinations.setdefault(tools_used, []).append(
+                    exp.outcome == "success"
+                )
+
         for combo, outcomes in tool_combinations.items():
-            if len(outcomes) >= 3:  # 至少3个样本
+            if len(outcomes) >= 3:
                 success_rate = sum(outcomes) / len(outcomes)
                 if success_rate > 0.8:
-                    insights.append(
-                        f"工具组合 {combo} 高效 ({success_rate:.0%} 成功率)"
+                    base_result.key_insights.append(
+                        f"高效工具组合 {combo} ({success_rate:.0%})"
                     )
-                elif success_rate < 0.3:
-                    insights.append(
-                        f"工具组合 {combo} 低效 ({success_rate:.0%} 成功率)，建议替换"
-                    )
-        
-        return insights
+        return base_result
 ```
 
 ---
@@ -451,29 +341,17 @@ class CustomExperienceAnalyzer(ExperienceAnalyzer):
 ### 5.1 添加新的创建来源
 
 ```python
-from evolution.tools import EnhancedToolCreator, CreationSource, ToolCreationResult
-from evolution.tools.tool_registry import ToolDefinition, ToolCategory
-from enum import Enum
-
-class CustomCreationSource(Enum):
-    """自定义创建来源"""
-    DATABASE_IMPORT = "database_import"
-    API_IMPORT = "api_import"
+from evolution.tools import EnhancedToolCreator, ToolCreationResult, ToolCategory
+from evolution.tools.tool_registry import ToolDefinition
 
 class ExtendedToolCreator(EnhancedToolCreator):
     """扩展创建器，支持更多来源"""
-    
-    def create_from_database(self, db_config: dict, table_name: str, 
-                              name: str) -> ToolCreationResult:
+
+    def create_from_database(self, db_config: dict, table_name: str,
+                             name: str) -> ToolCreationResult:
         """从数据库表结构创建工具"""
         try:
-            # 1. 读取表结构
-            # schema = self._read_table_schema(db_config, table_name)
-            
-            # 2. 生成代码
-            code = self._generate_crud_code(table_name, schema)
-            
-            # 3. 创建工具定义
+            code = self._generate_crud_code(table_name)
             tool = ToolDefinition(
                 name=name,
                 description=f"从数据库表 {table_name} 生成的 CRUD 工具",
@@ -481,76 +359,71 @@ class ExtendedToolCreator(EnhancedToolCreator):
                 source_code=code,
                 tags=["database", "auto-generated", table_name]
             )
-            
-            # 4. 注册
+
             success = self.registry.register(tool)
-            
             return ToolCreationResult(
                 success=success,
                 tool_definition=tool if success else None
             )
         except Exception as e:
-            return ToolCreationResult(
-                success=False,
-                error_message=str(e)
-            )
-    
-    def _generate_crud_code(self, table_name: str, schema: dict) -> str:
+            return ToolCreationResult(success=False, error_message=str(e))
+
+    def _generate_crud_code(self, table_name: str) -> str:
         """生成 CRUD 操作代码"""
-        # ... 实现代码生成
-        return f"# Auto-generated CRUD for {table_name}\n..."
-```
-
-### 5.2 添加新的性能指标
-
-```python
-from evolution.tools import PerformanceMetric, ToolPerformanceAnalyzer
-from enum import Enum
-
-class ExtendedMetric(Enum):
-    """扩展性能指标"""
-    MEMORY_USAGE = "memory_usage"
-    CPU_USAGE = "cpu_usage"
-    USER_SATISFACTION = "user_satisfaction"
-
-class ExtendedPerformanceAnalyzer(ToolPerformanceAnalyzer):
-    """支持更多性能指标的分析器"""
-    
-    def record_extended_metric(self, tool_name: str, 
-                                metric: ExtendedMetric,
-                                value: float):
-        """记录扩展指标"""
-        # 映射到通用指标存储
-        return self.record_performance(
-            tool_name=tool_name,
-            metric=PerformanceMetric.RESOURCE_USAGE,
-            value=value,
-            context={"extended_metric": metric.value}
-        )
+        return f"# Auto-generated CRUD for {table_name}\ndef query_{table_name}(): ..."
 ```
 
 ---
 
 ## 6. 数据库迁移
 
-### 6.1 从 SQLite 迁移到 PostgreSQL
+### 6.1 数据导出和导入
 
-由于默认使用 SQLite，如果需要更高并发或分布式部署，可以适配其他数据库。
+```python
+import json
+from evolution.tools import ToolRegistry
+
+def export_tools_to_json(registry: ToolRegistry, filepath: str):
+    """导出工具到 JSON 文件"""
+    tools = registry.list_all()
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(tools, f, ensure_ascii=False, indent=2)
+    print(f"已导出 {len(tools)} 个工具到 {filepath}")
+
+
+def import_tools_from_json(registry: ToolRegistry, filepath: str):
+    """从 JSON 文件导入工具"""
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    imported = 0
+    for item in data:
+        tool = ToolDefinition.from_dict(item)
+        if registry.register(tool):
+            imported += 1
+
+    print(f"成功导入 {imported}/{len(data)} 个工具")
+
+# 用法
+registry = ToolRegistry()
+export_tools_to_json(registry, "tools_backup.json")
+import_tools_from_json(registry, "tools_backup.json")
+```
+
+### 6.2 从 SQLite 迁移到 PostgreSQL
+
+v3.0.6 使用纯 SQLite（7 个数据库 + WAL 模式），已足够支撑大多数场景。如需迁移到 PostgreSQL，请参考以下接口适配：
 
 ```python
 import psycopg2
-from evolution.tools.tool_registry import ToolDefinition, ToolCategory, ToolStatus
-from typing import Dict, List, Optional, Any
-import json
-
 
 class PostgresToolRegistry:
     """PostgreSQL 版工具注册表"""
-    
+
     def __init__(self, conn_string: str):
         self.conn_string = conn_string
         self._init_database()
-    
+
     def _init_database(self):
         conn = psycopg2.connect(self.conn_string)
         cursor = conn.cursor()
@@ -562,15 +435,7 @@ class PostgresToolRegistry:
                 category VARCHAR(50) NOT NULL,
                 status VARCHAR(50) NOT NULL,
                 version VARCHAR(50) NOT NULL,
-                author VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                updated_at TIMESTAMP NOT NULL,
-                usage_count INTEGER DEFAULT 0,
-                success_count INTEGER DEFAULT 0,
-                error_count INTEGER DEFAULT 0,
                 parameters JSONB NOT NULL DEFAULT '{}',
-                return_type VARCHAR(100) NOT NULL DEFAULT 'Any',
-                dependencies JSONB NOT NULL DEFAULT '[]',
                 tags JSONB NOT NULL DEFAULT '[]',
                 source_code TEXT NOT NULL DEFAULT '',
                 is_builtin BOOLEAN DEFAULT FALSE
@@ -579,252 +444,48 @@ class PostgresToolRegistry:
         conn.commit()
         cursor.close()
         conn.close()
-    
-    def register(self, tool: ToolDefinition) -> bool:
-        conn = psycopg2.connect(self.conn_string)
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                INSERT INTO tools 
-                (name, description, category, status, version, author,
-                 created_at, updated_at, parameters, return_type,
-                 dependencies, tags, source_code, is_builtin)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (name) DO UPDATE SET
-                    description = EXCLUDED.description,
-                    category = EXCLUDED.category,
-                    status = EXCLUDED.status,
-                    version = EXCLUDED.version,
-                    updated_at = EXCLUDED.updated_at,
-                    parameters = EXCLUDED.parameters,
-                    source_code = EXCLUDED.source_code
-            """, (
-                tool.name, tool.description, tool.category.value,
-                tool.status.value, tool.version, tool.author,
-                tool.created_at, tool.updated_at,
-                json.dumps(tool.parameters), tool.return_type,
-                json.dumps(tool.dependencies), json.dumps(tool.tags),
-                tool.source_code, tool.is_builtin
-            ))
-            conn.commit()
-            return True
-        except Exception as e:
-            print(f"注册失败: {e}")
-            return False
-        finally:
-            cursor.close()
-            conn.close()
-    
-    # ... 实现 get(), list_all(), search() 等方法
-```
 
-### 6.2 数据导出和导入
-
-```python
-import json
-from evolution.tools import ToolRegistry
-
-
-def export_tools_to_json(registry: ToolRegistry, filepath: str):
-    """导出工具到 JSON 文件"""
-    tools = registry.list_all()
-    data = [t.to_dict() for t in tools]
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"已导出 {len(tools)} 个工具到 {filepath}")
-
-
-def import_tools_from_json(registry: ToolRegistry, filepath: str):
-    """从 JSON 文件导入工具"""
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    imported = 0
-    for item in data:
-        tool = ToolDefinition.from_dict(item)
-        if registry.register(tool):
-            imported += 1
-    
-    print(f"成功导入 {imported}/{len(data)} 个工具")
-
-
-# 用法
-registry = ToolRegistry(db_path="old_tools.db")
-export_tools_to_json(registry, "tools_backup.json")
-
-new_registry = ToolRegistry(db_path="new_tools.db")
-import_tools_from_json(new_registry, "tools_backup.json")
+    # 实现 register / get / list_all / search 等方法...
 ```
 
 ---
 
-## 7. API 适配器模式
+## 7. 多语言移植
 
-### 7.1 为其他 Agent 框架提供适配器
-
-```python
-class LangChainToolAdapter:
-    """将 LangChain 工具适配为 HermesAgentEvolution 工具"""
-    
-    def __init__(self, registry):
-        self.registry = registry
-    
-    def import_langchain_tool(self, langchain_tool) -> bool:
-        """导入 LangChain 工具"""
-        from evolution.tools import (
-            ToolDefinition, ToolCategory, ToolStatus
-        )
-        
-        tool = ToolDefinition(
-            name=langchain_tool.name,
-            description=langchain_tool.description,
-            category=self._map_category(langchain_tool),
-            status=ToolStatus.ACTIVE,
-            parameters=self._extract_args(langchain_tool),
-            return_type="str",
-            tags=["langchain", "imported"],
-            is_builtin=False
-        )
-        
-        return self.registry.register(tool)
-    
-    def _map_category(self, langchain_tool):
-        from evolution.tools import ToolCategory
-        # 类别映射逻辑
-        return ToolCategory.UTILITY
-    
-    def _extract_args(self, langchain_tool):
-        """提取 LangChain 工具参数"""
-        args = {}
-        if hasattr(langchain_tool, 'args'):
-            for name, field in langchain_tool.args.items():
-                args[name] = {
-                    "type": str(field.type_),
-                    "description": field.description,
-                    "required": True
-                }
-        return args
-
-
-class CrewAIToolAdapter:
-    """将 CrewAI 工具适配为 HermesAgentEvolution 工具"""
-    
-    def __init__(self, registry):
-        self.registry = registry
-    
-    def import_crewai_tool(self, crewai_tool) -> bool:
-        """导入 CrewAI 工具"""
-        # ... 实现 CrewAI 工具适配
-        pass
-
-
-class AutoGPTToolAdapter:
-    """将 AutoGPT 插件适配为 HermesAgentEvolution 工具"""
-    
-    def __init__(self, registry):
-        self.registry = registry
-    
-    def import_autogpt_plugin(self, plugin) -> bool:
-        """导入 AutoGPT 插件"""
-        # ... 实现 AutoGPT 插件适配
-        pass
-```
-
-### 7.2 通用适配器基类
-
-```python
-from abc import ABC, abstractmethod
-from evolution.tools import ToolDefinition, ToolRegistry
-
-
-class BaseToolAdapter(ABC):
-    """工具适配器基类"""
-    
-    def __init__(self, registry: ToolRegistry):
-        self.registry = registry
-    
-    @abstractmethod
-    def import_tool(self, external_tool) -> bool:
-        """导入外部工具"""
-        pass
-    
-    @abstractmethod
-    def export_tool(self, tool_name: str) -> any:
-        """导出为外部工具格式"""
-        pass
-    
-    def batch_import(self, external_tools: list) -> dict:
-        """批量导入"""
-        results = {"success": 0, "failed": 0, "errors": []}
-        for tool in external_tools:
-            try:
-                if self.import_tool(tool):
-                    results["success"] += 1
-                else:
-                    results["failed"] += 1
-            except Exception as e:
-                results["failed"] += 1
-                results["errors"].append(str(e))
-        return results
-```
-
----
-
-## 8. 多语言/跨语言移植
-
-### 8.1 架构对齐指南
-
-如果要将核心设计移植到其他语言，遵循以下架构映射：
+### 7.1 架构对齐指南
 
 | Python 组件 | 等效概念 (其他语言) |
 |-------------|---------------------|
 | `@dataclass` | 结构体/记录类型 (Rust struct, Go struct, Java record) |
-| `Enum` | 枚举 (所有主流语言都支持) |
-| `sqlite3` | SQLite 绑定 (rust-postgres, Go database/sql) |
-| `asyncio` | async/await 运行时 |
+| `Enum` | 枚举（所有主流语言支持） |
+| `sqlite3` + WAL | SQLite 绑定 (rusqlite, Go database/sql) |
+| `logging` | 各语言日志框架 (log, slog, log4j) |
 | `Optional` / `Dict` / `List` | 泛型/可选类型 |
 
-### 8.2 Rust 移植示例
+### 7.2 核心接口速查
+
+移植时按以下优先级实现：
+
+1. **ToolRegistry** — 工具注册/查询/搜索 (CRUD)
+2. **LearningObserver** — 经验记录与统计
+3. **ToolStrategyLearner** — 策略学习与持久化
+4. **EvolutionDatabase** — 关联存储与检索
+
+### 7.3 Rust 示例
 
 ```rust
 // tool_registry.rs — Rust 版工具注册表核心
-use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ToolCategory {
-    Utility,
-    DataProcessing,
-    FileOperation,
-    Network,
-    Ai,
-    Custom,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ToolStatus {
-    Active,
-    Deprecated,
-    Experimental,
-    Disabled,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ToolDefinition {
     pub name: String,
     pub description: String,
-    pub category: ToolCategory,
-    pub status: ToolStatus,
+    pub category: String,
+    pub status: String,
     pub version: String,
-    pub author: String,
-    pub usage_count: u64,
-    pub success_count: u64,
-    pub error_count: u64,
-    pub parameters: HashMap<String, serde_json::Value>,
-    pub return_type: String,
     pub tags: Vec<String>,
     pub source_code: String,
-    pub is_builtin: bool,
 }
 
 pub struct ToolRegistry {
@@ -833,132 +494,69 @@ pub struct ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
-        ToolRegistry {
-            tools: HashMap::new(),
-        }
+        ToolRegistry { tools: HashMap::new() }
     }
-    
+
     pub fn register(&mut self, tool: ToolDefinition) -> bool {
-        if self.tools.contains_key(&tool.name) {
-            // Update existing
-            self.tools.insert(tool.name.clone(), tool);
-        } else {
-            // Insert new
-            self.tools.insert(tool.name.clone(), tool);
-        }
+        self.tools.insert(tool.name.clone(), tool);
         true
     }
-    
+
     pub fn get(&self, name: &str) -> Option<&ToolDefinition> {
         self.tools.get(name)
     }
-    
+
     pub fn list_all(&self) -> Vec<&ToolDefinition> {
         self.tools.values().collect()
-    }
-    
-    pub fn search(&self, query: &str) -> Vec<&ToolDefinition> {
-        let query_lower = query.to_lowercase();
-        self.tools.values()
-            .filter(|t| {
-                t.name.to_lowercase().contains(&query_lower)
-                    || t.description.to_lowercase().contains(&query_lower)
-                    || t.tags.iter().any(|tag| tag.contains(&query_lower))
-            })
-            .collect()
     }
 }
 ```
 
-### 8.3 TypeScript/Node.js 移植示例
+### 7.4 TypeScript 示例
 
 ```typescript
 // tool_registry.ts — TypeScript 版工具注册表
-export enum ToolCategory {
-  UTILITY = "utility",
-  DATA_PROCESSING = "data_processing",
-  FILE_OPERATION = "file_operation",
-  NETWORK = "network",
-  AI = "ai",
-  CUSTOM = "custom",
-}
-
-export enum ToolStatus {
-  ACTIVE = "active",
-  DEPRECATED = "deprecated",
-  EXPERIMENTAL = "experimental",
-  DISABLED = "disabled",
-}
-
-export interface ToolDefinition {
+interface ToolDefinition {
   name: string;
   description: string;
-  category: ToolCategory;
-  status: ToolStatus;
+  category: string;
+  status: string;
   version: string;
-  author: string;
-  usageCount: number;
-  successCount: number;
-  errorCount: number;
-  parameters: Record<string, any>;
-  returnType: string;
   tags: string[];
   sourceCode: string;
-  isBuiltin: boolean;
 }
 
-export class ToolRegistry {
+class ToolRegistry {
   private tools: Map<string, ToolDefinition> = new Map();
-  
+
   register(tool: ToolDefinition): boolean {
     this.tools.set(tool.name, tool);
     return true;
   }
-  
+
   get(name: string): ToolDefinition | undefined {
     return this.tools.get(name);
   }
-  
-  listAll(category?: ToolCategory): ToolDefinition[] {
-    const all = Array.from(this.tools.values());
-    return category ? all.filter(t => t.category === category) : all;
+
+  listAll(): ToolDefinition[] {
+    return Array.from(this.tools.values());
   }
-  
+
   search(query: string): ToolDefinition[] {
     const q = query.toLowerCase();
     return Array.from(this.tools.values()).filter(t =>
       t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.tags.some(tag => tag.toLowerCase().includes(q))
+      t.description.toLowerCase().includes(q)
     );
-  }
-  
-  getStatistics(): Record<string, any> {
-    const tools = Array.from(this.tools.values());
-    return {
-      totalTools: tools.length,
-      byCategory: this.countBy(tools, 'category'),
-      byStatus: this.countBy(tools, 'status'),
-      totalUsage: tools.reduce((s, t) => s + t.usageCount, 0),
-    };
-  }
-  
-  private countBy(tools: ToolDefinition[], field: string): Record<string, number> {
-    const counts: Record<string, number> = {};
-    for (const tool of tools) {
-      const key = String((tool as any)[field]);
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    return counts;
   }
 }
 ```
 
 ---
 
-## 附录
+## 参见
 
-- **架构概述**: [ARCHITECTURE.md](ARCHITECTURE.md)
-- **API 参考**: [API_REFERENCE.md](API_REFERENCE.md)
-- **安装指南**: [INSTALLATION.md](INSTALLATION.md)
-- **V2 详细设计**: [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md)
+- [安装指南](INSTALLATION.md) — pip/源码/Docker 安装
+- [架构概述](ARCHITECTURE.md) — V3 融合架构详解
+- [配置说明](CONFIGURATION.md) — 环境变量与调优
+- [快速上手](QUICKSTART.md) — 5 分钟开始使用

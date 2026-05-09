@@ -1,7 +1,7 @@
 # 贡献指南 (CONTRIBUTING)
 
 > 版本: v3.0.6 (V1/V2/V3 融合架构)
-> 最后更新: 2026-05-06
+> 最后更新: 2026-05-09
 
 欢迎为 HermesAgentEvolution 项目贡献代码！
 
@@ -126,7 +126,7 @@ print("工具注册成功")
 
 | 级别 | 使用场景 |
 |------|---------|
-| `DEBUG` | 详细的调试信息 (DB连接、参数值) |
+| `DEBUG` | 详细的调试信息 (DB 连接、参数值) |
 | `INFO` | 关键操作流程 (进化周期、工具注册) |
 | `WARNING` | 可恢复的异常 (重试、降级) |
 | `ERROR` | 操作失败、需要关注的错误 |
@@ -165,6 +165,10 @@ conn = sqlite3.connect("data/tools.db")
 ```bash
 # 运行全量测试
 make test
+
+# 或直接
+python3 -m pytest tests/ -q
+# 预期: 439 passed in ~30s
 
 # 详细模式
 make test-v
@@ -215,7 +219,7 @@ def test_tool_registry_register():
 
 - [ ] `make lint` 通过，无 lint 错误
 - [ ] `make format` 通过，代码已格式化
-- [ ] `make test` 通过，无测试失败
+- [ ] `make test` 通过，**439 / 439 全部通过**
 - [ ] 新增功能有对应测试
 - [ ] 相关文档已更新 (README / CHANGELOG / docs/)
 - [ ] Commit 遵循 Conventional Commits 规范
@@ -237,7 +241,7 @@ def test_tool_registry_register():
 Closes #XX (如有)
 
 ## 测试
-- [ ] make test 通过
+- [ ] make test 通过 (439 passed)
 - [ ] make lint 通过
 ```
 
@@ -270,7 +274,7 @@ Closes #XX (如有)
 <type>(<scope>): <描述>
 
 type: feat | fix | docs | test | refactor | chore | perf
-scope: 模块名 (如 fusion, memory, security, cli)
+scope: 模块名 (如 fusion, memory, security, cli, auditor)
 描述: 中文简述变更内容
 ```
 
@@ -279,8 +283,8 @@ scope: 模块名 (如 fusion, memory, security, cli)
 ```
 feat(cli): 添加 hermes-evolution check 环境自检命令
 fix(db_utils): 修复 WAL 模式连接泄漏
-docs: 更新 CONTRIBUTING.md 到 v3.0.0 标准
-test(fusion): 补测 V1V2Bridge 事件转换
+docs: 更新 CONTRIBUTING.md 到 v3.0.6 标准
+test(auditor): 补测 evolution_auditor 查询接口
 refactor(logging): 统一使用 logging 模块替代 print
 ```
 
@@ -290,27 +294,105 @@ refactor(logging): 统一使用 logging 模块替代 print
 
 ```
 hermes_agent_evolution/
-├── src/evolution/           # 核心演化引擎
-│   ├── cli.py               # CLI 命令行工具 (v3.0.0)
-│   ├── db_utils.py           # 统一数据库连接工厂 (v3.0.0)
-│   ├── self_monitor.py       # 自我监控器
-│   ├── closed_loop/          # 闭环自主演化
-│   ├── collaboration/        # 多Agent协作
-│   ├── fusion/               # V1/V2/V3 融合桥接层 (v3.0.0)
-│   │   ├── bridge.py         #   V1V2Bridge 桥接器
-│   │   ├── compatibility.py  #   兼容层/API网关/降级处理
-│   │   └── unified_entry.py  #   UnifiedAgent 统一入口
-│   ├── learning/             # 经验学习
-│   ├── memory/               # 关联记忆
-│   ├── security/             # 安全增强
-│   └── tools/                # 工具进化
-├── hermes-plugin/            # Hermes Agent 插件
-├── tests/                    # 测试
-├── docs/                     # 文档
-├── docker/                   # Docker 配置
-├── Makefile                  # 构建/测试/检查 (v3.0.0)
-├── pyproject.toml            # 项目配置 (v3.0.0)
-└── docker-compose.yml        # Docker Compose
+├── src/evolution/               # 核心进化引擎 (V1 单体)
+│   ├── __init__.py              # 版本号 v3.0.6
+│   ├── cli.py                   # CLI 命令行工具
+│   ├── db_utils.py              # 统一数据库连接工厂 (WAL)
+│   ├── self_monitor.py          # 自我监控器
+│   ├── health.py                # 健康检查
+│   ├── logging_config.py        # 日志配置
+│   ├── dependency_manager.py    # 依赖管理
+│   │
+│   ├── learning/                # 🧠 经验学习
+│   │   ├── observer.py          #   学习观察者
+│   │   ├── analyzer.py          #   经验分析器
+│   │   ├── experience.py        #   经验数据模型
+│   │   ├── pattern_recognizer.py #  模式识别
+│   │   └── tool_strategy_learner.py # 工具策略学习 (v3.0.5 持久化)
+│   │
+│   ├── memory/                  # 🧩 关联记忆
+│   │   ├── database.py          #   记忆数据库
+│   │   ├── association_discoverer.py # 关联发现
+│   │   ├── association_optimizer.py  # 关联优化
+│   │   └── retrieval_optimizer.py    # 检索优化
+│   │
+│   ├── tools/                   # 🛠️ 工具进化
+│   │   ├── tool_registry.py     #   工具注册表
+│   │   ├── tool_creator.py      #   工具创建器
+│   │   ├── enhanced_tool_creator.py # 增强工具创建器
+│   │   ├── tool_auto_generator.py   # 工具自动生成
+│   │   ├── tool_performance_analyzer.py # 性能分析器
+│   │   └── tool_integration.py  #   工具集成
+│   │
+│   ├── security/                # 🔒 安全增强
+│   │   ├── audit_logger.py      #   审计日志
+│   │   ├── sandbox_executor.py  #   沙箱执行
+│   │   ├── threat_detector.py   #   威胁检测
+│   │   └── permission_manager.py #  权限管理
+│   │
+│   ├── collaboration/           # 🤝 多Agent协作
+│   │   ├── agent_registry.py    #   Agent 注册
+│   │   ├── agent_orchestrator.py #  Agent 编排
+│   │   ├── task_dispatcher.py   #   任务分发
+│   │   └── message_bus.py       #   消息总线
+│   │
+│   ├── closed_loop/             # 🔄 闭环自主进化
+│   │   ├── orchestrator.py      #   进化编排器
+│   │   ├── evolution_auditor.py #   📋 自进化审计器 (v3.0.6)
+│   │   ├── daemon.py            #   守护进程
+│   │   ├── action_executor.py   #   动作执行器
+│   │   └── metrics_collector.py #   指标收集器
+│   │
+│   └── fusion/                  # 🌉 V1/V2/V3 融合桥
+│       ├── bridge.py            #   V1V2Bridge 桥接器
+│       ├── compatibility.py     #   兼容层/API 网关/降级
+│       └── unified_entry.py     #   UnifiedAgent 统一入口
+│
+├── src/services/                # V2 微服务层
+│   ├── core/                    #   核心服务
+│   ├── learning/                #   学习服务
+│   ├── tools/                   #   工具服务
+│   └── system/                  #   系统服务
+│
+├── hermes-plugin/               # Hermes Agent 插件
+│   └── plugin.yaml              #   插件配置 (7 工具 + 1 hook)
+│
+├── tests/                       # 测试 (24 文件, 439 用例)
+│   ├── test_evolution_auditor.py      # 审计器测试 (v3.0.6)
+│   ├── test_self_monitor.py
+│   ├── test_closed_loop.py
+│   ├── test_collaboration.py
+│   ├── test_security.py
+│   ├── test_fusion.py
+│   ├── test_tool_*.py           # 工具相关测试 (6 文件)
+│   ├── test_learning_*.py       # 学习相关测试
+│   ├── test_memory_*.py         # 记忆相关测试
+│   ├── test_iteration*.py       # 迭代集成测试
+│   └── test_ci_guards.py
+│
+├── docs/                        # 文档
+│   ├── ARCHITECTURE.md          #   V3 融合架构详解
+│   ├── INSTALLATION.md          #   安装指南
+│   ├── HERMES_INTEGRATION.md    #   Hermes 集成手册
+│   ├── API_REFERENCE.md         #   API 参考
+│   ├── TESTING.md               #   测试指南
+│   ├── CONFIGURATION.md         #   配置参数
+│   ├── QUICKSTART.md            #   快速上手
+│   ├── LOGGING.md               #   日志指南
+│   ├── RELEASE_CHECKLIST.md     #   发版清单
+│   ├── PORTING.md               #   移植指南
+│   ├── evolution_plan.md        #   进化路线图
+│   ├── v2_architecture.md       #   V2 架构（已归档）
+│   └── v2_status_report.md      #   V2 状态报告（已归档）
+│
+├── data/evolution/              # 本地开发数据库 (gitignored)
+├── docker/                      # Docker 配置
+├── .github/workflows/           # CI/CD
+├── Makefile                     # 构建/测试/检查
+├── pyproject.toml               # 项目配置
+├── setup.py                     # 打包配置
+├── install.sh                   # 一键安装脚本
+└── docker-compose.yml           # Docker Compose
 ```
 
 ---

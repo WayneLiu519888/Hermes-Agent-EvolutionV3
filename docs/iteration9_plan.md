@@ -1,3 +1,6 @@
+> ✅ **已完成 — 2026-05-09 (v3.0.5)**
+> ToolStrategyLearner SQLite 持久化已实现，record_tool_usage 同步写 DB，_load_from_db 启动回放，post_tool_call hook 驱动三组件记录。
+
 # 迭代9: ToolStrategyLearner 持久化
 
 **创建时间**: 2026-05-09  

@@ -1,18 +1,19 @@
 # HermesAgentEvolution 安装指南
 
-> 版本: v3.0.0 (V1/V2/V3 融合架构)
-> 最后更新: 2026-05-06
+> 版本: v3.0.6
+> 最后更新: 2026-05-09
+> Python: 3.9+ | 测试: 439 passed (24 测试文件) | 核心代码: ~26561 行
 
 ---
 
 ## 目录
 
 1. [系统要求](#1-系统要求)
-2. [快速安装](#2-快速安装)
+2. [快速安装 (pip)](#2-快速安装-pip)
 3. [从源码安装](#3-从源码安装)
 4. [Docker 部署](#4-docker-部署)
-5. [配置指南](#5-配置指南)
-6. [验证安装](#6-验证安装)
+5. [验证安装](#5-验证安装)
+6. [项目结构](#6-项目结构)
 7. [常见问题](#7-常见问题)
 
 ---
@@ -23,88 +24,83 @@
 
 | 资源 | 要求 |
 |------|------|
-| **Python** | 3.10 或更高 |
+| **Python** | 3.9 或更高 |
 | **操作系统** | Linux / macOS / Windows (WSL2) |
-| **内存** | 4 GB RAM |
-| **磁盘** | 1 GB 可用空间 |
-| **网络** | 需要访问 OpenAI API / Anthropic API (可选) |
+| **内存** | 2 GB RAM |
+| **磁盘** | 500 MB 可用空间 |
+| **网络** | 无需联网（LLM 功能可选） |
 
 ### 推荐环境
 
 | 资源 | 推荐 |
 |------|------|
 | **Python** | 3.11+ |
-| **操作系统** | Ubuntu 22.04+ / macOS 13+ |
-| **内存** | 8 GB RAM |
-| **磁盘** | 5 GB SSD |
-| **GPU** | 可选 (用于本地 LLM 推理) |
+| **操作系统** | Ubuntu 22.04+ / macOS 14+ |
+| **内存** | 4 GB RAM |
+| **磁盘** | 1 GB SSD |
 
 ### 依赖概览
 
-| 依赖 | 最低版本 | 用途 |
-|------|----------|------|
-| `openai` | 1.0+ | LLM 接口 (可选) |
-| `anthropic` | — | Claude API 接口 (可选) |
-| `aiohttp` | 3.8+ | 异步 HTTP 请求 |
-| `sqlite3` | (内置) | 数据持久化 |
-| `prometheus_client` | — | 监控指标 (可选) |
+v3.0.6 采用**零外部依赖**设计，核心依赖仅 Python 标准库：
+
+| 依赖 | 用途 | 必需 |
+|------|------|:--:|
+| `sqlite3` | 7 个数据库持久化 (WAL 模式) | ✅ |
+| `logging` | 统一日志框架 | ✅ |
+| `asyncio` | 异步进化循环 | ✅ |
+| `openai` (>=1.0) | LLM 工具生成 (可选) | ❌ |
+| `anthropic` | Claude API (可选) | ❌ |
 
 ---
 
-## 2. 快速安装
+## 2. 快速安装 (pip)
 
-### 2.1 使用 pip 安装
+### 2.1 一行安装
 
 ```bash
-# 克隆仓库
-git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
-cd Hermes-Agent-EvolutionV3
-
-# 创建虚拟环境 (推荐)
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# 或
-.venv\Scripts\activate     # Windows
-
-# 安装 (可编辑模式, 推荐)
-pip install -e .
-
-# 或使用 Makefile 一键安装开发依赖
-make install
+pip install hermes-agent-evolution
 ```
 
-安装后可通过以下命令验证:
+安装后立即可用：
 
 ```bash
 # 环境自检
 hermes-evolution check
 
-# 或
-make check
+# 查看系统状态
+hermes-evolution status
+
+# 运行测试套件
+hermes-evolution test
 ```
 
-### 2.1.1 pip 安装路径说明
+### 2.2 创建虚拟环境（推荐）
 
-通过 `pip install -e .` 安装后，`hermes-evolution` 命令行工具注册到系统 PATH，位于:
+```bash
+# 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate       # Linux/macOS
+# 或
+.venv\Scripts\activate          # Windows
 
-| 环境 | 路径 |
-|------|------|
-| **虚拟环境 (推荐)** | `.venv/bin/hermes-evolution` (Linux/macOS) / `.venv\Scripts\hermes-evolution.exe` (Windows) |
-| **用户安装** | `~/.local/bin/hermes-evolution` |
-| **系统安装** | `/usr/local/bin/hermes-evolution` |
+# 安装
+pip install hermes-agent-evolution
+```
 
-CLI 提供以下命令:
+### 2.3 CLI 命令参考
+
+安装后 `hermes-evolution` 注册到系统 PATH：
 
 | 命令 | 说明 |
 |------|------|
-| `hermes-evolution check` | 环境自检 (Python版本、模块导入、DB连接、插件部署) |
+| `hermes-evolution check` | 环境自检 (Python 版本、模块导入、DB 连接) |
 | `hermes-evolution setup` | 一键部署插件到 `~/.hermes/plugins/hermes-evolution/` |
-| `hermes-evolution status` | 查看系统状态 (版本、模块数、测试、DB文件) |
+| `hermes-evolution status` | 查看系统状态 (版本、模块数、测试、DB 文件) |
 | `hermes-evolution test` | 运行测试套件 |
 
-### 2.2 可选的 LLM 功能安装
+### 2.4 可选的 LLM 功能
 
-如果使用基于 LLM 的工具生成功能（如 `create_from_description`、`ToolAutoGenerator` 的 LLM 策略），需要额外安装：
+如需使用 `create_from_description` 等 LLM 驱动功能：
 
 ```bash
 pip install openai>=1.0.0
@@ -112,39 +108,23 @@ pip install openai>=1.0.0
 pip install anthropic
 ```
 
-### 2.3 插件部署 (hermes-evolution setup)
+### 2.5 插件部署
 
-将 Hermes Agent 插件部署到 Hermes Gateway:
+将 Hermes Agent 插件部署到 Hermes Gateway：
 
 ```bash
-# 方式1: CLI 一键部署
+# CLI 一键部署
 hermes-evolution setup
 
-# 方式2: Makefile
-make setup
-
-# 方式3: 手动
-cp -r hermes-plugin/ ~/.hermes/plugins/hermes-evolution/
-```
-
-部署后需重启 Hermes Gateway 使插件生效。
-
-```bash
-hermes gateway restart
-```
-
-验证插件部署:
-
-```bash
+# 验证插件
 hermes-evolution check
 # ✅ Hermes 插件已部署
 ```
 
-### 2.4 开发模式安装
+部署后重启 Hermes Gateway 使插件生效：
 
 ```bash
-pip install -e ".[dev]"
-# 包括: pytest, pytest-cov, black, flake8, mypy 等
+hermes gateway restart
 ```
 
 ---
@@ -158,249 +138,106 @@ git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3.git
 cd Hermes-Agent-EvolutionV3
 ```
 
-### 3.2 项目结构
-
-```
-hermes_agent_evolution/
-├── src/
-│   └── evolution/
-│       ├── __init__.py
-│       ├── self_monitor.py
-│       ├── tools/          # 工具能力层
-│       │   ├── __init__.py
-│       │   ├── tool_registry.py
-│       │   ├── tool_creator.py
-│       │   ├── enhanced_tool_creator.py
-│       │   ├── tool_performance_analyzer.py
-│       │   ├── tool_auto_generator.py
-│       │   └── tool_integration.py
-│       ├── learning/       # 学习能力层
-│       │   ├── __init__.py
-│       │   ├── experience.py
-│       │   ├── observer.py
-│       │   ├── analyzer.py
-│       │   ├── pattern_recognizer.py
-│       │   └── tool_strategy_learner.py
-│       └── memory/         # 记忆系统
-│           ├── __init__.py
-│           ├── database.py
-│           ├── association_discoverer.py
-│           ├── association_optimizer.py
-│           └── retrieval_optimizer.py
-├── data/                   # 数据库文件 (运行时创建)
-├── docs/                   # 文档
-├── tests/                  # 测试
-├── requirements.txt
-└── setup.py
-```
-
-### 3.3 安装依赖
+### 3.2 安装依赖
 
 ```bash
-pip install -r requirements.txt
+# 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate
+
+# 可编辑模式安装
+pip install -e .
+
+# 开发模式 (含测试/代码检查工具)
+pip install -e ".[dev]"
 ```
 
-**`requirements.txt` 内容示例**:
-
-```
-# 核心依赖
-aiohttp>=3.8.0
-
-# LLM 接口 (可选)
-# openai>=1.0.0
-# anthropic
-
-# 监控 (可选)
-# prometheus-client>=0.17.0
-
-# 开发依赖 (可选)
-# pytest>=7.0.0
-# pytest-cov>=4.0.0
-# black>=23.0.0
-# flake8>=6.0.0
-# mypy>=1.0.0
-```
-
-### 3.4 验证安装
+### 3.3 验证源码安装
 
 ```bash
-python -c "from src.evolution.tools import ToolRegistry; print('工具包导入成功')"
-python -c "from src.evolution.learning import LearningObserver; print('学习包导入成功')"
+# 环境自检
+hermes-evolution check
+
+# 运行测试
+hermes-evolution test
 ```
 
 ---
 
 ## 4. Docker 部署
 
-### 4.1 使用 Dockerfile
+### 4.1 Dockerfile
 
 ```dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip install hermes-agent-evolution
 
-# 复制项目文件
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN mkdir -p /root/.hermes/data/evolution
 
-COPY src/ ./src/
-COPY setup.py .
+ENV EVOLUTION_DATA_DIR=/root/.hermes/data/evolution
 
-# 创建数据目录
-RUN mkdir -p data
-
-# 设置环境变量
-ENV PYTHONPATH=/app/src
-
-# 默认命令
-CMD ["python", "-c", "from src.evolution.tools import ToolEvolutionEngine; print('HermesAgentEvolution 就绪')"]
+CMD ["hermes-evolution", "check"]
 ```
 
 ### 4.2 构建和运行
 
 ```bash
 # 构建镜像
-docker build -t hermes-agent-evolution .
+docker build -t hermes-agent-evolution:v3.0.6 .
 
 # 运行容器
 docker run -it --rm \
-  -v $(pwd)/data:/app/data \
-  -e OPENAI_API_KEY=your_key_here \
-  hermes-agent-evolution
+  -v hermes_data:/root/.hermes/data/evolution \
+  hermes-agent-evolution:v3.0.6
 ```
 
-### 4.3 Docker Compose (推荐)
+### 4.3 Docker Compose
 
 ```yaml
 version: '3.8'
 
 services:
   evolution:
-    build: .
+    image: hermes-agent-evolution:v3.0.6
     container_name: hermes-evolution
     volumes:
-      - ./data:/app/data
+      - evolution_data:/root/.hermes/data/evolution
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - LOG_LEVEL=INFO
+      - EVOLUTION_LOG_LEVEL=INFO
+      - EVOLUTION_DATA_DIR=/root/.hermes/data/evolution
     restart: unless-stopped
 
-  # 可选: Prometheus 监控
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: hermes-monitor
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    profiles:
-      - monitoring
+volumes:
+  evolution_data:
 ```
 
 ### 4.4 环境变量文件 (.env)
 
 ```bash
-# .env.example
-OPENAI_API_KEY=sk-your-key-here
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-LOG_LEVEL=INFO
-DB_PATH=data
+# .env
+EVOLUTION_LOG_LEVEL=INFO
+EVOLUTION_DATA_DIR=/root/.hermes/data/evolution
+EVOLUTION_SANDBOX_ENABLED=true
+EVOLUTION_AUDIT_ENABLED=true
 ```
 
 ---
 
-## 5. 配置指南
+## 5. 验证安装
 
-### 5.1 环境变量
-
-| 变量名 | 说明 | 必需 |
-|--------|------|------|
-| `OPENAI_API_KEY` | OpenAI API 密钥（用于 LLM 工具生成） | 仅 LLM 功能 |
-| `ANTHROPIC_API_KEY` | Anthropic API 密钥 | 仅 LLM 功能 |
-| `LOG_LEVEL` | 日志级别 (DEBUG/INFO/WARNING/ERROR) | 否 |
-
-### 5.2 EvolutionConfig 配置
-
-通过 `EvolutionConfig` 类定制进化引擎行为:
-
-```python
-from src.evolution.tools import EvolutionConfig, ToolEvolutionEngine
-
-config = EvolutionConfig(
-    auto_evolve=True,              # 是否自动进化
-    evolution_interval=3600,       # 进化检查间隔（秒）
-    min_performance_score=60.0,    # 触发优化的最低性能分
-    max_tool_age_days=30,          # 工具最大寿命（天）
-    enable_auto_registration=True, # 自动注册新工具
-    enable_performance_monitoring=True,  # 启用性能监控
-    enable_optimization=True,      # 启用优化
-    learning_integration_enabled=True,   # 集成学习系统
-)
-
-engine = ToolEvolutionEngine(config=config)
-```
-
-### 5.3 数据库路径配置
-
-```python
-# 使用文件数据库（持久化）
-registry = ToolRegistry(db_path="data/custom_tools.db")
-analyzer = ToolPerformanceAnalyzer(registry, db_path="data/custom_perf.db")
-
-# 使用内存数据库（测试用）
-memory_registry = ToolRegistry(db_path=":memory:")
-
-# 学习观察器（自动创建在 data/ 目录）
-from src.evolution.learning import LearningObserver
-observer = LearningObserver(db_path="data/custom_experiences.db")
-```
-
-### 5.4 模式识别器配置
-
-```python
-from src.evolution.learning import PatternRecognizer
-
-recognizer = PatternRecognizer(
-    min_support=5,          # 最小支持度（出现次数）
-    min_confidence=0.8      # 最小置信度
-)
-```
-
-### 5.5 策略学习器配置
-
-```python
-from src.evolution.learning import ToolStrategyLearner
-
-learner = ToolStrategyLearner()
-learner.exploration_rate = 0.15  # 探索-利用平衡的探索率
-learner.learning_rate = 0.05     # 策略更新学习率
-learner.min_samples = 5          # 切换策略前的最少样本数
-```
-
----
-
-## 6. 验证安装
-
-### 6.1 CLI 环境自检 (推荐)
+### 5.1 CLI 环境自检（推荐）
 
 ```bash
-# 快速自检
 hermes-evolution check
-
-# 或
-make check
 ```
 
-输出示例:
+输出示例：
 
 ```
-🔍 HermesAgentEvolution 环境自检
+🔍 HermesAgentEvolution 环境自检 (v3.0.6)
 ==================================================
   ✅ Python 3.12.3 ≥ 3.9
   ✅ 模块 工具注册表
@@ -409,296 +246,188 @@ make check
   ✅ 模块 安全审计
   ✅ 模块 协作编排
   ✅ 模块 闭环编排
+  ✅ 模块 自进化审计器
   ✅ 模块 自我监控
   ✅ 模块 DB工具
   ✅ DB 可读写
-  ✅ Hermes 插件已部署
   ✅ 数据目录: ~/.hermes/data/evolution
 ==================================================
   🎉 环境就绪，可以正常使用
 ```
 
-### 6.2 查看系统状态
+### 5.2 系统状态
 
 ```bash
 hermes-evolution status
 ```
 
-### 6.3 基础验证脚本
+输出示例：
+
+```
+版本: v3.0.6
+测试: 439 passed (24 测试文件)
+工具: 7 个
+数据库: 7 个 (tools / tool_performance / learning_experiences /
+         associations / retrieval_optimization / closed_loop / evolution_audit)
+代码: ~26561 行核心
+```
+
+### 5.3 Python 导入验证
 
 ```python
-"""
-verify_installation.py - 验证 HermesAgentEvolution 安装
-"""
-import sys
-import os
+# 核心模块导入
+from evolution.tools import ToolRegistry
+from evolution.learning import LearningObserver
+from evolution.memory import EvolutionDatabase
+from evolution.db_utils import get_evolution_db
 
-# 确保 src 在 Python 路径中
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# 验证 DB 连接
+print(f"DB 路径: {get_evolution_db('tools.db')}")
 
-def verify():
-    errors = []
-    
-    # 1. 测试工具包导入
-    try:
-        from evolution.tools import (
-            ToolDefinition, ToolRegistry, ToolCategory, ToolStatus,
-            ToolCreator, ToolCreationResult,
-            EnhancedToolCreator, CreationSource, ToolQuality,
-            ToolPerformanceAnalyzer, PerformanceMetric, PerformanceLevel,
-            ToolAutoGenerator, GenerationStrategy, ToolGenerationResult,
-            ToolEvolutionEngine, EvolutionConfig, EvolutionStatus,
-            ToolLearningIntegrator
-        )
-        print("✅ 工具包导入成功")
-    except ImportError as e:
-        errors.append(f"工具包导入失败: {e}")
-    
-    # 2. 测试学习包导入
-    try:
-        from evolution.learning import (
-            Experience, ExperienceType, Outcome,
-            LearningObserver,
-            ExperienceAnalyzer,
-            PatternRecognizer, RecognizedPattern, GeneratedStrategy,
-            ToolStrategyLearner, ToolStrategyType, ToolRecommendation
-        )
-        print("✅ 学习包导入成功")
-    except ImportError as e:
-        errors.append(f"学习包导入失败: {e}")
-    
-    # 3. 测试工具注册表功能
-    try:
-        registry = ToolRegistry(db_path=":memory:")
-        tool = ToolDefinition(
-            name="test_tool",
-            description="A test tool",
-            category=ToolCategory.UTILITY
-        )
-        assert registry.register(tool) == True
-        assert registry.get("test_tool") is not None
-        assert len(registry.list_all()) == 1
-        registry.update_usage_stats("test_tool", success=True)
-        stats = registry.get_statistics()
-        assert stats["total_tools"] == 1
-        assert stats["total_usage"] == 1
-        print("✅ 工具注册表功能正常")
-    except Exception as e:
-        errors.append(f"工具注册表测试失败: {e}")
-    
-    # 4. 测试经验数据类
-    try:
-        from evolution.learning import Experience, ExperienceType, Outcome
-        exp = Experience(
-            id="test-001",
-            experience_type=ExperienceType.TOOL_USAGE,
-            task_id="task-001",
-            outcome=Outcome.SUCCESS
-        )
-        exp.add_action("test_tool", {"arg": 1}, "result", 0.5)
-        exp.add_lesson_learned("Test lesson")
-        exp_dict = exp.to_dict()
-        assert exp_dict["experience_type"] == "tool_usage"
-        assert exp_dict["outcome"] == "success"
-        print("✅ 经验数据类功能正常")
-    except Exception as e:
-        errors.append(f"经验数据类测试失败: {e}")
-    
-    # 5. 测试工具策略学习器
-    try:
-        from evolution.learning import ToolStrategyLearner, ToolStrategyType
-        learner = ToolStrategyLearner()
-        learner.record_tool_usage("tool_a", True, 1.0)
-        learner.record_tool_usage("tool_b", False, 3.0)
-        recommendations = learner.recommend_tool(
-            "test task", ["tool_a", "tool_b"]
-        )
-        assert len(recommendations) == 2
-        # tool_a 应该排在前面（成功率更高）
-        assert recommendations[0].tool_name == "tool_a"
-        print("✅ 工具策略学习器功能正常")
-    except Exception as e:
-        errors.append(f"工具策略学习器测试失败: {e}")
-    
-    # 6. 测试进化引擎
-    try:
-        engine = ToolEvolutionEngine()
-        state = engine.analyze_current_state()
-        assert "total_tools" in state
-        assert "performance_summaries" in state
-        print("✅ 进化引擎初始化正常")
-    except Exception as e:
-        errors.append(f"进化引擎测试失败: {e}")
-    
-    # 总结
-    print("\n" + "=" * 40)
-    if errors:
-        print(f"❌ 验证完成，发现 {len(errors)} 个问题:")
-        for err in errors:
-            print(f"  - {err}")
-        return False
-    else:
-        print("✅✅✅ 所有验证通过！HermesAgentEvolution 安装正确。")
-        return True
-
-if __name__ == "__main__":
-    verify()
+# 初始化
+registry = ToolRegistry()
+observer = LearningObserver()
+print("✅ 所有核心模块导入成功")
 ```
 
-运行验证:
-```bash
-python verify_installation.py
+---
+
+## 6. 项目结构
+
+```
+hermes_agent_evolution/
+├── src/
+│   └── evolution/
+│       ├── __init__.py
+│       ├── cli.py                  # CLI 入口 (check/setup/status/test)
+│       ├── db_utils.py             # 数据库路径解析 + WAL 连接工厂
+│       ├── self_monitor.py         # 自我监控
+│       ├── logging_config.py       # 统一日志框架
+│       ├── tools/                  # 工具能力层 (7 模块)
+│       │   ├── __init__.py
+│       │   ├── tool_registry.py    # 工具注册表
+│       │   ├── tool_creator.py     # 工具创建器
+│       │   ├── enhanced_tool_creator.py  # 增强创建器 (6 种方式)
+│       │   ├── tool_performance_analyzer.py  # 性能分析器
+│       │   ├── tool_auto_generator.py       # 工具自动生成
+│       │   └── tool_integration.py          # 工具学习集成
+│       ├── learning/               # 学习能力层 (5 模块)
+│       │   ├── __init__.py
+│       │   ├── experience.py       # 经验数据类
+│       │   ├── observer.py         # 学习观察器
+│       │   ├── analyzer.py         # 经验分析器
+│       │   ├── pattern_recognizer.py  # 模式识别器
+│       │   └── tool_strategy_learner.py  # 工具策略学习器 (SQLite 持久化)
+│       ├── memory/                 # 记忆系统 (4 模块)
+│       │   ├── __init__.py
+│       │   ├── database.py         # 进化数据库
+│       │   ├── association_discoverer.py  # 关联发现
+│       │   ├── association_optimizer.py   # 关联优化
+│       │   └── retrieval_optimizer.py     # 检索优化
+│       ├── security/               # 安全层 (4 模块)
+│       │   ├── __init__.py
+│       │   ├── audit_logger.py     # 审计日志
+│       │   ├── permission_manager.py  # 权限管理
+│       │   ├── sandbox_executor.py    # 沙箱执行
+│       │   └── threat_detector.py     # 威胁检测
+│       ├── collaboration/          # 协作层 (4 模块)
+│       │   ├── __init__.py
+│       │   ├── agent_orchestrator.py  # 代理编排
+│       │   ├── agent_registry.py      # 代理注册
+│       │   ├── message_bus.py         # 消息总线
+│       │   └── task_dispatcher.py     # 任务分发
+│       ├── closed_loop/            # 闭环控制 (5 模块)
+│       │   ├── __init__.py
+│       │   ├── orchestrator.py     # 进化编排器
+│       │   ├── action_executor.py  # 动作执行器
+│       │   ├── daemon.py           # 守护进程
+│       │   ├── metrics_collector.py  # 指标收集器
+│       │   └── evolution_auditor.py  # 自进化审计器 (v3.0.6 新增)
+│       └── fusion/                 # V1↔V2 融合桥 (3 模块)
+│           ├── __init__.py
+│           ├── bridge.py
+│           ├── compatibility.py
+│           └── unified_entry.py
+├── hermes-plugin/                  # Hermes 插件 (7 工具)
+│   ├── plugin.yaml
+│   └── __init__.py
+├── tests/                          # 24 测试文件 (439 passed)
+├── docs/                           # 文档
+├── pyproject.toml
+└── README.md
 ```
 
-### 6.4 运行测试套件
+### 数据目录
 
-```bash
-# 运行所有测试
-pytest tests/
+运行时数据存储在 `~/.hermes/data/evolution/`：
 
-# 带覆盖率报告
-pytest tests/ --cov=src/evolution --cov-report=html
-
-# 运行特定模块测试
-pytest tests/test_tools.py -v
-pytest tests/test_learning.py -v
+```
+~/.hermes/data/evolution/
+├── tools.db                     # 工具注册表
+├── tool_performance.db          # 工具性能统计
+├── learning_experiences.db      # 学习经验记录
+├── associations.db              # 记忆关联数据
+├── retrieval_optimization.db    # 检索优化配置
+├── closed_loop.db               # 闭环控制状态
+└── evolution_audit.db           # 自进化审计 (v3.0.6 新增)
 ```
 
 ---
 
 ## 7. 常见问题
 
-### Q1: 导入失败，提示 `ModuleNotFoundError: No module named 'evolution'`
-
-**解决方法**: 确保 `src` 目录在 Python 路径中：
+### Q: 安装失败 "externally-managed-environment"？
 
 ```bash
-# 方式1: 设置 PYTHONPATH
-export PYTHONPATH=/path/to/hermes_agent_evolution/src:$PYTHONPATH
-
-# 方式2: 在脚本开头添加
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+pip install --break-system-packages hermes-agent-evolution
 ```
 
-### Q2: LLM 功能（工具生成）不可用
+或使用虚拟环境 (推荐)。
 
-**原因**: 未安装 `openai` 或 `anthropic` 包，或未设置 API 密钥。
+### Q: CLI 命令找不到？
 
-**解决方法**:
+确认 pip 安装路径在 PATH 中：
+
 ```bash
-pip install openai>=1.0.0
-export OPENAI_API_KEY=sk-your-key-here
+# 查找安装位置
+pip show hermes-agent-evolution | grep Location
+
+# 或直接调用
+python -m evolution.cli check
 ```
 
-系统会自动检测并降级：LLM 策略不可用时，回退到模板策略。
-
-### Q3: 数据库文件位置
-
-默认数据库文件创建在 `~/.hermes/data/evolution/` 目录下：
-
-| 数据库文件 | 用途 |
-|-----------|------|
-| `tools.db` | 工具注册表 |
-| `tool_performance.db` | 工具性能记录 |
-| `learning_experiences.db` | 学习经验 |
-| `associations.db` | 记忆关联 |
-
-**路径优先级**:
-1. 环境变量 `EVOLUTION_DATA_DIR`（优先级最高）
-2. 环境变量 `HERMES_HOME` → `$HERMES_HOME/data/evolution/`
-3. 默认 `~/.hermes/data/evolution/`
-
-可通过构造函数参数自定义路径。
-
-### Q4: 如何开启日志
-
-v3.0.0 使用 Python 标准 `logging` 模块统一日志输出:
+### Q: DB 权限错误？
 
 ```bash
-# 设置日志级别
-export LOG_LEVEL=DEBUG  # DEBUG / INFO / WARNING / ERROR
+# 检查数据目录权限
+ls -la ~/.hermes/data/evolution/
 
-# 查看日志
+# 使用临时目录
+export EVOLUTION_DATA_DIR=/tmp/hermes-evo-data
 hermes-evolution check
-# [DEBUG] evolution.db_utils: 创建数据库连接: ~/.hermes/data/evolution/tools.db (WAL模式)
 ```
 
-在代码中:
-
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.info("进化引擎启动")
-```
-
-### Q5: SQLite 并发写入问题
-
-SQLite 启用 WAL 模式后支持并发读取且写入不阻塞读取。`db_utils.get_evolution_db()` 自动配置:
-
-- `PRAGMA journal_mode=WAL` — 并发读写
-- `PRAGMA busy_timeout=30000` — 30秒忙等重试
-- `PRAGMA cache_size=-8000` — 8MB缓存
-
-如果在高并发场景下仍有瓶颈，考虑迁移到 PostgreSQL。
-
-### Q6: 内存数据库的使用场景
-
-```python
-# 测试环境 — 每次运行都是全新的数据库
-registry = ToolRegistry(db_path=":memory:")
-
-# 生产环境 — 持久化到文件
-registry = ToolRegistry(db_path="data/production_tools.db")
-```
-
-### Q7: 如何启用/禁用学习系统集成
-
-学习系统默认启用。如果不需要，在创建进化引擎时关闭：
-
-```python
-config = EvolutionConfig(learning_integration_enabled=False)
-engine = ToolEvolutionEngine(config=config)
-```
-
-缺省学习模块时，系统会自动检测并打印提示。
-
-### Q8: Makefile 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `make install` | 安装开发依赖 (可编辑模式) |
-| `make test` | 运行全量测试 (快速模式) |
-| `make test-v` | 运行全量测试 (详细模式) |
-| `make test-cov` | 运行测试 + 覆盖率报告 |
-| `make lint` | 代码检查 (ruff) |
-| `make format` | 代码格式化 (ruff) |
-| `make fix` | 自动修复 lint 问题 |
-| `make check` | 环境自检 |
-| `make build` | 构建 PyPI 包 |
-| `make clean` | 清理构建产物 |
-
-### Q9: hermes-evolution CLI 报 command not found
-
-**原因**: 未安装或虚拟环境未激活。
-
-**解决方法**:
+### Q: 如何卸载？
 
 ```bash
-# 激活虚拟环境后重新安装
-source .venv/bin/activate
-pip install -e .
+pip uninstall hermes-agent-evolution
+rm -rf ~/.hermes/data/evolution   # 删除数据（可选）
+rm -rf ~/.hermes/plugins/hermes-evolution  # 删除插件（可选）
+```
 
-# 或直接使用 Makefile
-make check
+### Q: 如何升级？
+
+```bash
+pip install --upgrade hermes-agent-evolution
+hermes-evolution check     # 验证升级
 ```
 
 ---
 
-## 附录
+## 下一步
 
-- **架构概述**: [ARCHITECTURE.md](ARCHITECTURE.md)
-- **API 参考**: [API_REFERENCE.md](API_REFERENCE.md)
-- **移植指南**: [PORTING.md](PORTING.md)
-- **V2 详细设计**: [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md)
+- 📖 [快速上手指南](QUICKSTART.md) — 5 分钟开始使用
+- 🏗️ [架构概述](ARCHITECTURE.md) — V3 融合架构详解
+- ⚙️ [配置说明](CONFIGURATION.md) — 环境变量与调优
+- 📋 [日志指南](LOGGING.md) — 统一日志框架
+- 🧪 [测试指南](TESTING.md) — 24 文件 439 测试

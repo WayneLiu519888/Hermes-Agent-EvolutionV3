@@ -1,21 +1,22 @@
 # 发版检查清单
 
 > 每次发布前逐项验证，确保质量。
+> 当前版本: v3.0.6
 
 ---
 
 ## 代码质量
 
-- [ ] 测试全部通过：`hermes-evolution test` → `422 passed`
+- [ ] 测试全部通过：`hermes-evolution test` → `439 passed`
 - [ ] `ruff check src/ tests/` 零错误
 - [ ] 所有 `print()` 已替换为 `logger`（或确认有意保留）
 - [ ] 无硬编码绝对路径
 - [ ] `EVOLUTION_DATA_DIR` 环境变量可覆盖 DB 路径
-- [ ] `enhanced_tool_creator.py` 无未完成的 TODO（L313/L695/L805）
+- [ ] `enhanced_tool_creator.py` 无未完成的 TODO
 
 ---
 
-## 版本一致性
+## 版本一致性 (10 文件同步)
 
 | 文件 | 版本字段 | 检查 |
 |------|----------|:--:|
@@ -23,10 +24,12 @@
 | `setup.py` | `version="x.y.z"` | |
 | `hermes-plugin/plugin.yaml` | `version: "x.y.z"` | |
 | `README.md` | badges 版本号 + 测试数 | |
+| `CHANGELOG.md` | 新增版本条目 | |
 | `docs/INSTALLATION.md` | 版本号 | |
 | `docs/ARCHITECTURE.md` | 版本号 | |
+| `docs/CONFIGURATION.md` | 版本号 | |
+| `docs/QUICKSTART.md` | 版本号 | |
 | `src/evolution/cli.py` | 硬编码版本号 | |
-| `CHANGELOG.md` | 新增版本条目 | |
 
 ---
 
@@ -44,7 +47,7 @@
 
 - [ ] `hermes-evolution setup` 成功
 - [ ] `~/.hermes/plugins/hermes-evolution/plugin.yaml` 存在
-- [ ] Hermes 重启后 `hermes tools list | grep evolution` 显示 6 个工具
+- [ ] Hermes 重启后 `hermes tools list | grep evolution` 显示 7 个工具
 - [ ] 每个工具调用成功（在 Hermes 会话中测试）
 
 ---
@@ -52,12 +55,14 @@
 ## 文档
 
 - [ ] README.md — 5秒安装、V3架构图、项目状态表、badge 最新
-- [ ] docs/INSTALLATION.md — pip + 插件 + Docker 三路径
+- [ ] docs/INSTALLATION.md — pip + 源码 + Docker 三路径，v3.0.6
 - [ ] docs/ARCHITECTURE.md — V3 融合架构图 + fusion 桥说明
-- [ ] docs/QUICKSTART.md — 5分钟上手
-- [ ] docs/LOGGING.md — 日志使用指南
-- [ ] docs/CONFIGURATION.md — 配置参数表
-- [ ] docs/API_REFERENCE.md — 30 模块全覆盖
+- [ ] docs/QUICKSTART.md — 5分钟上手，正确 API 示例
+- [ ] docs/LOGGING.md — 日志使用指南，services 路径说明
+- [ ] docs/CONFIGURATION.md — 配置参数表，7个DB
+- [ ] docs/TESTING.md — 24文件 439 passed
+- [ ] docs/RELEASE_CHECKLIST.md — 发版检查清单
+- [ ] docs/PORTING.md — 移植指南
 - [ ] CHANGELOG.md — 完整变更日志
 - [ ] CONTRIBUTING.md — 开发规范
 
@@ -81,6 +86,7 @@
 - [ ] 学习循环：`evolution_learn` + `evolution_run_cycle` 无异常
 - [ ] 记忆关联：`evolution_memory_discover` 返回结果
 - [ ] 自我监控：`evolution_self_monitor` 返回健康分数
+- [ ] 进化审计：`evolution_audit` 查询进化历史 (v3.0.6)
 
 ---
 
@@ -98,8 +104,10 @@
 # 1. 最终检查
 make check-all
 
-# 2. 更新版本号（6个文件）
-#    pyproject.toml / setup.py / plugin.yaml / README / docs/INSTALLATION / docs/ARCHITECTURE
+# 2. 更新版本号（10 个文件）
+#    pyproject.toml / setup.py / plugin.yaml / README / CHANGELOG
+#    docs/INSTALLATION / docs/ARCHITECTURE / docs/CONFIGURATION
+#    docs/QUICKSTART / src/evolution/cli.py
 
 # 3. 更新 CHANGELOG
 vim CHANGELOG.md

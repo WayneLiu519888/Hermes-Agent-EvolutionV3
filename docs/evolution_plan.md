@@ -1,290 +1,170 @@
+# 🔄 HermesAgentEvolution 迭代演进计划
 
-# 🔄 HermesAgentEvolution 五维进化迭代计划
-
-## 📊 当前进展分析
-
-### **维度1: 记忆系统进化** ⭐⭐⭐⭐⭐
-**状态:** 优秀（基础完善，需要优化）
-**已完成:** 向量化检索、语义关联、智能压缩、分层存储
-**下一步:** 检索策略自优化、关联发现自动化、压缩自适应
-
-### **维度2: 学习能力进化** ⭐⭐☆☆☆
-**状态:** 刚刚起步（架构完成，需要实现）
-**已完成:** 架构设计
-**进行中:** 观察模块、分析算法、存储系统
-**下一步:** 完成核心模块，建立学习闭环
-
-### **维度3: 工具能力进化** ⭐⭐⭐⭐☆
-**状态:** 良好（基础功能完善）
-**已完成:** 工具发现、技能组合
-**待开发:** 工具创建、策略学习
-**下一步:** 实现工具创建能力，开始策略学习
-
-### **维度4: 协作能力进化** ⭐☆☆☆☆
-**状态:** 规划阶段（需要基础架构）
-**待开发:** 通信协议、任务分配、结果整合
-**下一步:** 设计基础协议，实现简单协作
-
-### **维度5: 安全体系进化** ⭐⭐⭐☆☆
-**状态:** 基础完成（需要增强）
-**已完成:** 基础安全监控
-**待增强:** 风险监控、行为审计、紧急停止
-**下一步:** 增强风险监控，实现紧急停止
-
-## 🗺️ 迭代开发计划 (5周)
-
-### **迭代1: 本周 - 巩固基础**
-1. ✅ **记忆系统检索策略自优化**
-   - 实现基于使用模式的检索参数自动调整
-   - 创建检索优化器模块
-   - 集成到记忆进化系统
-
-2. ✅ **学习能力观察模块实现**
-   - 建立经验数据收集框架
-   - 实现工具使用、推理过程记录
-   - 创建经验数据库存储
-
-3. ✅ **工具能力创建框架建立**
-   - 构建工具注册表系统
-   - 实现从函数/代码创建工具
-   - 建立工具包装器机制
-
-### **迭代2: 下周 - 能力增强**
-1. **记忆系统关联发现自动化**
-   - 实现关联模式自动识别
-   - 建立关联关系数据库
-   - 优化关联检索效率
-
-2. **学习能力分析算法实现**
-   - 开发模式识别算法
-   - 实现经验聚类分析
-   - 建立策略生成框架
-
-3. **工具能力策略学习开始**
-   - 实现工具选择优化
-   - 建立参数调优机制
-   - 开始组合创新探索
-
-### **迭代3: 第三周 - 系统集成**
-1. **记忆系统压缩自适应**
-   - 实现动态压缩策略
-   - 优化存储空间使用
-   - 平衡压缩率与检索速度
-
-2. **学习能力存储系统完善**
-   - 完善经验存储架构
-   - 实现快速检索机制
-   - 建立知识迁移框架
-
-3. **工具能力组合优化**
-   - 实现工具组合评估
-   - 建立组合优化算法
-   - 开发组合创新机制
-
-### **迭代4: 第四周 - 高级功能**
-1. **推理能力基础框架**
-   - 建立推理策略库
-   - 实现启发式规则学习
-   - 开始元推理能力开发
-
-2. **安全体系风险监控增强**
-   - 完善威胁识别系统
-   - 实现行为异常检测
-   - 建立紧急停止机制
-
-3. **协作能力协议设计**
-   - 设计多智能体通信协议
-   - 建立任务分配基础
-   - 规划冲突解决框架
-
-### **迭代5: 第五周 - 优化完善**
-1. **各维度性能优化**
-   - 系统性能调优
-   - 资源使用优化
-   - 响应时间优化
-
-2. **系统集成测试**
-   - 端到端功能测试
-   - 性能压力测试
-   - 稳定性验证测试
-
-3. **文档和示例完善**
-   - 完整API文档
-   - 使用示例创建
-   - 最佳实践指南
-
-### **迭代6: 第六周 - Hermes 集成部署** 🔌
-> **目标**: 将进化引擎打包为 pip 包 + Hermes 插件，实现一键安装到 Hermes Agent 中
-
-#### 6.1 Python 包化 ✅
-1. ✅ **完善 `pyproject.toml` / `setup.py`**
-   - ✅ 声明包名 `hermes-agent-evolution`，版本 `2.0.0`
-   - ✅ 定义依赖：核心零外部依赖，`[llm]` 可选组（openai/anthropic）
-   - ✅ 配置 `packages.find(where="src")` 自动发现
-   - ✅ 添加 classifiers、project.urls（GitHub/docs）
-
-2. ✅ **版本管理与发布**
-   - ✅ 遵循语义化版本 `MAJOR.MINOR.PATCH`
-   - ✅ 配置 `pip install -e .[dev]` 开发模式
-   - ✅ 发布到 PyPI（可选）/ 私有索引
-
-#### 6.2 Hermes Plugin 薄层 ✅
-1. ✅ **创建插件骨架**
-   ```
-   hermes-plugin/
-   ├── plugin.yaml          # name: hermes-evolution, version: 2.0.0
-   └── __init__.py          # register(ctx) 入口
-   ```
-
-2. ✅ **`register(ctx)` 实现**
-   - ✅ `ctx.register_tool("evolution_run_cycle", ...)` — 进化周期
-   - ✅ `ctx.register_tool("evolution_create_tool", ...)` — 工具创建
-   - ✅ `ctx.register_tool("evolution_analyze_performance", ...)` — 性能分析
-   - ✅ `ctx.register_tool("evolution_learn", ...)` — 经验记录/分析
-   - ✅ `ctx.register_tool("evolution_self_monitor", ...)` — 自我监控
-   - ✅ `ctx.register_tool("evolution_memory_discover", ...)` — 关联发现
-   - ✅ `ctx.register_hook("post_tool_call", on_tool_call)` — 自动记录每次工具执行经验
-
-3. ✅ **配置集成**
-   - ✅ 读取 `config/evolution_config.yaml` 作为 EvolutionConfig
-   - ✅ 支持环境变量覆盖（`EVOLUTION_INTERVAL`、`EVOLUTION_MIN_SCORE` 等）
-   - ✅ 数据库路径默认 `~/.hermes/data/evolution/`
-
-#### 6.2.1 架构决策：守护进程方案 ✅
-
-> **决策时间:** 2026-04-29 | **决策者:** 用户确认
-
-| 方案 | 描述 | 结论 |
-|------|------|------|
-| **A (采用)** | 守护进程独立运行，插件仅暴露工具 | ✅ 已采用 |
-| B (放弃) | 守护进程融入 Hermes 生命周期（通过 register(ctx) 启动） | ❌ |
-
-**方案A 架构:**
-
-```
-┌─────────────────────────┐     ┌─────────────────────────────┐
-│  hermes_daemon.py        │     │  hermes-plugin/__init__.py  │
-│  (独立守护进程)           │     │  (Hermes 插件薄层)           │
-│                          │     │                             │
-│  • 自有 CLI (argparse)    │     │  • register(ctx) 仅注册      │
-│  • 信号处理 (SIGINT/TERM) │     │    6 tools + 1 hook        │
-│  • 生命周期: start/stop   │     │  • 惰性初始化引擎实例         │
-│  • 持续进化闭环            │     │  • 按需响应 Hermes 调用      │
-│  • 飞书通知回调            │     │                             │
-└───────────┬─────────────┘     └──────────────┬──────────────┘
-            │                                  │
-            │     共享 SQLite 数据库             │
-            └──────────────┬───────────────────┘
-                           ▼
-              ~/.hermes/data/evolution/
-              experiences.db / tools.db / performance.db ...
-```
-
-**关键设计原则:**
-- 守护进程与 Hermes Agent **松耦合**，可独立部署运行
-- 守护进程崩溃不影响 Hermes 内工具可用性（插件可独立创建引擎实例）
-- 插件不持有长生命周期引用，纯函数式薄层
-- 两者共享同一套 SQLite 数据库实现状态持久化
-
-#### 6.3 安装流程 ✅
-| 步骤 | 命令 | 说明 |
-|------|------|------|
-| 1 | `pip install hermes-agent-evolution` | 安装进化引擎 |
-| 2 | `cp -r hermes-plugin ~/.hermes/plugins/hermes-evolution/` | 部署插件 |
-| 3 | `hermes gateway restart` | 重启 Hermes |
-| 4 | `/tools` → 确认 `evolution_*` 工具可见 | 验证 |
-
-#### 6.4 集成测试 ✅
-1. ✅ **插件加载测试** — Hermes 启动后工具发现正常
-2. ✅ **工具调用测试** — LLM 能正确调用进化工具
-3. ✅ **Hook 触发测试** — `post_tool_call` 自动记录经验
-4. ✅ **多 session 持久化测试** — 进化状态跨 session 保持
-5. ✅ **降级测试** — 学习模块不可用时工具层仍正常工作
-
-#### 6.5 文档补充 ✅
-1. ✅ **`INSTALLATION.md`** — 新增 §8 "Hermes集成安装"
-2. ✅ **`README.md`** — 新增 "Hermes 集成" 章节
-3. ✅ **`docs/HERMES_INTEGRATION.md`** — 独立集成指南（架构图+步骤+FAQ）
-
-#### 6.6 交付物 ✅
-- ✅ `pyproject.toml` — 标准化 Python 包
-- ✅ `hermes_daemon.py` — 独立守护进程入口（546行，方案A）
-- ✅ `hermes-plugin/` — Hermes 插件薄层（755行，6 tools + 1 hook）
-- ✅ `docs/HERMES_INTEGRATION.md` — 集成指南
-- ✅ `docs/evolution_plan.md §6.2.1` — 架构决策记录（方案A vs 方案B）
-- ✅ 集成测试套件（5+ 测试用例）
-- ✅ `pip install` + 插件部署一键可用的验证流程
-
-## 🔄 执行策略
-
-### **每日工作流程:**
-- **上午:** 开发新功能，编写测试
-- **下午:** 代码审查，集成测试  
-- **晚上:** 性能评估，文档更新
-
-### **质量保证:**
-- **测试驱动:** 每个功能先写测试
-- **代码审查:** 所有代码必须经过审查
-- **性能监控:** 实时监控各维度性能
-- **文档同步:** 代码变更即更新文档
-
-### **进度跟踪:**
-- **每日站会:** 进度同步，问题解决
-- **每周评审:** 迭代成果评估
-- **每月总结:** 架构优化调整
-
-## 🎯 成功标准
-
-### **技术指标:**
-1. **记忆系统:** 检索准确率提升 > 20%
-2. **学习能力:** 经验积累速度提升 > 30%
-3. **工具能力:** 任务完成时间减少 > 15%
-4. **推理能力:** 问题解决率提升 > 25%
-5. **协作能力:** 多任务处理效率提升 > 40%
-
-### **用户体验:**
-1. **响应时间:** 平均响应时间 < 2秒
-2. **准确性:** 任务完成准确率 > 90%
-3. **稳定性:** 系统可用性 > 99.5%
-4. **可观察性:** 进化进度实时可见
+> **版本**: v3.0.6 | **总提交**: 75 | **测试**: 439 passed | **时间跨度**: 2026-05-06 → 2026-05-09 (4 天)
 
 ---
 
-**计划制定时间:** 2026-04-21 04:49:38  
-**最后更新:** 2026-05-09 (迭代10完成 — 自进化审计器)  
-**项目版本:** 3.0.6  \\n**预计完成时间:** 6周后  \\n**当前状态:** 迭代10完成 ✅
+## 迭代总览
+
+```
+v3.0.0 (5/6)   ████████ 单仓库融合架构 + 工程基建
+v3.0.1 (5/7)   ▏ PyPI 发布 + 微小修订
+v3.0.2 (5/7)   ████ 插件嵌入 + 导入修复
+v3.0.3 (5/7-8) ███ 版本统一 + 文档收尾 (422 passed)
+v3.0.4 (5/8-9) ██████████ 迭代7+8: API守卫 + P0修复 (428 passed)
+v3.0.5 (5/9)   ████ 迭代9: ToolStrategyLearner持久化
+v3.0.6 (5/9)   ██████ 迭代10: EvolutionAuditor + 文档重构 (439 passed)
+```
 
 ---
 
-## 📋 迭代7-10: 持续进化 (2026-05-07 ~ 2026-05-09)
+## 迭代 1-5: V1 基础能力建设 ✅
 
-### **迭代7: 插件部署健壮性** ✅ (2026-05-07)
-- ✅ `register_tool()` API 三副本同步（hermes-plugin / _plugin / ~/.hermes/plugins）
-- ✅ handler 签名统一 `(params, **kwargs)` 匹配 Hermes dispatch
-- ✅ CI 防回归：`test_plugin_copies_identical()` + `test_register_tool_uses_toolset_keyword()`
-- ✅ MockCtx API 漂移修复（`register_tool` 缺 `toolset` 参数）
-- ✅ setup 部署后 hash 比对验证
+### 迭代 1: 工具注册与管理
+- **目标**: 建立可扩展的工具注册中心
+- **成果**: `ToolRegistry` (525 行) + `ToolCreator` (444 行) + `ToolDefinition` 数据模型
+- **测试**: `test_tool_registry.py`, `test_tool_creator.py`
 
-### **迭代8: 插件部署审计修复** ✅ (2026-05-09)
-- ✅ **P0**: 健康评分从 0→~55/100（days=1→7 + DB回退 + 绕过SelfMonitor直接计算）
-- ✅ **P1**: associations.db 膨胀 1.3GB→22文件（清理826个测试残留）
-- ✅ **P1**: `from src.xxx` 导入错误 → 修复10处
-- ✅ **P2**: `~/.hermes/plugins/data/` 数据库残留识别
-- ✅ 428测试全绿，CHANGELOG v3.0.4
+### 迭代 2: 工具进化引擎
+- **目标**: 自动分析、优化、生成工具
+- **成果**: `EnhancedToolCreator` (938 行, 6 种创建源) + `ToolPerformanceAnalyzer` (795 行) + `ToolAutoGenerator` (741 行)
+- **测试**: `test_enhanced_tool_creator.py`, `test_tool_performance.py`
 
-### **迭代9: ToolStrategyLearner 持久化** ✅ (2026-05-09)
-- ✅ SQLite 持久化 `tool_usage_history` 表（最近7天工具调用记录）
-- ✅ 启动时 `_load_from_db()` 重建内存状态，解决网关重启丢失
-- ✅ `post_tool_call` hook 驱动双向记录（策略学习 + 性能分析）
-- ✅ `_count_tools_from_db()` 统一使用 `get_evolution_db()` 连接管理
-- ✅ CHANGELOG v3.0.5
+### 迭代 3: 学习与记忆系统
+- **目标**: 经验记录、模式识别、关联发现
+- **成果**: `Experience` 数据模型 + `LearningObserver` (473 行) + `ExperienceAnalyzer` (273 行) + `PatternRecognizer` (606 行) + `AssociationDatabase` (420 行) + `AssociationDiscoverer` (813 行)
+- **测试**: `test_observer.py`, `test_pattern_recognizer.py`, `test_association_discovery.py`
 
-### **迭代10: 自进化审计器** ✅ (2026-05-09)
-- ✅ **EvolutionAuditor** 模块（`closed_loop/evolution_auditor.py`, ~450行）
-- ✅ `evolution_cycles` 表: 记录每次进化的完整元数据（6阶段状态、健康分变化、问题/动作/改进计数）
-- ✅ `evolution_actions` 表: 记录每个进化动作的详情（类型/目标/变更状态）
-- ✅ `record_cycle()` / `query_cycles()` / `get_cycle_detail()` / `get_summary()`
-- ✅ orchestrator 自动记录审计数据（失败不影响主流程）
-- ✅ `_handle_self_monitor(include_history=True)` 返回 `audit_summary`
-- ✅ 测试: `test_evolution_auditor.py` (298行)
-- ✅ CHANGELOG v3.0.6
+### 迭代 4: 安全增强 + 记忆优化
+- **目标**: 安全沙箱、威胁检测、记忆检索优化
+- **成果**: `SandboxExecutor` (505 行) + `ThreatDetector` (580 行) + `AuditLogger` (653 行) + `PermissionManager` (436 行) + `RetrievalOptimizer` (537 行)
+- **测试**: `test_security.py`, `test_retrieval_optimizer.py`
+
+### 迭代 5: 工程化基建 + 全面重构 (v3.0.0)
+- **目标**: 单仓库融合、WAL 迁移、日志统一、CI/CD、文档
+- **6 个核心提交**: 架构融合 → DB 路径修复 → print→logger → Makefile/CLI → CI + 文档刷新
+- **成果**: V1+V2 融合到 `src/`、`db_utils.py` WAL 管理、`logging_config.py`、`cli.py` (4 子命令)、`.github/workflows/ci.yml` (Python 3.9-3.13)
+- **测试**: 从 374 → 406 → 422 passed
+
+---
+
+## 迭代 6: Hermes Agent 集成 ✅
+
+### 目标
+将进化引擎嵌入 Hermes Agent 生态系统
+
+### 成果 (v3.0.1 → v3.0.2, 5 提交)
+- **守护进程**: `hermes_daemon.py` (561 行) — 持续进化主循环
+- **插件系统**: `hermes-plugin/__init__.py` (755 行) — 6 工具 + 1 Hook
+- **飞书通知**: `FeishuNotifier` (342 行, 3 种模式) + `ProgressReporter` (269 行, 每 2 小时)
+- **PyPI 发布**: `pip install hermes-agent-evolution` 一键安装
+- **插件嵌入**: `src/evolution/_plugin/` 打入 wheel 包，`setup()` 自动 enable
+
+### 测试
+`test_iteration6_integration.py` (27 用例)
+
+---
+
+## 迭代 7: API 同步守卫 ✅
+
+### 目标
+解决 Hermes Agent 升级后插件 API 三副本漂移问题
+
+### 成果 (v3.0.4 前期, 3 提交)
+- **依赖自愈**: `dependency_manager.py` (109 行) — pipx/pip/venv 环境检测 + 自动修复
+- **四重防线**: 
+  1. `_plugin/` 同步为 `hermes-plugin/` 副本
+  2. CI MD5 一致性断言
+  3. CI `register_tool` 签名含 `toolset=` 校验
+  4. `setup` 部署后 hash 比对
+- **CLI 增强**: `hermes-evolution check --fix` 自愈模式
+
+### 测试
+`test_ci_guards.py` (4 项断言)
+
+---
+
+## 迭代 8: P0 修复 + 数据治理 ✅
+
+### 目标
+修复插件部署审计发现的 6 项 bug，清理数据膨胀
+
+### 成果 (v3.0.4 后期, 9 提交)
+**P0 修复 (3 项)**:
+- 健康评分 0→68/100：`days=1→7`，`_count_tools_from_db()` 回退
+- `evolution_create_tool` 传参不匹配（多余 description/tags）
+- `evolution_run_cycle` feedback 阶段导入路径修复
+
+**P1 修复 (3 项)**:
+- 数据库路径统一 (`~/.hermes/plugins/data/` → `~/.hermes/data/evolution/`)
+- 移除 sys.path hack
+- handler 签名 `(ctx,params)` → `(params,**kwargs)` 匹配 Hermes dispatch
+
+**数据治理**:
+- 删除 826 个测试残留 db 文件，回收 ~1.3GB
+- associations.db WAL checkpoint，回收 3.9GB
+- `MAX_ASSOCIATIONS=100000` 上限 + 自动清理
+
+### 测试
+`test_closed_loop.py` (58 用例)，428/428 全通过
+
+---
+
+## 迭代 9: ToolStrategyLearner 持久化 ✅
+
+### 目标
+消除网关重启后策略学习器数据丢失
+
+### 成果 (v3.0.5, 1 提交, 13 文件 +447/-20)
+- **`tool_usage_history` 表**: `_init_db()` 自动建表，`_load_from_db()` 启动时加载 7 天历史
+- **双向记录**: `post_tool_call` hook → `strategy_learner.record_tool_usage()` + `analyzer.record_performance()`
+- **`_count_tools_from_db`**: 裸连接 → `get_evolution_db()` 统一管理
+- **版本号同步**: 9 文件 v3.0.4 → v3.0.5
+
+### 测试
+`test_tool_strategy_persistence.py` (新增)
+
+---
+
+## 迭代 10: 自进化审计器 ✅
+
+### 目标
+持久化完整进化循环历史，支持趋势分析和审计查询
+
+### 成果 (v3.0.6, 4 提交, 15 文件 +1085)
+- **`EvolutionAuditor`** (446 行): `evolution_cycles` + `evolution_actions` 双表持久化
+- **4 个查询接口**: `query_cycles()` / `get_cycle_detail()` / `get_summary()` / `get_latest_health_trend()`
+- **orchestrator 集成**: `run_full_cycle()` 自动调用 `_audit_cycle()`
+- **兜底确保**: handler 中直接 import EvolutionAuditor，绕过单例缓存
+- **文档全面重构**: 16 个文档统一 v3.0.6，消除版本碎片
+
+### 测试
+`test_evolution_auditor.py` (11 新用例)，439/439 全通过
+
+---
+
+## 完整迭代数据
+
+| 迭代 | 版本 | 提交数 | 测试数 | 新增模块 | 核心行数 |
+|------|------|--------|--------|---------|---------|
+| 1-5 | v3.0.0 | 6 | 374→422 | 7 子系统 28 模块 | ~21000 |
+| 6 | v3.0.1→v3.0.2 | 5 | +5 | daemon/plugin/feishu | +2000 |
+| 7 | v3.0.4(前) | 3 | +4 | dependency_manager | +500 |
+| 8 | v3.0.4(后) | 9 | +2 | closed_loop 完善 | +1500 |
+| 9 | v3.0.5 | 1 | +几 | tool_strategy_learner 持久化 | +200 |
+| 10 | v3.0.6 | 4 | +11 | evolution_auditor | +600 |
+| **合计** | **v3.0.0→v3.0.6** | **75** | **439** | **~56 文件, 57+ 类** | **~26561** |
+
+---
+
+## 当前项目能力矩阵
+
+| 维度 | 成熟度 | 关键组件 |
+|------|--------|---------|
+| 工具进化 | ⭐⭐⭐⭐⭐ | 注册/创建/增强/自动生成/性能分析/集成 |
+| 经验学习 | ⭐⭐⭐⭐⭐ | 经验记录/分析/模式识别/策略学习(持久化) |
+| 记忆系统 | ⭐⭐⭐⭐☆ | 关联数据库/语义发现/时间发现/使用模式发现/检索优化 |
+| 安全增强 | ⭐⭐⭐⭐⭐ | 审计日志/RBAC权限/代码沙箱/威胁检测 |
+| 多Agent协作 | ⭐⭐⭐⭐☆ | Agent注册/任务分派/工作流编排/消息总线 |
+| 闭环进化 | ⭐⭐⭐⭐☆ | 6阶段编排(M→A→P→E→V→F)/守护进程/审计 |
+| 工程化 | ⭐⭐⭐⭐⭐ | CI(Python 3.9-3.13)/一键安装/pip发布/插件系统/飞书通知 |

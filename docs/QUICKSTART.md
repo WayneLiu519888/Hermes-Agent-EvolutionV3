@@ -1,6 +1,7 @@
 # 5 分钟上手 HermesAgentEvolution
 
 > 从零到 AI 自我进化 — 最快路径
+> 版本: v3.0.6
 
 ---
 
@@ -26,19 +27,24 @@ hermes-evolution check
 ```
 
 期望输出：
+
 ```
-✅ Python 3.11.15 ≥ 3.9
-✅ 模块 工具注册表
-✅ 模块 学习观察器
-✅ 模块 记忆数据库
-✅ 模块 安全审计
-✅ 模块 协作编排
-✅ 模块 闭环编排
-✅ 模块 自我监控
-✅ 模块 DB工具
-✅ DB 可读写
-✅ 数据目录: ~/.hermes/data/evolution
-🎉 环境就绪，可以正常使用
+🔍 HermesAgentEvolution 环境自检 (v3.0.6)
+==================================================
+  ✅ Python 3.11.15 ≥ 3.9
+  ✅ 模块 工具注册表
+  ✅ 模块 学习观察器
+  ✅ 模块 记忆数据库
+  ✅ 模块 安全审计
+  ✅ 模块 协作编排
+  ✅ 模块 闭环编排
+  ✅ 模块 自进化审计器
+  ✅ 模块 自我监控
+  ✅ 模块 DB工具
+  ✅ DB 可读写
+  ✅ 数据目录: ~/.hermes/data/evolution
+==================================================
+  🎉 环境就绪，可以正常使用
 ```
 
 ---
@@ -69,7 +75,7 @@ hermes-evolution test
 
 ### 如果你是 Hermes Agent 用户
 
-重启 Hermes 后，进化工具自动可用：
+重启 Hermes 后，7 个进化工具自动可用：
 
 ```
 你: 学习今天的经验
@@ -80,15 +86,17 @@ Hermes: [调用 evolution_self_monitor 返回成功率/性能指标]
 
 你: 触发进化周期
 Hermes: [调用 evolution_run_cycle 执行 监控→分析→规划→执行→验证]
+
+你: 查看进化历史
+Hermes: [调用 evolution_audit 查询最近进化周期详情]
 ```
 
 ### 如果你是开发者
 
 ```python
-from evolution.cli import cmd_check, cmd_status
-from evolution.db_utils import get_evolution_db
-from evolution.learning.observer import LearningObserver
 from evolution.tools.tool_registry import ToolRegistry
+from evolution.learning.observer import LearningObserver
+from evolution.db_utils import get_evolution_db
 
 # 初始化
 registry = ToolRegistry()
@@ -97,8 +105,8 @@ observer = LearningObserver()
 # 注册一个工具
 registry.register("my_tool", lambda x: x * 2, category="utility")
 
-# 观察一次交互
-observer.observe(
+# 记录一次交互经验
+observer.record_experience(
     tool_name="my_tool",
     input_params={"x": 5},
     output=10,
@@ -107,15 +115,33 @@ observer.observe(
     context={"phase": "test"}
 )
 
-# 查看学习结果
+# 查看学习统计
 print(observer.get_statistics())
+
+# 使用策略学习器 (持久化)
+from evolution.learning.tool_strategy_learner import ToolStrategyLearner
+
+learner = ToolStrategyLearner(db_path="tools.db")
+learner.record_tool_usage(
+    tool_name="my_tool",
+    success=True,
+    execution_time=0.5,
+    context={"params": '{"x": 5}'}
+)
+
+# 获取工具推荐
+recommendation = learner.recommend_tool(
+    task_description="需要一个数据处理工具",
+    available_tools=["my_tool"]
+)
+print(recommendation)
 ```
 
 ---
 
 ## 可用的进化工具
 
-部署到 Hermes 后，以下 6 个工具可用：
+部署到 Hermes 后，以下 7 个工具可用：
 
 | 工具名 | 功能 |
 |--------|------|
@@ -125,16 +151,18 @@ print(observer.get_statistics())
 | `evolution_create_tool` | 动态创建新工具 |
 | `evolution_memory_discover` | 发现记忆关联 |
 | `evolution_analyze_performance` | 分析工具性能 |
+| `evolution_audit` | 查询自进化历史 (v3.0.6 新增) |
 
 ---
 
 ## 接下来
 
-- 📖 [安装指南](INSTALLATION.md) — pip/插件/Docker 三路径
-- 🏗️ [架构文档](ARCHITECTURE.md) — V1/V2/V3 融合架构
-- 📚 [API 参考](API_REFERENCE.md) — 30 个模块完整接口
+- 📖 [安装指南](INSTALLATION.md) — pip/源码/Docker 三路径
+- 🏗️ [架构文档](ARCHITECTURE.md) — V3 融合架构详解
 - ⚙️ [配置说明](CONFIGURATION.md) — 环境变量与调优
 - 📋 [日志指南](LOGGING.md) — 统一日志框架
+- 🧪 [测试指南](TESTING.md) — 24 文件 439 测试
+- 🔄 [移植指南](PORTING.md) — 跨项目集成/多语言移植
 
 ---
 

@@ -1,13 +1,13 @@
 # 日志系统使用指南
 
-> HermesAgentEvolution 统一日志框架 — 基于 Python `logging` 模块
+> HermesAgentEvolution v3.0.6 — 统一日志框架，基于 Python `logging` 模块
 
 ---
 
 ## 快速开始
 
 ```python
-from src.evolution.logging_config import setup_logging, get_logger
+from evolution.logging_config import setup_logging, get_logger
 
 # 1. 应用启动时初始化（只需一次）
 setup_logging(level="INFO", log_file="logs/evolution.log")
@@ -34,9 +34,11 @@ log.info("模块初始化完成")
 | `hermes_evo.memory` | INFO | 记忆数据库/关联发现/检索 |
 | `hermes_evo.security` | WARNING | 安全审计/沙箱/权限（仅告警以上） |
 | `hermes_evo.collaboration` | INFO | 代理编排/消息总线 |
-| `hermes_evo.closed_loop` | INFO | 闭环控制/指标收集 |
-| `hermes_evo.services` | INFO | V2 微服务层 |
+| `hermes_evo.closed_loop` | INFO | 闭环控制/指标收集/审计 |
+| `hermes_evo.services` | INFO | 融合桥/统一入口/兼容层 |
 | `hermes_evo.plugin` | INFO | Hermes 插件 |
+
+> **v3.0.6 更新**: `hermes_evo.services` 涵盖 fusion/ 融合桥（bridge/compatibility/unified_entry），不再对应独立的 V2 微服务层。
 
 ### 命名转换规则
 
@@ -44,10 +46,11 @@ log.info("模块初始化完成")
 
 | 源码路径 | Logger 名 |
 |----------|-----------|
-| `src.evolution.tools.tool_registry` | `hermes_evo.tools.tool_registry` |
-| `src.evolution.learning.observer` | `hermes_evo.learning.observer` |
-| `src.services.core.events.event_bus` | `hermes_evo.services.core.events.event_bus` |
-| `src.utils.feishu_notifier` | `hermes_evo.utils` |
+| `evolution.tools.tool_registry` | `hermes_evo.tools.tool_registry` |
+| `evolution.learning.observer` | `hermes_evo.learning.observer` |
+| `evolution.fusion.bridge` | `hermes_evo.services.bridge` |
+| `evolution.fusion.compatibility` | `hermes_evo.services.compatibility` |
+| `evolution.utils.feishu_notifier` | `hermes_evo.utils` |
 | `hermes_plugin.__init__` | `hermes_evo.plugin` |
 
 ---
@@ -84,7 +87,7 @@ setup_logging(level="WARNING", console=True)
 获取模块专属 logger。
 
 ```python
-from src.evolution.logging_config import get_logger
+from evolution.logging_config import get_logger
 
 log = get_logger(__name__)
 log.info("用户 %s 创建了工具 %s", user_id, tool_name)
@@ -99,10 +102,10 @@ log.info("用户 %s 创建了工具 %s", user_id, tool_name)
 ## 日志格式
 
 ```
-2026-05-06 14:30:15 | INFO  | hermes_evo.tools.registry    | Tool registered: web_search (id=tool_42)
-2026-05-06 14:30:16 | DEBUG | hermes_evo.tools.registry    | SQL: SELECT * FROM tools WHERE... [2.3ms]
-2026-05-06 14:30:17 | WARN  | hermes_evo.security          | Permission denied: file_write by user_guest
-2026-05-06 14:30:18 | ERROR | hermes_evo.learning          | Observer loop failed: connection timeout
+2026-05-09 14:30:15 | INFO  | hermes_evo.tools.registry    | Tool registered: web_search (id=tool_42)
+2026-05-09 14:30:16 | DEBUG | hermes_evo.tools.registry    | SQL: SELECT * FROM tools WHERE... [2.3ms]
+2026-05-09 14:30:17 | WARN  | hermes_evo.security          | Permission denied: file_write by user_guest
+2026-05-09 14:30:18 | ERROR | hermes_evo.learning          | Observer loop failed: connection timeout
 ```
 
 ---
@@ -126,7 +129,7 @@ log.info("用户 %s 创建了工具 %s", user_id, tool_name)
 统一记录工具调用。
 
 ```python
-from src.evolution.logging_config import log_tool_call
+from evolution.logging_config import log_tool_call
 log_tool_call(log, "web_search", {"query": "AI"}, "返回 15 条结果")
 # → INFO: 工具调用: web_search(params={'query': 'AI'}) → 返回 15 条结果
 ```
@@ -136,7 +139,7 @@ log_tool_call(log, "web_search", {"query": "AI"}, "返回 15 条结果")
 记录进化循环步骤。
 
 ```python
-from src.evolution.logging_config import log_cycle_step
+from evolution.logging_config import log_cycle_step
 log_cycle_step(log, 3, "analyze", "发现 2 个新模式")
 # → INFO: 周期 3/analyze: 发现 2 个新模式
 ```
@@ -146,7 +149,7 @@ log_cycle_step(log, 3, "analyze", "发现 2 个新模式")
 记录数据库查询。
 
 ```python
-from src.evolution.logging_config import log_db_query
+from evolution.logging_config import log_db_query
 log_db_query(log, "tools.db", "SELECT * FROM tools WHERE category='utility'", 2.3)
 # → DEBUG: DB[tools.db] 查询 [2.3ms]: SELECT * FROM tools WHERE category='utility'
 ```
