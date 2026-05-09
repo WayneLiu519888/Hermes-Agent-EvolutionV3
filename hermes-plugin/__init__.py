@@ -217,11 +217,12 @@ def _handle_run_cycle(params, **kwargs):
 
         # 🆕 兜底审计记录（确保即使 orchestrator._audit_cycle 未执行也能记录）
         try:
-            auditor = _get_evolution_auditor()
-            if auditor:
-                auditor.record_cycle(result)
-        except Exception:
-            pass
+            # 直接导入避免单例缓存问题
+            from evolution.closed_loop.evolution_auditor import EvolutionAuditor
+            auditor = EvolutionAuditor()
+            auditor.record_cycle(result)
+        except Exception as e:
+            logger.warning("审计记录失败(handler): %s", e)
 
         return json.dumps(result, default=str, ensure_ascii=False)
 
