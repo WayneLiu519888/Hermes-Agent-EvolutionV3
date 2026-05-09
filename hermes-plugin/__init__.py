@@ -214,6 +214,15 @@ def _handle_run_cycle(params, **kwargs):
 
         result = orchestrator.run_full_cycle()
         result["success"] = True
+
+        # 🆕 兜底审计记录（确保即使 orchestrator._audit_cycle 未执行也能记录）
+        try:
+            auditor = _get_evolution_auditor()
+            if auditor:
+                auditor.record_cycle(result)
+        except Exception:
+            pass
+
         return json.dumps(result, default=str, ensure_ascii=False)
 
     except Exception as e:
