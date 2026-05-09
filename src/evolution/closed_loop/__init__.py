@@ -7,6 +7,7 @@ from .daemon import EvolutionDaemon, EvolutionPhase, LoopState
 from .orchestrator import ClosedLoopOrchestrator
 from .metrics_collector import SystemMetricsCollector
 from .action_executor import ActionExecutor
+from .evolution_auditor import EvolutionAuditor
 
 __all__ = [
     'EvolutionDaemon',
@@ -15,4 +16,5 @@ __all__ = [
     'ClosedLoopOrchestrator',
     'SystemMetricsCollector',
     'ActionExecutor',
+    'EvolutionAuditor',
 ]

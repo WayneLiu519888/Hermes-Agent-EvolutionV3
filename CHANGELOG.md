@@ -2,6 +2,26 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范。
 
+## [3.0.6] — 2026-05-09
+
+### 迭代10: 自进化审计器 (Iteration 10)
+
+#### 新增 (Added)
+
+**EvolutionAuditor 模块** (`closed_loop/evolution_auditor.py`, ~350行):
+- `evolution_cycles` 表: 记录每次进化的完整元数据（6阶段状态、健康分变化、问题/动作/改进计数）
+- `evolution_actions` 表: 记录每个进化动作的详情（类型/目标/变更状态）
+- `record_cycle()`: 在 `run_full_cycle()` 末尾自动持久化
+- `query_cycles(limit, days, success_only)`: 按时间/状态查询进化历史
+- `get_cycle_detail(cycle_id)`: 单次进化的完整详情（含 phases + actions）
+- `get_summary(days)`: 统计汇总（成功率、健康分趋势、常见动作类型、按周趋势）
+- `get_latest_health_trend(limit)`: 最近N次健康分变化曲线
+
+**集成:**
+- `orchestrator.run_full_cycle()`: 自动记录审计数据（失败不影响主流程）
+- `hermes-plugin`: 新增 `_get_evolution_auditor()` 单例
+- `_handle_self_monitor(include_history=True)`: 返回中附加 `audit_summary`
+
 ## [3.0.5] — 2026-05-09
 
 ### 迭代9: ToolStrategyLearner 持久化 (Iteration 9)

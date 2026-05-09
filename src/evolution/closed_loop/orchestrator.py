@@ -653,6 +653,9 @@ class ClosedLoopOrchestrator:
         # 记录历史
         self.cycle_history.append(result)
         
+        # 🆕 持久化审计记录
+        self._audit_cycle(result)
+        
         result['duration'] = round(time.time() - cycle_start, 2)
         result['summary'] = (
             f"循环 #{cycle_id}: "
@@ -666,3 +669,12 @@ class ClosedLoopOrchestrator:
     def get_cycle_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取循环历史"""
         return self.cycle_history[-limit:]
+
+    def _audit_cycle(self, result: Dict[str, Any]):
+        """将进化周期结果持久化到审计数据库（失败不影响主流程）"""
+        try:
+            from .evolution_auditor import EvolutionAuditor
+            auditor = EvolutionAuditor()
+            auditor.record_cycle(result)
+        except Exception as e:
+            logger.warning("审计记录失败: %s (进化流程不受影响)", e)

@@ -157,6 +157,19 @@ def _get_strategy_learner():
     return _engine_instances.get("strategy_learner")
 
 
+def _get_evolution_auditor():
+    """Get or create an EvolutionAuditor singleton."""
+    if "evolution_auditor" not in _engine_instances:
+        try:
+            from evolution.closed_loop import EvolutionAuditor
+            db_path = str(_get_data_dir() / "evolution_audit.db")
+            _engine_instances["evolution_auditor"] = EvolutionAuditor(db_path=db_path)
+        except Exception as e:
+            logger.warning("Failed to create EvolutionAuditor: %s", e)
+            _engine_instances["evolution_auditor"] = None
+    return _engine_instances["evolution_auditor"]
+
+
 def _get_association_discoverer():
     """Get or create an AssociationDiscoverer singleton."""
     if "association_discoverer" not in _engine_instances:
@@ -585,6 +598,14 @@ def _handle_self_monitor(params, **kwargs):
         if params.get("include_history"):
             result["monitoring_history"] = self_monitor.get_monitoring_history(limit=5)
 
+            # 🆕 附加进化审计摘要
+            try:
+                auditor = _get_evolution_auditor()
+                if auditor:
+                    result["audit_summary"] = auditor.get_summary(days=30)
+            except Exception:
+                pass
+
         return json.dumps(result, default=str, ensure_ascii=False)
 
     except Exception as e:
@@ -790,7 +811,7 @@ def register(ctx):
     except Exception as e:
         logger.error("Failed to register hook post_tool_call: %s", e)
 
-    manifest_version = "3.0.5"  # read from plugin.yaml
+    manifest_version = "3.0.6"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 6 tools + 1 hook", manifest_version
     )
