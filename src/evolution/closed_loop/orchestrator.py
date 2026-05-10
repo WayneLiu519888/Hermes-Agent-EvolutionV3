@@ -6,6 +6,8 @@ ClosedLoopOrchestrator — 闭环编排器
 """
 
 import logging
+import time
+import uuid
 from enum import Enum
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -585,56 +587,76 @@ class ClosedLoopOrchestrator:
     def run_full_cycle(self) -> Dict[str, Any]:
         """
         执行一次完整的进化闭环（所有 6 个阶段）
-        
+
         Returns:
             完整循环结果
         """
-        import time
-        
         cycle_start = time.time()
         cycle_id = len(self.cycle_history) + 1
-        
+        trace_id = str(uuid.uuid4())[:8]
+
         result = {
             'cycle_id': cycle_id,
+            'trace_id': trace_id,
             'timestamp': datetime.now().isoformat(),
             'phases': {},
             'summary': '',
             'duration': 0,
         }
-        
-        # Phase 1
+
+        # Phase 1: Monitor
+        t0 = time.monotonic()
         metrics = self.monitor()
-        result['phases']['monitor'] = {'metrics_count': len(metrics)}
-        
-        # Phase 2
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] monitor: {elapsed:.3f}s")
+        result['phases']['monitor'] = {'metrics_count': len(metrics), 'elapsed': round(elapsed, 3)}
+
+        # Phase 2: Analyze
+        t0 = time.monotonic()
         analysis = self.analyze(metrics)
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] analyze: {elapsed:.3f}s")
         result['phases']['analyze'] = {
             'patterns': len(analysis.get('patterns', [])),
             'issues': len(analysis.get('issues', [])),
+            'elapsed': round(elapsed, 3),
         }
-        
-        # Phase 3
+
+        # Phase 3: Plan
+        t0 = time.monotonic()
         plan = self.plan(analysis)
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] plan: {elapsed:.3f}s")
         result['phases']['plan'] = {
             'actions': len(plan.get('actions', [])),
             'priority': plan.get('priority'),
+            'elapsed': round(elapsed, 3),
         }
-        
-        # Phase 4
+
+        # Phase 4: Execute
+        t0 = time.monotonic()
         exec_result = self.execute(plan)
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] execute: {elapsed:.3f}s")
         result['phases']['execute'] = {
             'success': exec_result['success_count'],
             'failure': exec_result['failure_count'],
+            'elapsed': round(elapsed, 3),
         }
-        
-        # Phase 5
+
+        # Phase 5: Verify
+        t0 = time.monotonic()
         verification = self.verify(metrics, exec_result.get('actions', []))
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] verify: {elapsed:.3f}s")
         result['phases']['verify'] = {
             'improvements': len(verification.get('improvements', [])),
             'score': verification.get('verification_score', 0),
+            'elapsed': round(elapsed, 3),
         }
-        
-        # Phase 6
+
+        # Phase 6: Feedback
+        t0 = time.monotonic()
         from .daemon import EvolutionSnapshot
         snapshot = EvolutionSnapshot(
             cycle_id=cycle_id,
@@ -648,6 +670,8 @@ class ClosedLoopOrchestrator:
             success=exec_result['failure_count'] == 0,
         )
         feedback = self.feedback(snapshot)
+        elapsed = time.monotonic() - t0
+        logger.info(f"[{trace_id}] feedback: {elapsed:.3f}s")
         result['phases']['feedback'] = feedback
         
         # 记录历史
@@ -678,3 +702,70 @@ class ClosedLoopOrchestrator:
             auditor.record_cycle(result)
         except Exception as e:
             logger.warning("审计记录失败: %s (进化流程不受影响)", e)
+
+
+# ═══════════════════════════════════════════
+# Phase 3 引擎升级：闭环编排状态机
+# ═══════════════════════════════════════════
+
+from typing import Set
+import json
+import time as _time
+
+class Phase(Enum):
+    IDLE = "idle"
+    MONITOR = "monitor"
+    ANALYZE = "analyze"
+    PLAN = "plan"
+    EXECUTE = "execute"
+    VERIFY = "verify"
+    FEEDBACK = "feedback"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+PHASE_TRANSITIONS: Dict[Phase, Set[Phase]] = {
+    Phase.IDLE:      {Phase.MONITOR},
+    Phase.MONITOR:   {Phase.ANALYZE, Phase.FAILED},
+    Phase.ANALYZE:   {Phase.PLAN, Phase.FAILED},
+    Phase.PLAN:      {Phase.EXECUTE, Phase.FAILED, Phase.IDLE},
+    Phase.EXECUTE:   {Phase.VERIFY, Phase.FAILED},
+    Phase.VERIFY:    {Phase.FEEDBACK, Phase.FAILED},
+    Phase.FEEDBACK:  {Phase.COMPLETED, Phase.FAILED},
+    Phase.COMPLETED: {Phase.IDLE},
+    Phase.FAILED:    {Phase.IDLE},
+}
+
+@dataclass
+class CycleState:
+    """可持久化的进化循环状态。崩溃后可从此状态恢复。"""
+    cycle_id: int
+    current_phase: Phase
+    phase_results: Dict[str, Any] = field(default_factory=dict)
+    metrics_before: Dict[str, Any] = field(default_factory=dict)
+    created_at: str = field(default_factory=lambda: _time.strftime("%Y-%m-%dT%H:%M:%S"))
+    updated_at: str = field(default_factory=lambda: _time.strftime("%Y-%m-%dT%H:%M:%S"))
+    
+    def can_transition_to(self, target: Phase) -> bool:
+        return target in PHASE_TRANSITIONS.get(self.current_phase, set())
+    
+    def to_json(self) -> str:
+        return json.dumps({
+            "cycle_id": self.cycle_id,
+            "current_phase": self.current_phase.value,
+            "phase_results": self.phase_results,
+            "metrics_before": self.metrics_before,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }, default=str)
+    
+    @classmethod
+    def from_json(cls, data: str) -> 'CycleState':
+        d = json.loads(data) if isinstance(data, str) else data
+        return cls(
+            cycle_id=d["cycle_id"],
+            current_phase=Phase(d["current_phase"]),
+            phase_results=d.get("phase_results", {}),
+            metrics_before=d.get("metrics_before", {}),
+            created_at=d.get("created_at", ""),
+            updated_at=d.get("updated_at", ""),
+        )

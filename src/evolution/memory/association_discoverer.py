@@ -100,46 +100,54 @@ class AssociationDiscoverer:
             "usage_pattern": self._discover_usage_pattern,
         }
 
-        for method in methods:
-            func = dispatch.get(method)
-            if func is None:
-                logger.warning("未知的发现算法: %s，已跳过", method)
-                continue
+        # 批量事务：所有发现方法共享一个事务
+        self.db.connection.execute("BEGIN TRANSACTION")
+        try:
+            for method in methods:
+                func = dispatch.get(method)
+                if func is None:
+                    logger.warning("未知的发现算法: %s，已跳过", method)
+                    continue
 
-            start_time = datetime.now()
-            try:
-                discovered = func(entries)
-                end_time = datetime.now()
-                self._log_discovery(
-                    method=method,
-                    parameters=self._current_parameters(method),
-                    start_time=start_time,
-                    end_time=end_time,
-                    entries_processed=len(entries),
-                    associations_discovered=discovered,
-                )
-                results["methods"][method] = {
-                    "associations_discovered": discovered,
-                    "entries_processed": len(entries),
-                    "duration_seconds": (end_time - start_time).total_seconds(),
-                }
-                results["total_associations"] += discovered
-                logger.info(
-                    "算法 [%s] 完成，发现 %d 条关联", method, discovered
-                )
-            except Exception as exc:
-                end_time = datetime.now()
-                self._log_discovery(
-                    method=method,
-                    parameters=self._current_parameters(method),
-                    start_time=start_time,
-                    end_time=end_time,
-                    entries_processed=len(entries),
-                    associations_discovered=0,
-                    error_message=str(exc),
-                )
-                logger.error("算法 [%s] 执行失败: %s", method, exc, exc_info=True)
-                results["methods"][method] = {"error": str(exc)}
+                start_time = datetime.now()
+                try:
+                    discovered = func(entries)
+                    end_time = datetime.now()
+                    self._log_discovery(
+                        method=method,
+                        parameters=self._current_parameters(method),
+                        start_time=start_time,
+                        end_time=end_time,
+                        entries_processed=len(entries),
+                        associations_discovered=discovered,
+                    )
+                    results["methods"][method] = {
+                        "associations_discovered": discovered,
+                        "entries_processed": len(entries),
+                        "duration_seconds": (end_time - start_time).total_seconds(),
+                    }
+                    results["total_associations"] += discovered
+                    logger.info(
+                        "算法 [%s] 完成，发现 %d 条关联", method, discovered
+                    )
+                except Exception as exc:
+                    end_time = datetime.now()
+                    self._log_discovery(
+                        method=method,
+                        parameters=self._current_parameters(method),
+                        start_time=start_time,
+                        end_time=end_time,
+                        entries_processed=len(entries),
+                        associations_discovered=0,
+                        error_message=str(exc),
+                    )
+                    logger.error("算法 [%s] 执行失败: %s", method, exc, exc_info=True)
+                    results["methods"][method] = {"error": str(exc)}
+
+            self.db.connection.commit()
+        except Exception:
+            self.db.connection.rollback()
+            raise
 
         logger.info("批量关联发现完成，共发现 %d 条关联", results["total_associations"])
         self._enforce_association_limit()
@@ -330,7 +338,7 @@ class AssociationDiscoverer:
         return 0.7 * jaccard + 0.3 * length_sim
 
     def _discover_semantic(self, entries: List[Dict[str, Any]]) -> int:
-        """对所有条目两两计算语义相似度并写入关联
+        """对所有条目两两计算语义相似度并批量写入关联
 
         相似度 = 0.7 * jaccard_similarity + 0.3 * length_similarity
 
@@ -340,10 +348,36 @@ class AssociationDiscoverer:
         Returns:
             新发现的关联数量
         """
-        discovered = 0
+        data: List[tuple] = []
+        now = datetime.now().isoformat()
         for entry_a, entry_b in combinations(entries, 2):
-            discovered += self._discover_semantic_for_pair(entry_a, entry_b)
-        return discovered
+            content_a: str = entry_a.get("content", "")
+            content_b: str = entry_b.get("content", "")
+            jaccard = self._jaccard_similarity(content_a, content_b)
+            length_sim = self._length_similarity(content_a, content_b)
+            strength = 0.7 * jaccard + 0.3 * length_sim
+            if strength < self.semantic_threshold:
+                continue
+            confidence = min(1.0, strength * 1.2)
+            metadata = json.dumps({
+                "jaccard_similarity": round(jaccard, 4),
+                "length_similarity": round(length_sim, 4),
+                "algorithm": "jaccard+length",
+            }, ensure_ascii=False)
+            data.append((
+                entry_a["id"], entry_b["id"], "semantic",
+                round(strength, 4), round(confidence, 4),
+                "algorithm", now, metadata,
+            ))
+        if data:
+            self.db.connection.executemany(
+                "INSERT OR REPLACE INTO associations "
+                "(source_id, target_id, association_type, strength, confidence, "
+                "discovered_by, discovery_time, metadata) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                data,
+            )
+        return len(data)
 
     def _discover_semantic_for_pair(
         self,
@@ -444,7 +478,7 @@ class AssociationDiscoverer:
     # ------------------------------------------------------------------
 
     def _discover_temporal(self, entries: List[Dict[str, Any]]) -> int:
-        """对所有条目两两计算时间邻近性并写入关联
+        """对所有条目两两计算时间邻近性并批量写入关联
 
         Args:
             entries: 全部记忆条目列表
@@ -452,10 +486,37 @@ class AssociationDiscoverer:
         Returns:
             新发现的关联数量
         """
-        discovered = 0
+        data: List[tuple] = []
+        now = datetime.now().isoformat()
         for entry_a, entry_b in combinations(entries, 2):
-            discovered += self._discover_temporal_for_pair(entry_a, entry_b)
-        return discovered
+            time_a = self._parse_datetime(entry_a.get("created_at"))
+            time_b = self._parse_datetime(entry_b.get("created_at"))
+            if time_a is None or time_b is None:
+                continue
+            delta_seconds = abs((time_a - time_b).total_seconds())
+            if delta_seconds > self.temporal_window_seconds:
+                continue
+            strength = math.exp(-delta_seconds / self.temporal_window_seconds)
+            confidence = strength
+            metadata = json.dumps({
+                "delta_seconds": round(delta_seconds, 2),
+                "window_seconds": self.temporal_window_seconds,
+                "algorithm": "exponential_decay",
+            }, ensure_ascii=False)
+            data.append((
+                entry_a["id"], entry_b["id"], "temporal",
+                round(strength, 4), round(confidence, 4),
+                "algorithm", now, metadata,
+            ))
+        if data:
+            self.db.connection.executemany(
+                "INSERT OR REPLACE INTO associations "
+                "(source_id, target_id, association_type, strength, confidence, "
+                "discovered_by, discovery_time, metadata) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                data,
+            )
+        return len(data)
 
     def _discover_temporal_for_pair(
         self,
@@ -533,7 +594,7 @@ class AssociationDiscoverer:
     # ------------------------------------------------------------------
 
     def _discover_usage_pattern(self, entries: List[Dict[str, Any]]) -> int:
-        """基于共现分析发现使用模式关联
+        """基于共现分析发现使用模式关联（批量写入）
 
         共现定义：两个条目在同一使用上下文（usage_context）中被使用过。
         当共现次数 >= usage_min_cooccurrence 时建立关联。
@@ -549,32 +610,32 @@ class AssociationDiscoverer:
             logger.info("未发现使用模式共现数据")
             return 0
 
-        discovered = 0
+        data: List[tuple] = []
+        now = datetime.now().isoformat()
         for (id_a, id_b), count in cooccurrence.items():
             if count < self.usage_min_cooccurrence:
                 continue
             # 强度与共现次数正相关，使用对数缩放避免过大
             strength = min(1.0, math.log1p(count) / math.log1p(10))
             confidence = min(1.0, count / (count + 2))  # 贝叶斯平滑
-
-            try:
-                self.db.add_association(
-                    source_id=id_a,
-                    target_id=id_b,
-                    association_type="usage_pattern",
-                    strength=round(strength, 4),
-                    confidence=round(confidence, 4),
-                    metadata={
-                        "cooccurrence_count": count,
-                        "algorithm": "cooccurrence_analysis",
-                    },
-                )
-                discovered += 1
-            except Exception as exc:
-                logger.debug(
-                    "写入使用模式关联失败 (%s -> %s): %s", id_a, id_b, exc
-                )
-        return discovered
+            metadata = json.dumps({
+                "cooccurrence_count": count,
+                "algorithm": "cooccurrence_analysis",
+            }, ensure_ascii=False)
+            data.append((
+                id_a, id_b, "usage_pattern",
+                round(strength, 4), round(confidence, 4),
+                "algorithm", now, metadata,
+            ))
+        if data:
+            self.db.connection.executemany(
+                "INSERT OR REPLACE INTO associations "
+                "(source_id, target_id, association_type, strength, confidence, "
+                "discovered_by, discovery_time, metadata) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                data,
+            )
+        return len(data)
 
     def _discover_usage_pattern_for_pair(
         self,

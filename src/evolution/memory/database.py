@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import hashlib
 
-from ..db_utils import get_evolution_db
+from ..db_utils import get_evolution_db, retry_on_db_error
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,15 @@ class AssociationDatabase:
             # 创建索引
             self._create_indexes(cursor)
             
+            # FTS5 全文搜索虚拟表
+            try:
+                cursor.execute(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS memory_entries_fts "
+                    "USING fts5(content, content='memory_entries', content_rowid='id')"
+                )
+            except sqlite3.OperationalError:
+                logger.debug("FTS5 表已存在或当前版本不支持")
+            
             self.connection.commit()
             logger.info(f"数据库初始化完成: {self.db_path}")
             
@@ -88,6 +97,7 @@ class AssociationDatabase:
         for index_sql in indexes:
             cursor.execute(index_sql)
             
+    @retry_on_db_error(max_attempts=3)
     def add_memory_entry(self, content: str, content_type: str = "text", 
                         metadata: Dict[str, Any] = None, tags: List[str] = None) -> str:
         """添加记忆条目
@@ -124,9 +134,11 @@ class AssociationDatabase:
             return entry_id
             
         except Exception as e:
+            self.connection.rollback()
             logger.error(f"添加记忆条目失败: {e}")
             raise
             
+    @retry_on_db_error(max_attempts=3)
     def add_association(self, source_id: str, target_id: str, 
                        association_type: str, strength: float = 0.5, 
                        confidence: float = 0.5, metadata: Dict[str, Any] = None,
@@ -168,6 +180,7 @@ class AssociationDatabase:
             return association_id
             
         except Exception as e:
+            self.connection.rollback()
             logger.error(f"添加关联失败: {e}")
             raise
             
@@ -251,6 +264,31 @@ class AssociationDatabase:
         except Exception as e:
             logger.error(f"查找相似记忆失败: {e}")
             return []
+
+    def search_fts(self, keyword: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """FTS5全文搜索，替代 LIKE '%keyword%'
+        
+        Args:
+            keyword: 搜索关键词
+            limit: 返回数量限制
+            
+        Returns:
+            List[Dict]: 匹配的记忆条目列表
+        """
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                """SELECT me.* FROM memory_entries me
+                   INNER JOIN memory_entries_fts fts ON me.id = fts.id
+                   WHERE memory_entries_fts MATCH ?
+                   ORDER BY rank LIMIT ?""",
+                (keyword, limit)
+            )
+            rows = cursor.fetchall()
+            return [self._row_to_dict(row) for row in rows]
+        except Exception as e:
+            logger.debug("FTS5搜索回退到LIKE: %s", e)
+            return self.find_similar_memories(keyword, limit)
 
     def get_related_memories(self, memory_id: str) -> List[Dict[str, Any]]:
         """获取与指定记忆相关的记忆条目

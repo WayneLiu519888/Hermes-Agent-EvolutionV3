@@ -9,7 +9,7 @@ import sqlite3
 import logging
 from dataclasses import dataclass, asdict
 
-from ..db_utils import get_evolution_db
+from ..db_utils import get_evolution_db, retry_on_db_error
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
@@ -151,6 +151,7 @@ class ToolRegistry:
         if not self._memory_conn:
             conn.close()
     
+    @retry_on_db_error(max_attempts=3)
     def register(self, tool: ToolDefinition) -> bool:
         """
         注册工具
@@ -235,6 +236,7 @@ class ToolRegistry:
             return True
             
         except Exception as e:
+            conn.rollback()
             log.error("注册工具失败: %s", e)
             return False
     

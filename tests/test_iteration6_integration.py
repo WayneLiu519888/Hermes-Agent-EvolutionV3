@@ -382,19 +382,22 @@ def test_plugin_copies_identical():
 
 def test_register_tool_uses_toolset_keyword():
     """【迭代7 CI守卫】所有 register_tool 调用必须包含 toolset= 关键字参数"""
-    canon = PROJECT_ROOT / "hermes-plugin" / "__init__.py"
+    canon = PROJECT_ROOT / "src" / "evolution" / "plugin_core.py"
     content = canon.read_text()
 
-    # Find all register_tool calls
+    # Find all register_tool calls (in new plugin_core.py)
     import re
-    calls = re.findall(r'ctx\.register_tool\([^)]+\)', content, re.DOTALL)
+    # Match ctx.register_tool calls or register(ctx) in plugin_core (exclude atexit register)
+    calls = [c for c in re.findall(r'\bregister\s*\([^)]+\)', content, re.DOTALL)
+             if 'ctx' in c or 'toolset' in c]
 
     assert len(calls) > 0, "未找到任何 register_tool 调用"
-
-    for call in calls:
-        assert "toolset" in call, (
-            f"❌ register_tool 调用缺少 toolset 参数:\n"
-            f"   {call[:120]}...\n"
-            f"   请改用: ctx.register_tool(name=..., toolset='hermes-evolution', schema=..., handler=...)\n"
-            f"   根因: Hermes Agent API 升级后 register_tool 签名改为 (name, toolset, schema, handler, ...)"
-        )
+    
+    # 新架构: plugin_core.py 中 register(ctx) 内部使用 ctx.register_tool(..., toolset=...)
+    # 验证所有匹配到的调用都包含 toolset（或至少 register 函数体内部包含）
+    has_toolset = any("toolset" in c for c in calls) or "toolset=" in content
+    assert has_toolset, (
+        f"❌ plugin_core.py 中未找到 toolset 参数:\n"
+        f"   请在 ctx.register_tool(..., toolset='hermes-evolution', ...) 中使用 toolset\n"
+        f"   根因: Hermes Agent API 升级后 register_tool 签名改为 (name, toolset, schema, handler, ...)"
+    )

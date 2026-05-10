@@ -11,7 +11,8 @@ import hashlib
 import logging
 import uuid
 
-from ..db_utils import get_evolution_db
+from collections import OrderedDict
+from ..db_utils import get_evolution_db, retry_on_db_error
 
 log = logging.getLogger("hermes_evo.learning")
 from .experience import Experience, ExperienceType, Outcome
@@ -36,8 +37,9 @@ class LearningObserver:
         self.db_path = db_path
         self._init_database()
         
-        # 内存缓存
-        self._experiences_cache: Dict[str, Experience] = {}
+        # 内存缓存（LRU淘汰，最多保留1000条）
+        self._experiences_cache: OrderedDict = OrderedDict()
+        self._max_cache_size = 1000
         self._statistics_cache: Optional[Dict[str, Any]] = None
     
     def _init_database(self):
@@ -74,9 +76,33 @@ class LearningObserver:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON experiences(timestamp)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tags ON experiences(tags)')
         
+        # JSON 生成列索引（高频查询加速）
+        try:
+            cursor.execute(
+                "ALTER TABLE experiences ADD COLUMN _experience_type TEXT "
+                "GENERATED ALWAYS AS (json_extract(context, '$.experience_type')) STORED"
+            )
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+        try:
+            cursor.execute(
+                "ALTER TABLE experiences ADD COLUMN _outcome TEXT "
+                "GENERATED ALWAYS AS (json_extract(context, '$.outcome')) STORED"
+            )
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_exp_type ON experiences(_experience_type)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_exp_outcome ON experiences(_outcome)')
+        
         conn.commit()
         conn.close()
     
+    def _add_to_cache(self, exp_id: str, experience: Experience) -> None:
+        """LRU-aware cache insertion: evicts oldest entry when full."""
+        if len(self._experiences_cache) >= self._max_cache_size:
+            self._experiences_cache.popitem(last=False)  # FIFO淘汰最旧
+        self._experiences_cache[exp_id] = experience
+
     def _generate_id(self, data: Dict[str, Any]) -> str:
         """生成经验ID"""
         # 基于时间戳、任务ID和经验类型生成唯一ID
@@ -84,6 +110,7 @@ class LearningObserver:
         content = f"{timestamp_str}_{data.get('task_id', '')}_{data.get('experience_type', '')}"
         return hashlib.md5(content.encode()).hexdigest()
     
+    @retry_on_db_error(max_attempts=3)
     def record_experience(self, experience: Experience) -> str:
         """
         记录经验
@@ -103,37 +130,42 @@ class LearningObserver:
         
         # 保存到数据库
         conn = get_evolution_db(self.db_path)
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
         
-        cursor.execute('''
-            INSERT OR REPLACE INTO experiences 
-            (id, experience_type, task_id, timestamp, description, context, 
-             actions, reasoning_steps, outcome, result, metrics, lessons_learned, 
-             tags, confidence, importance)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            experience.id,
-            experience.experience_type.value,
-            experience.task_id,
-            experience.timestamp.isoformat(),
-            experience.description,
-            json.dumps(experience.context, ensure_ascii=False),
-            json.dumps(experience.actions, ensure_ascii=False),
-            json.dumps(experience.reasoning_steps, ensure_ascii=False),
-            experience.outcome.value,
-            json.dumps(experience.result, ensure_ascii=False) if experience.result else None,
-            json.dumps(experience.metrics, ensure_ascii=False),
-            json.dumps(experience.lessons_learned, ensure_ascii=False),
-            json.dumps(experience.tags, ensure_ascii=False),
-            experience.confidence,
-            experience.importance
-        ))
+            cursor.execute('''
+                INSERT OR REPLACE INTO experiences 
+                (id, experience_type, task_id, timestamp, description, context, 
+                 actions, reasoning_steps, outcome, result, metrics, lessons_learned, 
+                 tags, confidence, importance)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                experience.id,
+                experience.experience_type.value,
+                experience.task_id,
+                experience.timestamp.isoformat(),
+                experience.description,
+                json.dumps(experience.context, ensure_ascii=False),
+                json.dumps(experience.actions, ensure_ascii=False),
+                json.dumps(experience.reasoning_steps, ensure_ascii=False),
+                experience.outcome.value,
+                json.dumps(experience.result, ensure_ascii=False) if experience.result else None,
+                json.dumps(experience.metrics, ensure_ascii=False),
+                json.dumps(experience.lessons_learned, ensure_ascii=False),
+                json.dumps(experience.tags, ensure_ascii=False),
+                experience.confidence,
+                experience.importance
+            ))
         
-        conn.commit()
-        conn.close()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
         
         # 更新缓存
-        self._experiences_cache[experience.id] = experience
+        self._add_to_cache(experience.id, experience)
         self._statistics_cache = None  # 使统计缓存失效
         
         return experience.id
@@ -164,7 +196,7 @@ class LearningObserver:
         
         # 解析数据库行
         experience = self._row_to_experience(row)
-        self._experiences_cache[experience_id] = experience
+        self._add_to_cache(experience_id, experience)
         return experience
     
     def get_recent_experiences(self, days: int = 1) -> List[Experience]:
@@ -279,8 +311,8 @@ class LearningObserver:
         for row in rows:
             experience = self._row_to_experience(row)
             experiences.append(experience)
-            # 更新缓存
-            self._experiences_cache[experience.id] = experience
+            # 更新缓存（LRU-aware）
+            self._add_to_cache(experience.id, experience)
         
         return experiences
     

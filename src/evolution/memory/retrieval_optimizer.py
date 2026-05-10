@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 import os
 
-from ..db_utils import get_evolution_db
+from ..db_utils import get_evolution_db, retry_on_db_error
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,7 @@ class RetrievalOptimizer:
         conn.commit()
         conn.close()
         
+    @retry_on_db_error(max_attempts=3)
     def record_feedback(self, feedback: RetrievalFeedback):
         """记录检索反馈"""
         self.feedback_history.append(feedback)
@@ -373,17 +374,29 @@ class RetrievalOptimizer:
         removed = 0
         optimized = 0
         
-        for row in rows:
-            assoc = self.association_db._row_to_dict(row)
-            if assoc['strength'] < min_strength:
-                # 删除弱关联
-                self.association_db.delete_association(assoc['id'])
-                removed += 1
-            else:
-                # 强化强关联
-                new_strength = min(1.0, assoc['strength'] * 1.1)
-                self.association_db.update_association(assoc['id'], strength=new_strength)
-                optimized += 1
+        # 批量事务：消除 N+1 问题，所有 UPDATE/DELETE 共用事务
+        self.association_db.connection.execute("BEGIN TRANSACTION")
+        try:
+            for row in rows:
+                assoc = self.association_db._row_to_dict(row)
+                if assoc['strength'] < min_strength:
+                    # 删除弱关联
+                    self.association_db.connection.execute(
+                        'DELETE FROM associations WHERE id = ?', (assoc['id'],)
+                    )
+                    removed += 1
+                else:
+                    # 强化强关联
+                    new_strength = min(1.0, assoc['strength'] * 1.1)
+                    self.association_db.connection.execute(
+                        'UPDATE associations SET strength = ? WHERE id = ?',
+                        (new_strength, assoc['id'])
+                    )
+                    optimized += 1
+            self.association_db.connection.commit()
+        except Exception:
+            self.association_db.connection.rollback()
+            raise
         
         return {
             "total_associations": total,

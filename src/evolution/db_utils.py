@@ -72,7 +72,7 @@ def get_evolution_db(db_name: str) -> sqlite3.Connection:
         - PRAGMA journal_mode=WAL        (并发读写)
         - PRAGMA busy_timeout=30000      (30秒忙等)
         - PRAGMA synchronous=NORMAL      (性能优化，WAL下安全)
-        - PRAGMA cache_size=-8000        (8MB缓存)
+        - PRAGMA cache_size=-64000       (64MB缓存)
         - PRAGMA foreign_keys=ON         (外键约束)
         - check_same_thread=False        (跨线程安全)
     
@@ -110,7 +110,7 @@ def get_evolution_db(db_name: str) -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=30000")
         conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA cache_size=-8000")  # 8MB
+        conn.execute("PRAGMA cache_size=-64000")  # 64MB 页缓存
         conn.execute("PRAGMA foreign_keys=ON")
         
         _connection_cache[db_path] = conn

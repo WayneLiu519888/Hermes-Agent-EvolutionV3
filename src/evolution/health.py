@@ -4,6 +4,7 @@
 提供一键健康检查能力。CLI: `hermes-evolution status`
 """
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -129,6 +130,42 @@ def health_check(data_dir: Optional[Path] = None) -> dict:
         result["overall"] = "degraded"
 
     return result
+
+
+def comprehensive_health_check() -> dict:
+    """深度健康检查：检查所有数据库的 WAL 文件大小，预警大文件。
+
+    Returns:
+        {
+            "timestamp": "2026-05-11T...",
+            "components": {db_name: {"wal_mb": 1.2}, ...},
+            "warnings": [...],
+            "critical": [...]
+        }
+    """
+    from evolution.db_utils import _resolve_data_dir
+
+    checks = {
+        "timestamp": datetime.now().isoformat(),
+        "components": {},
+        "warnings": [],
+        "critical": [],
+    }
+    db_names = [
+        "associations.db", "tools.db", "learning_experiences.db",
+        "tool_performance.db", "retrieval_optimization.db",
+        "evolution_audit.db", "audit.db", "collaboration_messages.db",
+    ]
+    for db_name in db_names:
+        wal_path = str(_resolve_data_dir() / db_name) + "-wal"
+        if os.path.exists(wal_path):
+            mb = os.path.getsize(wal_path) / 1024 / 1024
+            checks["components"][db_name] = {"wal_mb": round(mb, 1)}
+            if mb > 100:
+                checks["critical"].append(f"{db_name} WAL {mb:.0f}MB")
+            elif mb > 50:
+                checks["warnings"].append(f"{db_name} WAL {mb:.0f}MB")
+    return checks
 
 
 def print_health(data_dir: Optional[Path] = None) -> bool:

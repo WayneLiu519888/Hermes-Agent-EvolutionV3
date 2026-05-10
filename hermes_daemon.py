@@ -19,6 +19,7 @@ import json
 import signal
 import logging
 import argparse
+import atexit
 import threading
 from pathlib import Path
 from datetime import datetime
@@ -72,6 +73,14 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("HermesDaemon")
+
+
+# ── 优雅关闭：atexit 触发 WAL checkpoint + 关闭所有连接 ──
+def _shutdown():
+    from evolution.db_pool import db_pool
+    db_pool.checkpoint_all(max_wal_mb=0)  # 强制清空所有WAL
+    db_pool.close_all()
+atexit.register(_shutdown)
 
 
 class HermesEvolutionDaemon:
@@ -317,11 +326,13 @@ class HermesEvolutionDaemon:
         
         logger.info("持续进化运行中... (Ctrl+C 停止)")
         
+        round_count = 0
         try:
             while self._running and not self._stop_event.is_set():
                 # 定期输出状态
                 self._stop_event.wait(timeout=60)
                 if self._running:
+                    round_count += 1
                     status = self.daemon.get_status()
                     logger.info(
                         f"❤️ 心跳: 循环#{status['cycle_count']} | "
@@ -329,6 +340,10 @@ class HermesEvolutionDaemon:
                         f"改进总数={status['total_improvements']} | "
                         f"动作总数={status['total_actions']}"
                     )
+                    # WAL checkpoint 全覆盖: 每5轮清理一次
+                    if round_count % 5 == 0:
+                        from evolution.db_pool import db_pool
+                        db_pool.checkpoint_all(max_wal_mb=100)
         except KeyboardInterrupt:
             pass
         finally:

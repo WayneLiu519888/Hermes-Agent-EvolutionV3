@@ -74,7 +74,7 @@ class DatabasePool:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA busy_timeout=30000")
             conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute("PRAGMA cache_size=-8000")
+            conn.execute("PRAGMA cache_size=-64000")  # 64MB 页缓存
             conn.execute("PRAGMA foreign_keys=ON")
             self._connections[db_path] = conn
             logger.debug("Created new connection for %s", db_path)

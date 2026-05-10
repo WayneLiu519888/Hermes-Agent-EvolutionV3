@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from ..db_utils import get_evolution_db
+from ..db_utils import get_evolution_db, retry_on_db_error
 from enum import Enum
 
 from .tool_registry import ToolDefinition, ToolRegistry, ToolStatus
@@ -121,6 +121,7 @@ class ToolPerformanceAnalyzer:
         conn.commit()
         conn.close()
     
+    @retry_on_db_error(max_attempts=3)
     def record_performance(self, tool_name: str, 
                           metric: PerformanceMetric, 
                           value: float,

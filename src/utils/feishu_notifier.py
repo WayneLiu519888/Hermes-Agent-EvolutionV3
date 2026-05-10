@@ -8,14 +8,28 @@ import os
 import json
 import requests
 import logging
+from logging.handlers import RotatingFileHandler
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+
+# 日志轮转：使用 RotatingFileHandler 替代普通 FileHandler
+_feishu_log_handler = RotatingFileHandler(
+    'feishu_notifications.log',
+    maxBytes=10 * 1024 * 1024,  # 10MB
+    backupCount=3,
+    encoding='utf-8'
+)
+_feishu_log_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+_feishu_log_handler.setLevel(logging.INFO)
 
 class FeishuNotifier:
     """飞书通知器"""
     
     def __init__(self, config_path: str = None):
         self.logger = logging.getLogger("FeishuNotifier")
+        if not self.logger.handlers:
+            self.logger.addHandler(_feishu_log_handler)
+            self.logger.setLevel(logging.INFO)
         self.config = self._load_config(config_path)
         self.access_token = None
         self.token_expiry = None
@@ -28,7 +42,7 @@ class FeishuNotifier:
         config = {
             "mode": mode if mode in ["webhook", "openapi", "simulated"] else "auto",
             "webhook_url": os.environ.get("FEISHU_WEBHOOK_URL", ""),
-            "app_id": os.environ.get("FEISHU_APP_ID", "cli_a96b9943f1f8dcd2"),
+            "app_id": os.environ.get("FEISHU_APP_ID", ""),
             "app_secret": os.environ.get("FEISHU_APP_SECRET", ""),
             "home_channel": os.environ.get("FEISHU_HOME_CHANNEL", "oc_018d7317c249d59c48fa0ef0ada77317"),
             "domain": os.environ.get("FEISHU_DOMAIN", "feishu"),
@@ -56,6 +70,12 @@ class FeishuNotifier:
                 config["mode"] = "openapi"
             else:
                 config["mode"] = "simulated"
+        
+        # 启动时检查：FEISHU_APP_ID 未配置则警告
+        if not config["app_id"] and config["mode"] in ("auto", "openapi"):
+            logging.getLogger("FeishuNotifier").warning(
+                "FEISHU_APP_ID 未配置，OpenAPI 模式将不可用。请设置环境变量 FEISHU_APP_ID"
+            )
                 
         return config
         

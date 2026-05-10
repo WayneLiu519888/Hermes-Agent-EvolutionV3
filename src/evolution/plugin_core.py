@@ -25,12 +25,21 @@ import sys
 import logging
 import os
 import uuid
+import atexit
 from pathlib import Path
 from datetime import datetime, timedelta
 
 from evolution.db_utils import get_data_dir, auto_checkpoint_if_needed
 
 logger = logging.getLogger("hermes_evolution_plugin")
+
+
+# ── 优雅关闭：atexit 触发 WAL checkpoint + 关闭所有连接 ──
+def _shutdown():
+    from evolution.db_pool import db_pool
+    db_pool.checkpoint_all(max_wal_mb=0)  # 强制清空所有WAL
+    db_pool.close_all()
+atexit.register(_shutdown)
 
 # ---------------------------------------------------------------------------
 # Module-level singletons — lazily initialized
