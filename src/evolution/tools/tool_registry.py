@@ -148,8 +148,7 @@ class ToolRegistry:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tags ON tools(tags)')
         
         conn.commit()
-        if not self._memory_conn:
-            conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
     
     @retry_on_db_error(max_attempts=3)
     def register(self, tool: ToolDefinition) -> bool:
@@ -231,8 +230,7 @@ class ToolRegistry:
                 ))
             
             conn.commit()
-            if not self._memory_conn:
-                conn.close()
+            # V5-P0: 连接由 DatabasePool 管理，不 close
             return True
             
         except Exception as e:
@@ -258,7 +256,7 @@ class ToolRegistry:
             row = cursor.fetchone()
             
             if not self._memory_conn:
-                conn.close()
+                pass  # V5-P0: 连接由 DatabasePool 管理，不 close
             
             if not row:
                 return None
@@ -329,7 +327,7 @@ class ToolRegistry:
             rows = cursor.fetchall()
             
             if not self._memory_conn:
-                conn.close()
+                pass  # V5-P0: 连接由 DatabasePool 管理，不 close
             
             tools = []
             for row in rows:
@@ -387,8 +385,7 @@ class ToolRegistry:
             ))
             
             conn.commit()
-            if not self._memory_conn:
-                conn.close()
+            # V5-P0: 连接由 DatabasePool 管理，不 close
             
         except Exception as e:
             log.error("更新使用统计失败: %s", e)
@@ -413,7 +410,7 @@ class ToolRegistry:
             deleted = cursor.rowcount > 0
             
             if not self._memory_conn:
-                conn.close()
+                pass  # V5-P0: 连接由 DatabasePool 管理，不 close
             
             return deleted
             
@@ -453,7 +450,7 @@ class ToolRegistry:
             recent_updates = cursor.fetchall()
             
             if not self._memory_conn:
-                conn.close()
+                pass  # V5-P0: 连接由 DatabasePool 管理，不 close
             
             return {
                 'total_tools': total,
@@ -495,7 +492,7 @@ class ToolRegistry:
             rows = cursor.fetchall()
             
             if not self._memory_conn:
-                conn.close()
+                pass  # V5-P0: 连接由 DatabasePool 管理，不 close
             
             tools = []
             for row in rows:

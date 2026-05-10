@@ -268,6 +268,16 @@ class EnhancedToolCreator:
             ToolCreationResult: 创建结果
         """
         try:
+            # ── Input validation: tool_name ──────────────────────────────
+            from evolution.security.input_validator import InputValidator
+            name_result = InputValidator.validate_tool_name(name)
+            if not name_result.valid:
+                return ToolCreationResult(
+                    success=False,
+                    error_message="; ".join(name_result.errors)
+                )
+            name = name_result.sanitized
+
             # 从API规范生成代码
             generated_code = self._generate_code_from_api_spec(api_spec, name)
             

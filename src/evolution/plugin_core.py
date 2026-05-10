@@ -285,6 +285,16 @@ def _handle_create_tool(params, **kwargs):
         category = params.get("category", "custom")
         tags = params.get("tags", [])
 
+        # ── Input validation: tool_name ──────────────────────────────────
+        from evolution.security.input_validator import InputValidator
+        name_result = InputValidator.validate_tool_name(tool_name)
+        if not name_result.valid:
+            return json.dumps({
+                "success": False,
+                "error": "; ".join(name_result.errors),
+            })
+        tool_name = name_result.sanitized
+
         if not tool_name or not description or not api_spec:
             return json.dumps({
                 "success": False,
@@ -896,6 +906,10 @@ def register(ctx):
              Provides ctx.register_tool(name=..., toolset="hermes-evolution", schema=..., handler=...) and
              ctx.register_hook(hook_name, callback).
     """
+    # ── Schema migration: ensure all databases are at latest version ──────
+    from evolution.schema import initialize_all
+    initialize_all()
+
     # Ensure console logging is set up for the plugin
     if not logger.handlers:
         handler = logging.StreamHandler()

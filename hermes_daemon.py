@@ -19,7 +19,6 @@ import json
 import signal
 import logging
 import argparse
-import atexit
 import threading
 from pathlib import Path
 from datetime import datetime
@@ -73,14 +72,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("HermesDaemon")
-
-
-# ── 优雅关闭：atexit 触发 WAL checkpoint + 关闭所有连接 ──
-def _shutdown():
-    from evolution.db_pool import db_pool
-    db_pool.checkpoint_all(max_wal_mb=0)  # 强制清空所有WAL
-    db_pool.close_all()
-atexit.register(_shutdown)
 
 
 class HermesEvolutionDaemon:
@@ -505,7 +496,15 @@ def main():
                        help='数据目录')
     
     args = parser.parse_args()
-    
+
+    # ── Input validation: interval ───────────────────────────────────────
+    from evolution.security.input_validator import InputValidator
+    interval_result = InputValidator.validate_interval(args.interval)
+    if not interval_result.valid:
+        logger.error("Invalid interval: %s", "; ".join(interval_result.errors))
+        sys.exit(1)
+    args.interval = interval_result.sanitized
+
     # 配置
     config = {
         'cycle_interval': args.interval,

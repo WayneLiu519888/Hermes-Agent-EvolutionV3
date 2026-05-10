@@ -162,7 +162,7 @@ class ConfigurationManager:
                 "port": 5432,
                 "database": f"hermes_{env.value}",
                 "username": "hermes",
-                "password": "hermes123",
+                "password": os.environ.get("DEPLOYMENT_DEFAULT_PASSWORD", ""),
                 "pool_size": 10,
                 "echo": env == EnvironmentType.DEVELOPMENT
             },
@@ -194,7 +194,14 @@ class ConfigurationManager:
         
         # 保存默认配置
         self.save_config(env, default_config)
-        
+
+        # ── Security warning: empty default password ─────────────────────
+        if not default_config.get("database", {}).get("password"):
+            logger.warning(
+                "DEPLOYMENT_DEFAULT_PASSWORD is not set — database password is empty. "
+                "Set the environment variable for production use."
+            )
+
         return default_config
     
     def _generate_secret_key(self) -> str:

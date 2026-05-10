@@ -51,6 +51,11 @@ def get_data_dir() -> Path:
 
 
 # ── 连接缓存 (thread-safe) ───────────────────────────────────────────────────
+# DEPRECATED: V5-P0 之后由 DatabasePool 管理，_connection_cache 仅保留兼容不再主动使用
+_DEPRECATION_NOTICE = (
+    "db_utils._connection_cache is deprecated. "
+    "All connections are now managed by evolution.db_pool.DatabasePool."
+)
 
 _connection_cache: dict = {}
 _cache_lock = threading.Lock()
@@ -59,6 +64,9 @@ _cache_lock = threading.Lock()
 def get_evolution_db(db_name: str) -> sqlite3.Connection:
     """
     获取线程安全的 SQLite 连接。
+    
+    V5-P0: 内部转发到 DatabasePool 统一管理。
+    禁止对返回的连接调用 .close() —— 生命周期由池管理。
     
     Args:
         db_name: 数据库文件名或绝对路径
@@ -75,47 +83,17 @@ def get_evolution_db(db_name: str) -> sqlite3.Connection:
         - PRAGMA cache_size=-64000       (64MB缓存)
         - PRAGMA foreign_keys=ON         (外键约束)
         - check_same_thread=False        (跨线程安全)
-    
-    连接按 db_path 缓存复用。缓存是线程安全的。
     """
-    # 绝对路径 → 直接使用 (测试隔离/自定义路径)
-    if os.path.isabs(db_name):
-        db_path = db_name
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    else:
-        data_dir = _resolve_data_dir()
-        db_path = str(data_dir / db_name)
-    
-    with _cache_lock:
-        if db_path in _connection_cache:
-            conn = _connection_cache[db_path]
-            # 验证连接仍然有效
-            try:
-                conn.execute("SELECT 1")
-                return conn
-            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
-                # 连接已关闭或无效，重新创建
-                logger.debug("缓存的连接已失效，重新创建: %s", db_path)
-                del _connection_cache[db_path]
-        
-        # 创建新连接
-        conn = sqlite3.connect(
-            db_path,
-            check_same_thread=False,
-            timeout=30.0,
-        )
-        conn.row_factory = sqlite3.Row
-        
-        # 配置 PRAGMA
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA cache_size=-64000")  # 64MB 页缓存
-        conn.execute("PRAGMA foreign_keys=ON")
-        
-        _connection_cache[db_path] = conn
-        logger.debug("创建数据库连接: %s (WAL模式)", db_path)
-        return conn
+    # ── Input validation: db_name ────────────────────────────────────────
+    if not db_name.startswith("/") and not db_name.endswith(":memory:"):
+        from evolution.security.input_validator import InputValidator
+        import os as _os
+        result = InputValidator.validate_db_path(_os.path.basename(db_name))
+        if not result.valid:
+            raise ValueError("; ".join(result.errors))
+
+    from evolution.db_pool import db_pool
+    return db_pool._get_connection(db_name)
 
 
 def close_all_connections():

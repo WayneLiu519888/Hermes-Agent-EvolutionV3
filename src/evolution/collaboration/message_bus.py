@@ -167,7 +167,8 @@ class CollaborationMessageBus:
 
     def _init_database(self) -> None:
         """初始化数据库表"""
-        self._connection = sqlite3.connect(self.db_path, check_same_thread=False)
+        from ..db_utils import get_evolution_db
+        self._connection = get_evolution_db(self.db_path)
         self._connection.row_factory = sqlite3.Row
 
         try:
@@ -192,13 +193,8 @@ class CollaborationMessageBus:
         self.close()
 
     def close(self) -> None:
-        """关闭数据库连接"""
-        if self._connection:
-            try:
-                self._connection.close()
-            except Exception:
-                pass
-            self._connection = None
+        """关闭数据库连接 (V5-P0: 连接由 DatabasePool 管理，仅清除引用)"""
+        self._connection = None
 
     # ── 发送 ──────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ import uuid
 
 from collections import OrderedDict
 from ..db_utils import get_evolution_db, retry_on_db_error
+from ..memory.memory_tier import MemoryTier
 
 log = logging.getLogger("hermes_evo.learning")
 from .experience import Experience, ExperienceType, Outcome
@@ -41,6 +42,8 @@ class LearningObserver:
         self._experiences_cache: OrderedDict = OrderedDict()
         self._max_cache_size = 1000
         self._statistics_cache: Optional[Dict[str, Any]] = None
+        # L1 热缓存（MemoryTier 统一分层管理）
+        self._memory_tier = MemoryTier(max_hot=1000)
     
     def _init_database(self):
         """初始化数据库表结构"""
@@ -95,13 +98,15 @@ class LearningObserver:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_exp_outcome ON experiences(_outcome)')
         
         conn.commit()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
     
     def _add_to_cache(self, exp_id: str, experience: Experience) -> None:
         """LRU-aware cache insertion: evicts oldest entry when full."""
         if len(self._experiences_cache) >= self._max_cache_size:
             self._experiences_cache.popitem(last=False)  # FIFO淘汰最旧
         self._experiences_cache[exp_id] = experience
+        # 同步写入 L1 热缓存（MemoryTier）
+        self._memory_tier.put(exp_id, experience)
 
     def _generate_id(self, data: Dict[str, Any]) -> str:
         """生成经验ID"""
@@ -161,12 +166,12 @@ class LearningObserver:
         except Exception:
             conn.rollback()
             raise
-        finally:
-            conn.close()
-        
+    
         # 更新缓存
         self._add_to_cache(experience.id, experience)
         self._statistics_cache = None  # 使统计缓存失效
+        # 同步写入 L1 热缓存
+        self._memory_tier.put(experience.id, experience)
         
         return experience.id
     
@@ -180,6 +185,11 @@ class LearningObserver:
         Returns:
             经验对象，如果不存在则返回None
         """
+        # L1: 热缓存（MemoryTier）
+        cached = self._memory_tier.get(experience_id)
+        if cached is not None:
+            return cached
+
         # 检查缓存
         if experience_id in self._experiences_cache:
             return self._experiences_cache[experience_id]
@@ -189,7 +199,7 @@ class LearningObserver:
         
         cursor.execute('SELECT * FROM experiences WHERE id = ?', (experience_id,))
         row = cursor.fetchone()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         if not row:
             return None
@@ -304,7 +314,7 @@ class LearningObserver:
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         # 转换为Experience对象
         experiences = []
@@ -367,7 +377,7 @@ class LearningObserver:
         ''')
         statistics["top_tags"] = dict(cursor.fetchall())
         
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         # 缓存结果
         self._statistics_cache = statistics
@@ -449,7 +459,7 @@ class LearningObserver:
         
         analysis["avg_duration_by_type"] = dict(cursor.fetchall())
         
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         return analysis
     
@@ -500,6 +510,7 @@ class LearningObserver:
         """清空缓存"""
         self._experiences_cache.clear()
         self._statistics_cache = None
+        self._memory_tier = MemoryTier(max_hot=1000)
     
     def __del__(self):
         """析构函数，确保数据库连接关闭"""

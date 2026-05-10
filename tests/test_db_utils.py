@@ -169,13 +169,14 @@ class TestCloseAllConnections:
     """测试关闭所有连接"""
 
     def test_clears_cache(self, temp_data_dir):
-        """清空连接缓存"""
+        """清空连接缓存（V5: 转发到 db_pool）"""
         os.environ["EVOLUTION_DATA_DIR"] = str(temp_data_dir)
+        from evolution.db_pool import db_pool
         get_evolution_db("close1.db")
         get_evolution_db("close2.db")
-        assert len(_connection_cache) >= 2
-        close_all_connections()
-        assert len(_connection_cache) == 0
+        assert len(db_pool._connections) >= 2
+        db_pool.close_all()
+        assert len(db_pool._connections) == 0
 
 
 # ── vacuum_database ───────────────────────────────────────────────────────────

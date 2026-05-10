@@ -446,10 +446,8 @@ class AssociationDatabase:
         logger.debug("数据库初始化确认完成")
 
     def close(self):
-        """关闭数据库连接"""
-        if self.connection:
-            self.connection.close()
-            self.connection = None
+        """关闭数据库连接 (V5-P0: 连接由 DatabasePool 管理，仅清除引用)"""
+        self.connection = None
             
     def __enter__(self):
         return self

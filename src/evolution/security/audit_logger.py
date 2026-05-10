@@ -140,7 +140,7 @@ class AuditLogger:
 
     @contextmanager
     def _get_connection(self):
-        """获取数据库连接上下文管理器"""
+        """获取数据库连接上下文管理器 (V5-P0: 由 DatabasePool 管理，不关闭连接)"""
         conn = get_evolution_db(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -149,8 +149,6 @@ class AuditLogger:
         except Exception:
             conn.rollback()
             raise
-        finally:
-            conn.close()
 
     def _init_database(self):
         """初始化数据库表结构和索引"""
@@ -529,17 +527,16 @@ class AuditLogger:
                 cutoff_id = row["id"]
 
                 # 创建归档数据库
-                archive_conn = sqlite3.connect(archive_path)
+                archive_conn = get_evolution_db(archive_path)
                 try:
                     # 复制表结构
                     conn.backup(archive_conn)  # 先完整备份
-                    archive_conn.close()
+                    # V5-P0: archive_conn 由 DatabasePool 管理，不 close
 
                     # 删除已归档的记录
                     cursor.execute("DELETE FROM audit_logs WHERE id < ?", (cutoff_id,))
                     conn.commit()
                 except Exception:
-                    archive_conn.close()
                     raise
 
             logger.info(

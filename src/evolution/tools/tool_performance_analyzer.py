@@ -119,7 +119,7 @@ class ToolPerformanceAnalyzer:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON performance_records(timestamp)')
         
         conn.commit()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
     
     @retry_on_db_error(max_attempts=3)
     def record_performance(self, tool_name: str, 
@@ -153,7 +153,7 @@ class ToolPerformanceAnalyzer:
             ''', (tool_name, metric.value, value, datetime.now().isoformat(), metadata_json))
             
             conn.commit()
-            conn.close()
+            # V5-P0: 连接由 DatabasePool 管理，不 close
             
             # 更新工具注册表中的统计信息
             self._update_tool_statistics(tool_name, metric, value)
@@ -452,7 +452,7 @@ class ToolPerformanceAnalyzer:
             )
             records.append(record)
         
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         return records
     
     def _analyze_metric(self, metric: PerformanceMetric, 

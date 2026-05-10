@@ -107,7 +107,7 @@ class RetrievalOptimizer:
         ''')
         
         conn.commit()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
     def save_config(self, performance_score: Optional[float] = None):
         """保存当前配置到历史"""
@@ -121,7 +121,7 @@ class RetrievalOptimizer:
         )
         
         conn.commit()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
     @retry_on_db_error(max_attempts=3)
     def record_feedback(self, feedback: RetrievalFeedback):
@@ -143,7 +143,7 @@ class RetrievalOptimizer:
         )
         
         conn.commit()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
     def calculate_performance_metrics(self, config_id: Optional[int] = None) -> Dict[str, float]:
         """计算性能指标"""
@@ -158,7 +158,7 @@ class RetrievalOptimizer:
         ''')
         
         results = cursor.fetchall()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         if not results:
             return {
@@ -217,7 +217,7 @@ class RetrievalOptimizer:
                  metrics['f1_score'], metrics['mean_response_time'], config_id)
             )
             conn.commit()
-            conn.close()
+            # V5-P0: 连接由 DatabasePool 管理，不 close
         
         return metrics
     
@@ -288,7 +288,7 @@ class RetrievalOptimizer:
         ''')
         
         result = cursor.fetchone()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         if result:
             config_dict = json.loads(result[0])
@@ -310,11 +310,11 @@ class RetrievalOptimizer:
         ''')
         
         results = cursor.fetchall()
-        conn.close()
+        # V5-P0: 连接由 DatabasePool 管理，不 close
         
         if len(results) < 2:
             return {'trend': 'insufficient_data', 'suggestion': '收集更多反馈数据'}
-        
+
         timestamps = [r[0] for r in results]
         f1_scores = [r[1] for r in results]
         response_times = [r[2] for r in results]

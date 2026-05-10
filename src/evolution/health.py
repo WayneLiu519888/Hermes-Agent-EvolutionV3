@@ -51,8 +51,8 @@ def health_check(data_dir: Optional[Path] = None) -> dict:
         # 尝试打开主库
         main_db = data / "associations.db"
         if main_db.exists():
-            import sqlite3
-            conn = sqlite3.connect(str(main_db))
+            from evolution.db_utils import get_evolution_db
+            conn = get_evolution_db(str(main_db))
             tables = [r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()]
@@ -62,7 +62,7 @@ def health_check(data_dir: Optional[Path] = None) -> dict:
                     row_counts[t] = conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
                 except Exception:
                     row_counts[t] = -1
-            conn.close()
+            # V5-P0: 不再 close，连接由 DatabasePool 管理
             db_status["tables"] = tables
             db_status["row_counts"] = row_counts
             # 大型 DB 警告

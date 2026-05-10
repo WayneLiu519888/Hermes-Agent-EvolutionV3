@@ -69,6 +69,11 @@ class DatabasePool:
                         pass
                     del self._connections[db_path]
 
+            # 确保父目录存在（跳过 :memory: 和空路径）
+            import os as _os
+            if db_path != ":memory:" and _os.path.dirname(db_path):
+                _os.makedirs(_os.path.dirname(db_path), exist_ok=True)
+
             conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30.0)
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode=WAL")
