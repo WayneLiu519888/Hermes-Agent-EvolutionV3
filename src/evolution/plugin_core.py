@@ -2,7 +2,7 @@
 Hermes Evolution Plugin Core
 
 Shared logic extracted from the hermes-plugin / _plugin mirror files.
-Provides 7 tools + 1 hook for the Hermes Agent self-evolution system:
+Provides 8 tools + 4 hooks for the Hermes Agent self-evolution system:
 
   Tools:
     - evolution_run_cycle           — trigger one full evolution cycle
@@ -30,6 +30,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from evolution.db_utils import get_data_dir, auto_checkpoint_if_needed
+from evolution.consumer import AssociationConsumer
 
 logger = logging.getLogger("hermes_evolution_plugin")
 
@@ -903,6 +904,154 @@ def _handle_audit(params, **kwargs):
 
 
 # ---------------------------------------------------------------------------
+# V7 Hook: on_session_start — 注入最近失败教训到 memory
+# ---------------------------------------------------------------------------
+def _on_session_start(session_id, model=None, platform=None, **kwargs):
+    """会话启动时：查询 HAE 学习经验，将高频失败教训写入 hermes memory"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        lessons = consumer.recall_lessons(limit=3, outcome="failure")
+        if not lessons:
+            return
+
+        # 生成教训摘要
+        lines = ["[HAE教训] 最近失败经验："]
+        for i, lesson in enumerate(lessons, 1):
+            desc = (lesson.get("content") or lesson.get("description") or "")[:80]
+            lines.append(f"  {i}. {desc}")
+        lines.append("以上教训已注入，请避免重复错误。")
+
+        # 写入 hermes memory（通过 memory 系统）
+        _inject_lesson_to_memory("\n".join(lines), session_id)
+
+    except Exception as exc:
+        logger.debug("on_session_start hook: %s", exc)
+
+
+def _inject_lesson_to_memory(lesson_text: str, session_id: str) -> None:
+    """将教训文本写入 hermes memory 的 key-value 存储"""
+    try:
+        from pathlib import Path
+        memory_file = Path("/root/.hermes/memory/hae_lessons.txt")
+        memory_file.parent.mkdir(parents=True, exist_ok=True)
+        # 追加模式，带时间戳和会话ID
+        with open(memory_file, "a", encoding="utf-8") as f:
+            f.write(f"=== {datetime.now().isoformat()[:19]} session={session_id[:8]} ===\n")
+            f.write(lesson_text + "\n\n")
+        # 只保留最近10条，避免文件膨胀
+        lines = memory_file.read_text(encoding="utf-8").split("\n") if memory_file.exists() else []
+        # 保留最近50行
+        if len(lines) > 50:
+            memory_file.write_text("\n".join(lines[-50:]), encoding="utf-8")
+    except Exception:
+        pass  # 静默失败，不影响主流程
+
+
+# ---------------------------------------------------------------------------
+# V7 Hook: pre_llm_call — 注入关联上下文到用户消息
+# ---------------------------------------------------------------------------
+def _on_pre_llm_call(messages, model=None, **kwargs):
+    """LLM 调用前：从关联数据库提取上下文，注入到用户消息尾部"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+
+        # 取最后一条 user 消息
+        user_msg = None
+        user_idx = -1
+        for i, msg in enumerate(messages):
+            if msg.get("role") == "user":
+                user_msg = msg
+                user_idx = i
+
+        if not user_msg:
+            return messages
+
+        context = consumer.inject_context(user_msg.get("content", ""))
+        if context:
+            # 追加到用户消息尾部
+            modified = dict(user_msg)
+            modified["content"] = user_msg.get("content", "") + "\n\n" + context
+            messages[user_idx] = modified
+
+    except Exception as exc:
+        logger.debug("pre_llm_call hook: %s", exc)
+
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# V7 Hook: post_llm_call — 关联质量打分
+# ---------------------------------------------------------------------------
+def _on_post_llm_call(response, messages=None, model=None, **kwargs):
+    """LLM 回复后：检查是否引用注入的关联，更新质量分数"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        # response 可能是字符串或 dict
+        text = response if isinstance(response, str) else response.get("content", "")
+        if text:
+            consumer.score_usage(text)
+        consumer.cleanup()
+    except Exception as exc:
+        logger.debug("post_llm_call hook: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Tool 8: evolution_recall_lessons — 经验教训召回
+# ---------------------------------------------------------------------------
+TOOL_RECALL_LESSONS_SCHEMA = {
+    "name": "evolution_recall_lessons",
+    "description": "查询历史经验教训，返回可执行的行为改进建议。帮助避免重复错误。",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "description": "返回条数，默认5",
+                "default": 5,
+                "minimum": 1,
+                "maximum": 20,
+            },
+            "outcome": {
+                "type": "string",
+                "enum": ["failure", "success", "all"],
+                "description": "筛选结果类型：failure=失败教训, success=成功经验, all=全部",
+                "default": "all",
+            },
+        },
+        "required": [],
+    },
+}
+
+
+def _handle_recall_lessons(params, **kwargs):
+    """Handler for evolution_recall_lessons"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        limit = params.get("limit", 5)
+        outcome = params.get("outcome", "all")
+        lessons = consumer.recall_lessons(limit=limit, outcome=outcome)
+
+        return json.dumps({
+            "success": True,
+            "count": len(lessons),
+            "lessons": lessons,
+            "timestamp": datetime.now().isoformat(),
+        }, default=str, ensure_ascii=False)
+
+    except Exception as e:
+        logger.exception("evolution_recall_lessons failed")
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat(),
+        })
+
+
+# ---------------------------------------------------------------------------
 # Plugin entry point: register(ctx)
 # ---------------------------------------------------------------------------
 def register(ctx):
@@ -937,6 +1086,7 @@ def register(ctx):
         ("evolution_self_monitor", TOOL_SELF_MONITOR_SCHEMA, _handle_self_monitor),
         ("evolution_memory_discover", TOOL_MEMORY_DISCOVER_SCHEMA, _handle_memory_discover),
         ("evolution_audit", TOOL_AUDIT_SCHEMA, _handle_audit),
+        ("evolution_recall_lessons", TOOL_RECALL_LESSONS_SCHEMA, _handle_recall_lessons),
     ]
 
     for name, schema, handler in tools:
@@ -947,14 +1097,21 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register tool %s: %s", name, e)
 
-    # ── Register Hook ───────────────────────────────────────────────────
-    try:
-        ctx.register_hook("post_tool_call", _on_post_tool_call)
-        logger.info("Registered hook: post_tool_call")
-    except Exception as e:
-        logger.error("Failed to register hook post_tool_call: %s", e)
+    # ── Register Hooks (V7: 4 hooks) ───────────────────────────────────
+    hooks = [
+        ("post_tool_call", _on_post_tool_call),
+        ("on_session_start", _on_session_start),
+        ("pre_llm_call", _on_pre_llm_call),
+        ("post_llm_call", _on_post_llm_call),
+    ]
+    for hook_name, callback in hooks:
+        try:
+            ctx.register_hook(hook_name, callback)
+            logger.info("Registered hook: %s", hook_name)
+        except Exception as e:
+            logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    manifest_version = "6.0.0"  # read from plugin.yaml
+    manifest_version = "7.0.0"  # read from plugin.yaml
     logger.info(
-        "Hermes Evolution Plugin v%s registered — 7 tools + 1 hook", manifest_version
+        "Hermes Evolution Plugin v%s registered — 8 tools + 4 hooks", manifest_version
     )

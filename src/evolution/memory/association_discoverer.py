@@ -27,7 +27,7 @@ class AssociationDiscoverer:
     并将发现的关联持久化到 AssociationDatabase 中。
 
     支持的发现算法：
-        - semantic: 基于内容文本的 Jaccard 相似度 + 长度相似度
+        - semantic: 基于结构化字段匹配（tags交集 + content_type + FTS5关键词共现）
         - temporal: 基于时间邻近性
         - usage_pattern: 基于共现分析
 
@@ -327,25 +327,33 @@ class AssociationDiscoverer:
 
     @staticmethod
     def _calculate_similarity(text_a: str, text_b: str) -> float:
-        """计算两段文本的综合相似度（测试兼容方法）
-        
-        使用 Jaccard 相似度 + 长度相似度的加权组合。
-        
+        """计算两段文本的结构化相似度（测试兼容方法）
+
+        使用关键词重叠 + 长度相似度的加权组合。
+
         Args:
             text_a: 文本 A
             text_b: 文本 B
-            
+
         Returns:
             相似度分数，范围 [0, 1]
         """
-        jaccard = AssociationDiscoverer._jaccard_similarity(text_a, text_b)
-        length_sim = AssociationDiscoverer._length_similarity(text_a, text_b)
-        return 0.7 * jaccard + 0.3 * length_sim
+        kw_a = AssociationDiscoverer._extract_keywords(text_a)
+        kw_b = AssociationDiscoverer._extract_keywords(text_b)
+        kw_score = AssociationDiscoverer._keyword_overlap(kw_a, kw_b)
+        len_a, len_b = len(text_a), len(text_b)
+        if len_a == 0 and len_b == 0:
+            len_score = 1.0
+        else:
+            max_len = max(len_a, len_b)
+            len_score = 1.0 - abs(len_a - len_b) / max_len if max_len > 0 else 0.0
+        return 0.6 * kw_score + 0.4 * len_score
 
     def _discover_semantic(self, entries: List[Dict[str, Any]]) -> int:
-        """对所有条目两两计算语义相似度并批量写入关联
+        """结构化字段匹配：tags交集 + content_type + FTS5关键词共现
 
-        相似度 = 0.7 * jaccard_similarity + 0.3 * length_similarity
+        三路加权匹配，总分 = tags(0.5) + content_type(0.3) + fts5(0.2)
+        阈值 0.2，达到才写入关联。每批50条一个事务。
 
         Args:
             entries: 全部记忆条目列表
@@ -353,43 +361,73 @@ class AssociationDiscoverer:
         Returns:
             新发现的关联数量
         """
-        data: List[tuple] = []
-        now = datetime.now().isoformat()
-        for entry_a, entry_b in combinations(entries, 2):
-            content_a: str = entry_a.get("content", "")
-            content_b: str = entry_b.get("content", "")
-            jaccard = self._jaccard_similarity(content_a, content_b)
-            length_sim = self._length_similarity(content_a, content_b)
-            strength = 0.7 * jaccard + 0.3 * length_sim
-            if strength < self.semantic_threshold:
-                continue
-            confidence = min(1.0, strength * 1.2)
-            metadata = json.dumps({
-                "jaccard_similarity": round(jaccard, 4),
-                "length_similarity": round(length_sim, 4),
-                "algorithm": "jaccard+length",
-            }, ensure_ascii=False)
-            data.append((
-                entry_a["id"], entry_b["id"], "semantic",
-                round(strength, 4), round(confidence, 4),
-                "algorithm", now, metadata,
-            ))
-        if data:
-            self.db.connection.executemany(
-                "INSERT OR REPLACE INTO associations "
-                "(source_id, target_id, association_type, strength, confidence, "
-                "discovered_by, discovery_time, metadata) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                data,
-            )
-        return len(data)
+        import re
+        batch_size = 50
+        total_discovered = 0
+
+        for batch_start in range(0, len(entries), batch_size):
+            batch_entries = entries[batch_start:batch_start + batch_size]
+            data: List[tuple] = []
+            now = datetime.now().isoformat()
+
+            for entry_a in batch_entries:
+                tags_a = self._parse_tags(entry_a.get("tags", ""))
+                content_type_a = entry_a.get("content_type", "")
+                keywords_a = self._extract_keywords(entry_a.get("content", ""))
+
+                for entry_b in entries:
+                    if entry_a["id"] == entry_b["id"]:
+                        continue
+
+                    # 路1: tags交集匹配 (weight 0.5)
+                    tags_b = self._parse_tags(entry_b.get("tags", ""))
+                    tags_score = self._tags_similarity(tags_a, tags_b) * 0.5
+
+                    # 路2: content_type匹配 (weight 0.3)
+                    content_type_b = entry_b.get("content_type", "")
+                    ct_score = (0.3 if (content_type_a and content_type_b
+                               and content_type_a == content_type_b) else 0.0)
+
+                    # 路3: FTS5关键词共现 (weight 0.2)
+                    keywords_b = self._extract_keywords(entry_b.get("content", ""))
+                    fts_score = self._keyword_overlap(keywords_a, keywords_b) * 0.2
+
+                    strength = tags_score + ct_score + fts_score
+                    if strength < self.semantic_threshold:
+                        continue
+
+                    confidence = min(1.0, strength * 1.3)
+                    metadata = json.dumps({
+                        "tags_score": round(tags_score, 4),
+                        "content_type_score": round(ct_score, 4),
+                        "fts_keyword_score": round(fts_score, 4),
+                        "algorithm": "structured_matching_v2",
+                    }, ensure_ascii=False)
+
+                    data.append((
+                        entry_a["id"], entry_b["id"], "semantic",
+                        round(strength, 4), round(confidence, 4),
+                        "structured_v2", now, metadata,
+                    ))
+
+            if data:
+                self.db.connection.executemany(
+                    "INSERT OR REPLACE INTO associations "
+                    "(source_id, target_id, association_type, strength, confidence, "
+                    "discovered_by, discovery_time, metadata) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    data,
+                )
+            total_discovered += len(data)
+
+        return total_discovered
 
     def _discover_semantic_for_pair(
         self,
         entry_a: Dict[str, Any],
         entry_b: Dict[str, Any],
     ) -> int:
-        """计算两个条目的语义相似度，满足阈值则写入关联
+        """结构化字段匹配：计算两个条目的关联强度，满足阈值则写入
 
         Args:
             entry_a: 第一个记忆条目
@@ -398,17 +436,22 @@ class AssociationDiscoverer:
         Returns:
             1 表示写入了新关联，0 表示未写入
         """
-        content_a: str = entry_a.get("content", "")
-        content_b: str = entry_b.get("content", "")
+        tags_a = self._parse_tags(entry_a.get("tags", ""))
+        tags_b = self._parse_tags(entry_b.get("tags", ""))
+        tags_score = self._tags_similarity(tags_a, tags_b) * 0.5
 
-        jaccard = self._jaccard_similarity(content_a, content_b)
-        length_sim = self._length_similarity(content_a, content_b)
-        strength = 0.7 * jaccard + 0.3 * length_sim
+        ct_score = (0.3 if (entry_a.get("content_type") and entry_b.get("content_type")
+                   and entry_a["content_type"] == entry_b["content_type"]) else 0.0)
 
+        kw_a = self._extract_keywords(entry_a.get("content", ""))
+        kw_b = self._extract_keywords(entry_b.get("content", ""))
+        fts_score = self._keyword_overlap(kw_a, kw_b) * 0.2
+
+        strength = tags_score + ct_score + fts_score
         if strength < self.semantic_threshold:
             return 0
 
-        confidence = min(1.0, strength * 1.2)
+        confidence = min(1.0, strength * 1.3)
         try:
             self.db.add_association(
                 source_id=entry_a["id"],
@@ -417,9 +460,10 @@ class AssociationDiscoverer:
                 strength=round(strength, 4),
                 confidence=round(confidence, 4),
                 metadata={
-                    "jaccard_similarity": round(jaccard, 4),
-                    "length_similarity": round(length_sim, 4),
-                    "algorithm": "jaccard+length",
+                    "tags_score": round(tags_score, 4),
+                    "content_type_score": round(ct_score, 4),
+                    "fts_keyword_score": round(fts_score, 4),
+                    "algorithm": "structured_matching_v2",
                 },
             )
             return 1
@@ -432,51 +476,98 @@ class AssociationDiscoverer:
             )
             return 0
 
+    # ------------------------------------------------------------------
+    # 结构化匹配辅助方法
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def _jaccard_similarity(text_a: str, text_b: str) -> float:
-        """计算两段文本的 Jaccard 相似度（基于字符级 bigram）
+    def _parse_tags(tags_raw) -> List[str]:
+        """解析 tags 字段，支持逗号分隔字符串、JSON数组、或空值
 
         Args:
-            text_a: 文本 A
-            text_b: 文本 B
+            tags_raw: tags 字段原始值（字符串/列表/None）
 
         Returns:
-            Jaccard 相似度，范围 [0, 1]
+            tag 列表（小写、去空白）
         """
-        if not text_a or not text_b:
+        if not tags_raw:
+            return []
+        if isinstance(tags_raw, list):
+            return [str(t).strip().lower() for t in tags_raw if str(t).strip()]
+        if isinstance(tags_raw, str):
+            text = tags_raw.strip()
+            if text.startswith("["):
+                try:
+                    parsed = json.loads(text)
+                    if isinstance(parsed, list):
+                        return [str(t).strip().lower() for t in parsed if str(t).strip()]
+                except json.JSONDecodeError:
+                    pass
+            return [t.strip().lower() for t in text.split(",") if t.strip()]
+        return []
+
+    @staticmethod
+    def _tags_similarity(tags_a: List[str], tags_b: List[str]) -> float:
+        """计算两个 tag 列表的 Jaccard 相似度
+
+        Args:
+            tags_a: tag 列表 A
+            tags_b: tag 列表 B
+
+        Returns:
+            相似度，范围 [0, 1]
+        """
+        if not tags_a or not tags_b:
             return 0.0
-
-        def _bigrams(text: str) -> Set[str]:
-            text = text.lower().strip()
-            return {text[i: i + 2] for i in range(len(text) - 1)} if len(text) >= 2 else {text}
-
-        set_a = _bigrams(text_a)
-        set_b = _bigrams(text_b)
+        set_a, set_b = set(tags_a), set(tags_b)
         intersection = set_a & set_b
         union = set_a | set_b
-        if not union:
-            return 0.0
-        return len(intersection) / len(union)
+        return len(intersection) / len(union) if union else 0.0
 
     @staticmethod
-    def _length_similarity(text_a: str, text_b: str) -> float:
-        """计算两段文本的长度相似度
+    def _extract_keywords(text: str, min_len: int = 2) -> List[str]:
+        """从文本中提取关键词（简单分词，不引入外部依赖）
 
-        使用公式: 1 - |len_a - len_b| / max(len_a, len_b)
+        按标点/空白切分，取长度≥min_len的片段，去重后最多返回8个。
 
         Args:
-            text_a: 文本 A
-            text_b: 文本 B
+            text: 待分词文本
+            min_len: 关键词最小长度（默认2）
 
         Returns:
-            长度相似度，范围 [0, 1]
+            关键词列表
         """
-        len_a = len(text_a)
-        len_b = len(text_b)
-        if len_a == 0 and len_b == 0:
-            return 1.0
-        max_len = max(len_a, len_b)
-        return 1.0 - abs(len_a - len_b) / max_len
+        import re
+        if not text:
+            return []
+        segments = re.split(r'[，。！？；：、\s.,!?;:\n\t]+', text)
+        keywords = []
+        seen = set()
+        for seg in segments:
+            seg = seg.strip()
+            if len(seg) >= min_len and seg not in seen:
+                keywords.append(seg)
+                seen.add(seg)
+                if len(keywords) >= 8:
+                    break
+        return keywords
+
+    @staticmethod
+    def _keyword_overlap(kw_a: List[str], kw_b: List[str]) -> float:
+        """计算两个关键词集合的重叠率
+
+        Args:
+            kw_a: 关键词列表 A
+            kw_b: 关键词列表 B
+
+        Returns:
+            重叠率，范围 [0, 1]
+        """
+        if not kw_a or not kw_b:
+            return 0.0
+        set_a, set_b = set(kw_a), set(kw_b)
+        intersection = set_a & set_b
+        return len(intersection) / max(len(set_a), len(set_b))
 
     # ------------------------------------------------------------------
     # 时间关联发现

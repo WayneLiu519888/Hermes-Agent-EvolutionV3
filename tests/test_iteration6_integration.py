@@ -98,11 +98,12 @@ class TestPluginLoading:
         "evolution_self_monitor",
         "evolution_memory_discover",
         "evolution_audit",
+        "evolution_recall_lessons",
     ]
 
     def test_tool_count(self, ctx):
         """7 tools should be registered."""
-        assert len(ctx.tools) == 7, f"Expected 7 tools, got {len(ctx.tools)}: {list(ctx.tools.keys())}"
+        assert len(ctx.tools) == 8, f"Expected 8 tools, got {len(ctx.tools)}: {list(ctx.tools.keys())}"
 
     def test_all_tools_registered(self, ctx):
         """Every expected tool is present by name."""
@@ -117,7 +118,7 @@ class TestPluginLoading:
 
     def test_hook_count(self, ctx):
         """Exactly 1 hook registered."""
-        assert len(ctx.hooks) == 1, f"Expected 1 hook, got {len(ctx.hooks)}"
+        assert len(ctx.hooks) == 4, f"Expected 4 hooks, got {len(ctx.hooks)}"
 
     def test_tools_have_callable_handlers(self, ctx):
         """Every registered tool's handler must be callable."""

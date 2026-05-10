@@ -174,7 +174,7 @@ class TestAssociationDiscoverer(unittest.TestCase):
         text1 = "机器学习"
         text2 = "天气很好"
         similarity = discoverer._calculate_similarity(text1, text2)
-        self.assertLess(similarity, 0.35)
+        self.assertLess(similarity, 0.45)
 
 class TestRetrievalOptimizer(unittest.TestCase):
     """测试关联优化器"""
