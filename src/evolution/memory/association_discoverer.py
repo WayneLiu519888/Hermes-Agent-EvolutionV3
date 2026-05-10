@@ -72,6 +72,7 @@ class AssociationDiscoverer:
     def discover_all(
         self,
         methods: Optional[List[str]] = None,
+        max_entries: int = 200,
     ) -> Dict[str, Any]:
         """批量发现所有记忆条目之间的关联
 
@@ -82,6 +83,8 @@ class AssociationDiscoverer:
             methods: 要运行的算法列表，可选值为
                      ``'semantic'``、``'temporal'``、``'usage_pattern'``。
                      为 ``None`` 时运行全部三种算法。
+            max_entries: 最大处理条目数，防止 N×N 组合爆炸导致 OOM。
+                         默认 200，上限 500。
 
         Returns:
             汇总结果字典，包含每种算法的发现数量和总计。
@@ -89,7 +92,9 @@ class AssociationDiscoverer:
         if methods is None:
             methods = ["semantic", "temporal", "usage_pattern"]
 
-        entries = self._fetch_all_entries()
+        # 安全上限：防止 N×N 组合爆炸导致 OOM
+        max_entries = min(max_entries, 500)
+        entries = self._fetch_all_entries(limit=max_entries)
         logger.info("开始批量关联发现，共 %d 条记忆条目，算法: %s", len(entries), methods)
 
         results: Dict[str, Any] = {"total_associations": 0, "methods": {}}
@@ -787,15 +792,21 @@ class AssociationDiscoverer:
         except Exception as exc:
             logger.error("Failed to enforce association limit: %s", exc)
 
-    def _fetch_all_entries(self) -> List[Dict[str, Any]]:
-        """从数据库获取全部记忆条目
+    def _fetch_all_entries(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """从数据库获取全部记忆条目（可选限制数量）
+
+        Args:
+            limit: 最大返回条目数，None 表示全部
 
         Returns:
             记忆条目字典列表
         """
         try:
             cursor = self.db.connection.cursor()
-            cursor.execute("SELECT * FROM memory_entries")
+            if limit is not None:
+                cursor.execute("SELECT * FROM memory_entries ORDER BY updated_at DESC LIMIT ?", (limit,))
+            else:
+                cursor.execute("SELECT * FROM memory_entries")
             rows = cursor.fetchall()
             return [self.db._row_to_dict(row) for row in rows]
         except Exception as exc:

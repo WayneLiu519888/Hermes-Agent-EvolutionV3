@@ -658,6 +658,13 @@ TOOL_MEMORY_DISCOVER_SCHEMA = {
                 "type": "string",
                 "description": "Specific memory entry ID to discover associations for. If omitted, discovers across all entries.",
             },
+            "max_entries": {
+                "type": "integer",
+                "description": "Maximum entries to process when entry_id is omitted. Default 200, hard cap 500. Prevents OOM from N×N combinatorial explosion.",
+                "default": 200,
+                "minimum": 1,
+                "maximum": 500,
+            },
         },
         "required": [],
     },
@@ -676,11 +683,12 @@ def _handle_memory_discover(params, **kwargs):
 
         methods = params.get("methods")  # None means all
         entry_id = params.get("entry_id")
+        max_entries = params.get("max_entries", 200)
 
         if entry_id:
             result = discoverer.discover_for_entry(entry_id, methods=methods)
         else:
-            result = discoverer.discover_all(methods=methods)
+            result = discoverer.discover_all(methods=methods, max_entries=max_entries)
 
         # ── WAL checkpoint: 防止关联发现大量写入导致 WAL 膨胀 ──
         auto_checkpoint_if_needed("associations.db", max_wal_mb=100)
@@ -946,7 +954,7 @@ def register(ctx):
     except Exception as e:
         logger.error("Failed to register hook post_tool_call: %s", e)
 
-    manifest_version = "5.0.0"  # read from plugin.yaml
+    manifest_version = "6.0.0"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 7 tools + 1 hook", manifest_version
     )
