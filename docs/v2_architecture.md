@@ -1,6 +1,6 @@
 > ⚠️ **已归档 — 2026-05-09**
 > 本文档描述的是 V2.0.0 早期设计（2024年），基于 PostgreSQL/Redis/K8s 架构。
-> 当前 V3.0.6 已采用纯 SQLite 融合架构。请参阅 [ARCHITECTURE.md](./ARCHITECTURE.md) 了解最新架构。
+> 当前 V5.0.0 已采用纯 SQLite 融合架构。请参阅 [ARCHITECTURE.md](./ARCHITECTURE.md) 了解最新架构。
 > 本文档保留仅供历史参考。
 
 ---

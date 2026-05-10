@@ -1,6 +1,6 @@
 # 🔄 HermesAgentEvolution 迭代演进计划
 
-> **版本**: v3.0.6 | **总提交**: 75 | **测试**: 439 passed | **时间跨度**: 2026-05-06 → 2026-05-09 (4 天)
+> **版本**: v5.0.0 | **总提交**: 75 | **测试**: 439 passed | **时间跨度**: 2026-05-06 → 2026-05-09 (4 天)
 
 ---
 
@@ -13,7 +13,7 @@ v3.0.2 (5/7)   ████ 插件嵌入 + 导入修复
 v3.0.3 (5/7-8) ███ 版本统一 + 文档收尾 (422 passed)
 v3.0.4 (5/8-9) ██████████ 迭代7+8: API守卫 + P0修复 (428 passed)
 v3.0.5 (5/9)   ████ 迭代9: ToolStrategyLearner持久化
-v3.0.6 (5/9)   ██████ 迭代10: EvolutionAuditor + 文档重构 (439 passed)
+v5.0.0 (5/9)   ██████ 迭代10: EvolutionAuditor + 文档重构 (439 passed)
 ```
 
 ---
@@ -131,12 +131,12 @@ v3.0.6 (5/9)   ██████ 迭代10: EvolutionAuditor + 文档重构 (439
 ### 目标
 持久化完整进化循环历史，支持趋势分析和审计查询
 
-### 成果 (v3.0.6, 4 提交, 15 文件 +1085)
+### 成果 (v5.0.0, 4 提交, 15 文件 +1085)
 - **`EvolutionAuditor`** (446 行): `evolution_cycles` + `evolution_actions` 双表持久化
 - **4 个查询接口**: `query_cycles()` / `get_cycle_detail()` / `get_summary()` / `get_latest_health_trend()`
 - **orchestrator 集成**: `run_full_cycle()` 自动调用 `_audit_cycle()`
 - **兜底确保**: handler 中直接 import EvolutionAuditor，绕过单例缓存
-- **文档全面重构**: 16 个文档统一 v3.0.6，消除版本碎片
+- **文档全面重构**: 16 个文档统一 v5.0.0，消除版本碎片
 
 ### 测试
 `test_evolution_auditor.py` (11 新用例)，439/439 全通过
@@ -152,8 +152,8 @@ v3.0.6 (5/9)   ██████ 迭代10: EvolutionAuditor + 文档重构 (439
 | 7 | v3.0.4(前) | 3 | +4 | dependency_manager | +500 |
 | 8 | v3.0.4(后) | 9 | +2 | closed_loop 完善 | +1500 |
 | 9 | v3.0.5 | 1 | +几 | tool_strategy_learner 持久化 | +200 |
-| 10 | v3.0.6 | 4 | +11 | evolution_auditor | +600 |
-| **合计** | **v3.0.0→v3.0.6** | **75** | **439** | **~56 文件, 57+ 类** | **~26561** |
+| 10 | v5.0.0 | 4 | +11 | evolution_auditor | +600 |
+| **合计** | **v3.0.0→v5.0.0** | **75** | **439** | **~56 文件, 57+ 类** | **~26561** |
 
 ---
 

@@ -1,6 +1,6 @@
 # HermesAgentEvolution API 参考
 
-> 版本: v3.0.6 (V1/V2/V3 融合架构)
+> 版本: v5.0.0 (V1/V2/V3 融合架构)
 > 覆盖模块: 10 个子系统，57+ 核心类
 > 最后更新: 2026-05-09
 
@@ -8,7 +8,7 @@
 
 ## 概述
 
-本文档覆盖 HermesAgentEvolution v3.0.6 所有公开 API。按 10 个子系统分组。导入路径支持两种模式：
+本文档覆盖 HermesAgentEvolution v5.0.0 所有公开 API。按 10 个子系统分组。导入路径支持两种模式：
 
 - **pip 安装**: `from evolution.xxx import ...`
 - **开发模式**: `from src.evolution.xxx import ...`
@@ -117,7 +117,7 @@ class ActionExecutor:
         """获取执行统计"""
 ```
 
-### 1.5 EvolutionAuditor (`evolution_auditor.py`, 446 行) 🆕 v3.0.6
+### 1.5 EvolutionAuditor (`evolution_auditor.py`, 446 行) 🆕 v5.0.0
 
 **自进化审计器 — 迭代 10 新增**
 
@@ -547,7 +547,7 @@ class ProgressReporter:
 
 | 位置 | 常量 | 值 |
 |------|------|-----|
-| `src/evolution/__init__.py` | `__version__` | `"3.0.6"` |
+| `src/evolution/__init__.py` | `__version__` | `"5.0.0"` |
 | `src/evolution/fusion/__init__.py` | `__version__` | `"1.0.0"` |
 
 ---

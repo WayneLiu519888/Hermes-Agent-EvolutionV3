@@ -1,7 +1,7 @@
 # 5 分钟上手 HermesAgentEvolution
 
 > 从零到 AI 自我进化 — 最快路径
-> 版本: v3.0.6
+> 版本: v5.0.0
 
 ---
 
@@ -29,7 +29,7 @@ hermes-evolution check
 期望输出：
 
 ```
-🔍 HermesAgentEvolution 环境自检 (v3.0.6)
+🔍 HermesAgentEvolution 环境自检 (v5.0.0)
 ==================================================
   ✅ Python 3.11.15 ≥ 3.9
   ✅ 模块 工具注册表
@@ -151,7 +151,7 @@ print(recommendation)
 | `evolution_create_tool` | 动态创建新工具 |
 | `evolution_memory_discover` | 发现记忆关联 |
 | `evolution_analyze_performance` | 分析工具性能 |
-| `evolution_audit` | 查询自进化历史 (v3.0.6 新增) |
+| `evolution_audit` | 查询自进化历史 (v5.0.0 新增) |
 
 ---
 

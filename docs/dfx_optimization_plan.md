@@ -24,7 +24,7 @@
 | 9 | `_get_orchestrator()` TypeError bug (str / str) | ★★☆ | Phase 1: plugin_core 重构 | 代码重写中一并修复 |
 | 10 | `main.py` SelfMonitor 构造函数不匹配 | ★★☆ | Phase 1: 废弃 main.py | main.py 是早期原型，不再维护 |
 | 11 | health.py `get_data_dir(data_dir)` TypeError | ★★☆ | Phase 1: 统一导入路径 | 修复调用签名 |
-| 12 | `config/evolution_config.yaml` 版本 2.0.0 | ★☆☆ | Phase 2: Schema 统一 | YAML 废弃或更新到 3.0.6 |
+| 12 | `config/evolution_config.yaml` 版本 2.0.0 | ★☆☆ | Phase 2: Schema 统一 | YAML 废弃或更新到 5.0.0 |
 | 13 | `_get_data_dir` 中 env_dir 分支不 mkdir | ★★☆ | Phase 1: 统一到 db_utils 版本 | db_utils 中已正确 mkdir |
 
 > **以上 13 项问题由架构优化（Phase 1-3）自动解决，本方案不再重复列入。**

@@ -1,6 +1,6 @@
 # 配置参数完整说明
 
-> HermesAgentEvolution v3.0.6 — 所有可配置项
+> HermesAgentEvolution v5.0.0 — 所有可配置项
 
 ---
 
@@ -149,7 +149,7 @@ recognizer = PatternRecognizer(
 | `associations.db` | 记忆关联数据 | v1 |
 | `retrieval_optimization.db` | 检索优化配置 | v2 |
 | `closed_loop.db` | 闭环控制状态 | v3.0.0 |
-| `evolution_audit.db` | 自进化审计记录 | v3.0.6 |
+| `evolution_audit.db` | 自进化审计记录 | v5.0.0 |
 
 ---
 

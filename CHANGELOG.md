@@ -38,6 +38,39 @@
 
 ---
 
+## [5.0.0] — 2026-05-11
+
+### V4→V5: 架构优化 + DFX 工程化
+
+#### 架构优化 (V4 Phase)
+- **Hermes 原生对齐**: 复用 registry.register()、hermes mcp serve、hermes doctor、plugin.yaml，不自建框架
+- **消除镜像重复**: hermes-plugin 与 _plugin 1908行镜像 → plugin_core.py 单源 ~920行
+- **DatabasePool**: 统一连接池，替代 4处裸 sqlite3.connect()
+- **WAL checkpoint 7db全覆盖**: auto_checkpoint_if_needed() 零调用→全部7个db覆盖
+- **retry_on_db_error**: 已实现零使用→全部关键路径接入
+- **状态机编排**: 闭环编排硬编码 Phase 1→6 线性链→状态机支持中断恢复
+- **记忆分层**: _experiences_cache 无界增长→LRU+FTS5 分层管理
+- **Schema 版本化**: DDL 迁移管理 schema_migrations.py
+- **输入验证**: InputValidator 统一校验层
+- **安全加固**: 飞书 App ID 脱敏 + 日志签名防篡改
+
+#### DFX 工程化 (V4-V5)
+- **DFX 8 维审视**: 可靠性/可用性/性能/安全/可维护性/可观测性/可测试性/可扩展性全面审计
+- **业界对标**: 6 大框架 (LangChain/AutoGPT/Open Interpreter/CrewAI/Home Assistant/n8n) 设计模式分析
+- **代码精简**: -2045行/+1670行，净减375行，消除所有重复函数
+- **测试**: 439/439 全通过
+
+#### 迭代 1-10 回顾
+- 迭代 1-5: V1/V2/V3 融合架构 (7 子系统 28 模块)
+- 迭代 6: Hermes Agent 集成 (daemon/plugin/feishu)
+- 迭代 7: API 同步守卫 (dependency_manager)
+- 迭代 8: P0 修复 + 数据治理 (WAL checkpoint + cleanup)
+- 迭代 9: ToolStrategyLearner 持久化
+- 迭代 10: EvolutionAuditor 自进化审计器
+
+---
+
+
 ## [3.0.5] — 2026-05-09
 
 ### 迭代 9: ToolStrategyLearner 持久化 (Iteration 9)

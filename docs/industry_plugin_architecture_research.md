@@ -1,7 +1,7 @@
 # 业界Agent框架插件架构最佳实践研究报告
 
 > 研究日期: 2026-05-11
-> 对比对象: HermesAgentEvolution v3.0.6 (V1/V2/V3 融合架构)
+> 对比对象: HermesAgentEvolution v5.0.0 (V1/V2/V3 融合架构)
 > 目标: 为V4 DFX工程化方案提供设计模式补充建议
 
 ---
@@ -96,7 +96,7 @@
     
     ```yaml
     name: hermes-evolution
-    version: "3.0.6"
+    version: "5.0.0"
     author: "..."
     triggers: [post_tool_call, on_startup]
     hooks: [evolution_cycle_complete, tool_registered]
@@ -331,7 +331,7 @@
 
 - **核心思路**: 每个插件声明 `min_runtime_version` / `max_runtime_version`，运行时校验兼容性。支持插件版本协商和优雅降级。
 - **与 HAE 差距**:
-  - `hermes-plugin/plugin.yaml` 仅有 `version: "3.0.6"` 字符串
+  - `hermes-plugin/plugin.yaml` 仅有 `version: "5.0.0"` 字符串
   - 无兼容性声明、无运行时版本校验
   - **建议**: 扩展 plugin.yaml 包含兼容性矩阵
 
@@ -430,7 +430,7 @@ hermes-plugin/__init__.py → 删除内联Schema，改为从 schemas.py import
 ```yaml
 # hermes-plugin/plugin.yaml (扩展后)
 name: hermes-evolution
-version: "3.0.6"
+version: "5.0.0"
 min_runtime_version: "3.0.0"
 author: "HermesAgentEvolution"
 description: "自我进化引擎"
@@ -519,4 +519,4 @@ HermesAgentEvolution 在数据库基础设施（WAL/连接工厂）、安全审�
 
 ---
 
-*报告生成: 2026-05-11 | 基于 HermesAgentEvolution v3.0.6 源码审查 + 6个业界框架设计模式分析*
+*报告生成: 2026-05-11 | 基于 HermesAgentEvolution v5.0.0 源码审查 + 6个业界框架设计模式分析*

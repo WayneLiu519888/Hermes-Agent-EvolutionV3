@@ -1,6 +1,6 @@
 # HermesAgentEvolution 架构文档
 
-> **版本**: v3.0.6 (V1/V2/V3 融合架构)
+> **版本**: v5.0.0 (V1/V2/V3 融合架构)
 > **融合模块版本**: fusion/__init__.py v1.0.0
 > **Python**: ≥ 3.9
 > **测试覆盖**: 439 passed
@@ -40,7 +40,7 @@ HermesAgentEvolution 是一个面向 AI Agent 的**自我进化框架**，运行
 
 ### 1.2 融合架构理念
 
-v3.0.6 采用 **V1/V2/V3 三位一体融合架构**。V1 是 `src/evolution/` 下的单体模块化子系统（10个子系统），V2 是 `src/services/` 下的微服务层，V3 通过 `fusion/` 桥接层将两者无缝集成。
+v5.0.0 采用 **V1/V2/V3 三位一体融合架构**。V1 是 `src/evolution/` 下的单体模块化子系统（10个子系统），V2 是 `src/services/` 下的微服务层，V3 通过 `fusion/` 桥接层将两者无缝集成。
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -812,4 +812,4 @@ src/services/
 
 ---
 
-*HermesAgentEvolution v3.0.6 — 让 AI Agent 从经验中持续自我进化*
+*HermesAgentEvolution v5.0.0 — 让 AI Agent 从经验中持续自我进化*

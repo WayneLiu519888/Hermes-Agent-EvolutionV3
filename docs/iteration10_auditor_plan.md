@@ -1,10 +1,10 @@
-> ✅ **已完成 — 2026-05-09 (v3.0.6)**
+> ✅ **已完成 — 2026-05-09 (v5.0.0)**
 > EvolutionAuditor 模块已集成：evolution_audit.db 持久化进化周期和动作，orchestrator.run_full_cycle() 末尾自动记录，plugin 提供 evolution_audit 查询工具。
 
 # 迭代10 新增模块: 自进化审计器 (EvolutionAuditor)
 
 **创建时间**: 2026-05-09  
-**所属迭代**: 迭代10 (v3.0.6)  
+**所属迭代**: 迭代10 (v5.0.0)  
 **状态**: ✅ 已完成
 
 ---

@@ -1,6 +1,6 @@
 # 🔌 HermesAgentEvolution — Hermes Agent 集成指南
 
-**版本:** v3.0.6  
+**版本:** v5.0.0  
 **包名:** `hermes-agent-evolution`  
 **插件名:** `hermes-evolution`  
 **Python:** ≥ 3.9
@@ -49,7 +49,7 @@ hermes-evolution check
 
 预期输出：
 ```
-HermesAgentEvolution CLI v3.0.6
+HermesAgentEvolution CLI v5.0.0
 ✅ 所有子系统可用
 ✅ 数据库连接正常
 ✅ 7 工具已就绪
@@ -194,7 +194,7 @@ python3 -c "import sqlite3; c=sqlite3.connect('associations.db'); c.execute('PRA
 
 | 版本 | 日期 | 关键变化 |
 |------|------|---------|
-| v3.0.6 | 2026-05-09 | EvolutionAuditor + 文档重构 |
+| v5.0.0 | 2026-05-09 | EvolutionAuditor + 文档重构 |
 | v3.0.5 | 2026-05-09 | ToolStrategyLearner 持久化 |
 | v3.0.4 | 2026-05-08 | P0 修复 + CI 防回归 |
 | v3.0.3 | 2026-05-07 | 版本号统一 |

@@ -1,7 +1,7 @@
 .PHONY: install test lint format clean build check help
 
 # ═══════════════════════════════════════════════════════════════════
-# HermesAgentEvolution v3.0.6 — Makefile
+# HermesAgentEvolution v5.0.0 — Makefile
 # ═══════════════════════════════════════════════════════════════════
 
 PYTHON = python3
@@ -10,7 +10,7 @@ PYTEST = $(PYTHON) -m pytest
 RUFF = $(PYTHON) -m ruff
 
 help: ## 显示可用命令
-	@echo "HermesAgentEvolution v3.0.6"
+	@echo "HermesAgentEvolution v5.0.0"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'

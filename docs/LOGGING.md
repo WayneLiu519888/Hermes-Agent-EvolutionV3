@@ -1,6 +1,6 @@
 # 日志系统使用指南
 
-> HermesAgentEvolution v3.0.6 — 统一日志框架，基于 Python `logging` 模块
+> HermesAgentEvolution v5.0.0 — 统一日志框架，基于 Python `logging` 模块
 
 ---
 
@@ -38,7 +38,7 @@ log.info("模块初始化完成")
 | `hermes_evo.services` | INFO | 融合桥/统一入口/兼容层 |
 | `hermes_evo.plugin` | INFO | Hermes 插件 |
 
-> **v3.0.6 更新**: `hermes_evo.services` 涵盖 fusion/ 融合桥（bridge/compatibility/unified_entry），不再对应独立的 V2 微服务层。
+> **v5.0.0 更新**: `hermes_evo.services` 涵盖 fusion/ 融合桥（bridge/compatibility/unified_entry），不再对应独立的 V2 微服务层。
 
 ### 命名转换规则
 

@@ -1,6 +1,6 @@
 # 贡献指南 (CONTRIBUTING)
 
-> 版本: v3.0.6 (V1/V2/V3 融合架构)
+> 版本: v5.0.0 (V1/V2/V3 融合架构)
 > 最后更新: 2026-05-09
 
 欢迎为 HermesAgentEvolution 项目贡献代码！
@@ -283,7 +283,7 @@ scope: 模块名 (如 fusion, memory, security, cli, auditor)
 ```
 feat(cli): 添加 hermes-evolution check 环境自检命令
 fix(db_utils): 修复 WAL 模式连接泄漏
-docs: 更新 CONTRIBUTING.md 到 v3.0.6 标准
+docs: 更新 CONTRIBUTING.md 到 v5.0.0 标准
 test(auditor): 补测 evolution_auditor 查询接口
 refactor(logging): 统一使用 logging 模块替代 print
 ```
@@ -295,7 +295,7 @@ refactor(logging): 统一使用 logging 模块替代 print
 ```
 hermes_agent_evolution/
 ├── src/evolution/               # 核心进化引擎 (V1 单体)
-│   ├── __init__.py              # 版本号 v3.0.6
+│   ├── __init__.py              # 版本号 v5.0.0
 │   ├── cli.py                   # CLI 命令行工具
 │   ├── db_utils.py              # 统一数据库连接工厂 (WAL)
 │   ├── self_monitor.py          # 自我监控器
@@ -338,7 +338,7 @@ hermes_agent_evolution/
 │   │
 │   ├── closed_loop/             # 🔄 闭环自主进化
 │   │   ├── orchestrator.py      #   进化编排器
-│   │   ├── evolution_auditor.py #   📋 自进化审计器 (v3.0.6)
+│   │   ├── evolution_auditor.py #   📋 自进化审计器 (v5.0.0)
 │   │   ├── daemon.py            #   守护进程
 │   │   ├── action_executor.py   #   动作执行器
 │   │   └── metrics_collector.py #   指标收集器
@@ -358,7 +358,7 @@ hermes_agent_evolution/
 │   └── plugin.yaml              #   插件配置 (7 工具 + 1 hook)
 │
 ├── tests/                       # 测试 (24 文件, 439 用例)
-│   ├── test_evolution_auditor.py      # 审计器测试 (v3.0.6)
+│   ├── test_evolution_auditor.py      # 审计器测试 (v5.0.0)
 │   ├── test_self_monitor.py
 │   ├── test_closed_loop.py
 │   ├── test_collaboration.py

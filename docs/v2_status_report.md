@@ -1,6 +1,6 @@
 > ⚠️ **已归档 — 2026-05-09**
 > 本文档描述 V2.0.0 早期设计（2024），基于 PostgreSQL/Redis/K8s 的微服务架构。
-> 当前 V3.0.6 已采用纯 SQLite 融合架构（V1 单体模块 + V3 融合桥）。
+> 当前 V5.0.0 已采用纯 SQLite 融合架构（V1 单体模块 + V3 融合桥）。
 > 请参阅 [ARCHITECTURE.md](ARCHITECTURE.md) 了解当前架构。
 
 # HermesAgentEvolution V2 项目状态总结报告

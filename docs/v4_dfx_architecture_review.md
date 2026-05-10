@@ -1893,7 +1893,7 @@ for other in other_entries:  # 循环内逐条
 
 ## MAINTAINABILITY
 
-# DFX 可维护性专项审视 — HermesAgentEvolution v3.0.6
+# DFX 可维护性专项审视 — HermesAgentEvolution v5.0.0
 
 > 审视日期: 2026-05-10
 > 审视范围: 代码重复、模块耦合、配置管理、错误信息、版本号一致性、依赖管理、文档覆盖率
@@ -2001,7 +2001,7 @@ db_path = str(_resolve_data_dir() / db_name)
 | 环境变量 | `EVOLUTION_DATA_DIR`, `HERMES_HOME`, `EVOLUTION_LOG_LEVEL` 等 | 实际在用 |
 
 **问题**:
-- `evolution_config.yaml` 是一个 313 行的详尽配置文件，但版本仍是 `2.0.0`，而代码和文档已到 `3.0.6`。
+- `evolution_config.yaml` 是一个 313 行的详尽配置文件，但版本仍是 `2.0.0`，而代码和文档已到 `5.0.0`。
 - `main.py` 通过 `_load_config()` 加载此 YAML，并将其中的 `data_dir: "./data/evolution"` 用于初始化 `SelfMonitor`。但这个路径与 `db_utils.py` 中使用的 `~/.hermes/data/evolution/` **完全不同**。
 - `CONFIGURATION.md` 文档描述的是环境变量方案，没有提到 YAML 配置文件。
 
@@ -2009,7 +2009,7 @@ db_path = str(_resolve_data_dir() / db_name)
 
 **建议**: 
 - 统一为环境变量方案（当前已有 EVOLUTION_DATA_DIR / HERMES_HOME），废弃 YAML 配置文件
-- 或更新 `evolution_config.yaml` 到 v3.0.6 并同步路径逻辑
+- 或更新 `evolution_config.yaml` 到 v5.0.0 并同步路径逻辑
 
 ### 3.2 硬编码阈值分散 (P2)
 
@@ -2077,18 +2077,18 @@ def __init__(self, observer, analyzer, strategy_learner):
 
 | 文件 | 版本字段 | 值 | 状态 |
 |------|----------|-----|:--:|
-| `pyproject.toml` | `project.version` | `"3.0.6"` | ✅ |
-| `setup.py` | `version=` | `"3.0.6"` | ✅ |
-| `src/evolution/__init__.py` | `__version__` | `"3.0.6"` | ✅ |
-| `hermes-plugin/plugin.yaml` | `version:` | `"3.0.6"` | ✅ |
-| `src/evolution/_plugin/plugin.yaml` | `version:` | `"3.0.6"` | ✅ |
-| `README.md` | badge | `3.0.6` | ✅ |
-| `docs/INSTALLATION.md` | 标注 | `v3.0.6` | ✅ |
-| `docs/CONFIGURATION.md` | 标注 | `v3.0.6` | ✅ |
-| `docs/TESTING.md` | 标注 | `v3.0.6` | ✅ |
-| `docs/API_REFERENCE.md` | 标注 | `v3.0.6` | ✅ |
-| `CHANGELOG.md` | 最新条目 | `3.0.6` | ✅ |
-| `src/evolution/cli.py` | help 字符串 | `v3.0.6` | ✅ |
+| `pyproject.toml` | `project.version` | `"5.0.0"` | ✅ |
+| `setup.py` | `version=` | `"5.0.0"` | ✅ |
+| `src/evolution/__init__.py` | `__version__` | `"5.0.0"` | ✅ |
+| `hermes-plugin/plugin.yaml` | `version:` | `"5.0.0"` | ✅ |
+| `src/evolution/_plugin/plugin.yaml` | `version:` | `"5.0.0"` | ✅ |
+| `README.md` | badge | `5.0.0` | ✅ |
+| `docs/INSTALLATION.md` | 标注 | `v5.0.0` | ✅ |
+| `docs/CONFIGURATION.md` | 标注 | `v5.0.0` | ✅ |
+| `docs/TESTING.md` | 标注 | `v5.0.0` | ✅ |
+| `docs/API_REFERENCE.md` | 标注 | `v5.0.0` | ✅ |
+| `CHANGELOG.md` | 最新条目 | `5.0.0` | ✅ |
+| `src/evolution/cli.py` | help 字符串 | `v5.0.0` | ✅ |
 | `config/evolution_config.yaml` | `version:` | **`"2.0.0"`** | ❌ |
 | `main.py` | 默认配置 | **`"0.1.0"`** | ❌ |
 
@@ -2096,7 +2096,7 @@ def __init__(self, observer, analyzer, strategy_learner):
 
 - `config/evolution_config.yaml` 自 v2.0.0 后未更新，版本号停留在 2.0.0。该文件虽不再被活跃使用（插件和 CLI 使用环境变量），但它仍然存在于仓库中并可能误导新用户。
 - `main.py` 是一个早期原型，硬编码版本 0.1.0，与当前代码库脱节。
-- 正面：核心版本点（pyproject.toml、setup.py、__init__.py、plugin.yaml ×2）及所有文档已统一为 3.0.6。
+- 正面：核心版本点（pyproject.toml、setup.py、__init__.py、plugin.yaml ×2）及所有文档已统一为 5.0.0。
 
 ---
 
@@ -2146,7 +2146,7 @@ def __init__(self, observer, analyzer, strategy_learner):
 | 文档 | 行数 | 内容 | 状态 |
 |------|:----:|------|:--:|
 | `README.md` | 266 | 项目概述、快速安装、迭代时间线 | ✅ |
-| `CHANGELOG.md` | 251 | 完整版本历史 v1.0.0 → v3.0.6 | ✅ |
+| `CHANGELOG.md` | 251 | 完整版本历史 v1.0.0 → v5.0.0 | ✅ |
 | `CONTRIBUTING.md` | ~320 | 开发指南 | ✅ |
 | `docs/INSTALLATION.md` | 433 | 4 种安装路径 + FAQ | ✅ |
 | `docs/ARCHITECTURE.md` | 620 | V3 融合架构 | ✅ |
@@ -2178,7 +2178,7 @@ def __init__(self, observer, analyzer, strategy_learner):
 - `docs/CONFIGURATION.md` 描述的配置方案（环境变量）与实际使用一致 ✅
 - `docs/INSTALLATION.md` 描述的安装流程与实际 CLI 行为一致 ✅
 - `docs/TESTING.md` 测试文件列表包含 25 个文件，与实际 `tests/` 目录一致 ✅
-- `config/evolution_config.yaml` 版本号 2.0.0 与文档中的 3.0.6 不一致 ❌
+- `config/evolution_config.yaml` 版本号 2.0.0 与文档中的 5.0.0 不一致 ❌
 
 ---
 
@@ -2192,7 +2192,7 @@ def __init__(self, observer, analyzer, strategy_learner):
 | 模块耦合 | **B-** | 插件层耦合 5 个子系统，但有 try/except 降级 |
 | 配置管理 | **C+** | 双轨配置、硬编码阈值、YAML 版本过时 |
 | 错误信息 | **C** | health.py 的 TypeError Bug、main.py API 不兼容、部分异常缺乏上下文 |
-| 版本一致性 | **B+** | 核心文件统一 3.0.6，但 config YAML 和 main.py 拖后腿 |
+| 版本一致性 | **B+** | 核心文件统一 5.0.0，但 config YAML 和 main.py 拖后腿 |
 | 依赖管理 | **B-** | 双轨声明、URL 不一致、classifier 差异 |
 | 文档覆盖率 | **B+** | 10+ 文档覆盖全面，但 checkpoint 等关键运维知识缺失 |
 

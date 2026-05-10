@@ -946,7 +946,7 @@ def register(ctx):
     except Exception as e:
         logger.error("Failed to register hook post_tool_call: %s", e)
 
-    manifest_version = "3.0.6"  # read from plugin.yaml
+    manifest_version = "5.0.0"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 7 tools + 1 hook", manifest_version
     )

@@ -1,6 +1,6 @@
 # HermesAgentEvolution
 
-![Version](https://img.shields.io/badge/version-3.0.6-blue)
+![Version](https://img.shields.io/badge/version-5.0.0-blue)
 ![Tests](https://img.shields.io/badge/tests-439%20passed-brightgreen)
 ![CI](https://img.shields.io/badge/CI-passing-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
@@ -33,6 +33,7 @@ pip install hermes-agent-evolution && hermes-evolution check
 | v3.0.4 | 2026-05-09 | 7–8 | 健康评分修复 · 插件部署审计 · DB 清理回收 1.3GB · 428 测试 |
 | v3.0.5 | 2026-05-09 | 9 | ToolStrategyLearner 持久化 · post_tool_call hook 双向记录 |
 | **v3.0.6** | **2026-05-09** | **10** | **EvolutionAuditor 自进化审计器 · 双表记录 · 4 查询接口 · 439 测试** |
+| **v5.0.0** | **2026-05-11** | **V4→V5** | **架构优化+DFX工程化 · Hermes原生对齐 · WAL 7db全覆盖 · 状态机编排** |
 
 ---
 

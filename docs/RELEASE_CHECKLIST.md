@@ -1,7 +1,7 @@
 # 发版检查清单
 
 > 每次发布前逐项验证，确保质量。
-> 当前版本: v3.0.6
+> 当前版本: v5.0.0
 
 ---
 
@@ -55,7 +55,7 @@
 ## 文档
 
 - [ ] README.md — 5秒安装、V3架构图、项目状态表、badge 最新
-- [ ] docs/INSTALLATION.md — pip + 源码 + Docker 三路径，v3.0.6
+- [ ] docs/INSTALLATION.md — pip + 源码 + Docker 三路径，v5.0.0
 - [ ] docs/ARCHITECTURE.md — V3 融合架构图 + fusion 桥说明
 - [ ] docs/QUICKSTART.md — 5分钟上手，正确 API 示例
 - [ ] docs/LOGGING.md — 日志使用指南，services 路径说明
@@ -86,7 +86,7 @@
 - [ ] 学习循环：`evolution_learn` + `evolution_run_cycle` 无异常
 - [ ] 记忆关联：`evolution_memory_discover` 返回结果
 - [ ] 自我监控：`evolution_self_monitor` 返回健康分数
-- [ ] 进化审计：`evolution_audit` 查询进化历史 (v3.0.6)
+- [ ] 进化审计：`evolution_audit` 查询进化历史 (v5.0.0)
 
 ---
 

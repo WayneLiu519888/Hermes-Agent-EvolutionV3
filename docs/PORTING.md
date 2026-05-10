@@ -1,6 +1,6 @@
 # HermesAgentEvolution 移植指南
 
-> 版本: v3.0.6
+> 版本: v5.0.0
 > 最后更新: 2026-05-09
 
 ---
@@ -161,7 +161,7 @@ class YourApplication:
         self.registry = ToolRegistry()
         self.observer = LearningObserver()
 
-        # v3.0.6: ToolStrategyLearner 需要 db_path 参数
+        # v5.0.0: ToolStrategyLearner 需要 db_path 参数
         self.learner = ToolStrategyLearner(db_path="tools.db")
 
     def register_app_tools(self):
@@ -412,7 +412,7 @@ import_tools_from_json(registry, "tools_backup.json")
 
 ### 6.2 从 SQLite 迁移到 PostgreSQL
 
-v3.0.6 使用纯 SQLite（7 个数据库 + WAL 模式），已足够支撑大多数场景。如需迁移到 PostgreSQL，请参考以下接口适配：
+v5.0.0 使用纯 SQLite（7 个数据库 + WAL 模式），已足够支撑大多数场景。如需迁移到 PostgreSQL，请参考以下接口适配：
 
 ```python
 import psycopg2
