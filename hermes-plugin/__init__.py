@@ -185,6 +185,39 @@ def _get_association_discoverer():
     return _engine_instances["association_discoverer"]
 
 
+def _checkpoint_associations_db():
+    """
+    WAL checkpoint for associations.db.
+    
+    关联发现会产生大量写入，WAL 文件可能在数小时内膨胀到数十 GB。
+    此函数检查 WAL 大小，超过 100MB 时自动执行 checkpoint。
+    """
+    try:
+        import sqlite3, os
+        db_path = str(_get_data_dir() / "associations.db")
+        wal_path = db_path + "-wal"
+        
+        if not os.path.exists(wal_path):
+            return
+        
+        wal_mb = os.path.getsize(wal_path) / 1024 / 1024
+        if wal_mb < 100:
+            return
+        
+        logger.warning("WAL 文件 %.1fMB，执行 checkpoint...", wal_mb)
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+        if os.path.exists(wal_path):
+            remaining = os.path.getsize(wal_path) / 1024 / 1024
+            if remaining > 100:
+                logger.warning("PASSIVE 后仍 %.1fMB，执行 TRUNCATE...", remaining)
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.close()
+        logger.info("WAL checkpoint 完成")
+    except Exception as e:
+        logger.warning("WAL checkpoint 失败: %s", e)
+
+
 # ---------------------------------------------------------------------------
 # Tool 1: evolution_run_cycle
 # ---------------------------------------------------------------------------
@@ -671,6 +704,9 @@ def _handle_memory_discover(params, **kwargs):
             result = discoverer.discover_for_entry(entry_id, methods=methods)
         else:
             result = discoverer.discover_all(methods=methods)
+
+        # ── WAL checkpoint: 防止关联发现大量写入导致 WAL 膨胀 ──
+        _checkpoint_associations_db()
 
         return json.dumps({
             "success": True,

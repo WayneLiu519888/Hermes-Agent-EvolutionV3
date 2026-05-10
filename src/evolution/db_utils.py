@@ -130,6 +130,64 @@ def close_all_connections():
         _connection_cache.clear()
 
 
+def wal_checkpoint(db_name: str, mode: str = "PASSIVE") -> dict:
+    """
+    执行 WAL checkpoint，将 WAL 内容写回主数据库并截断 WAL 文件。
+    
+    防止 WAL 文件无限制增长（已在生产环境出现过 89GB WAL）。
+    
+    Args:
+        db_name: 数据库名或绝对路径
+        mode: checkpoint 模式 — PASSIVE(默认)/FULL/RESTART/TRUNCATE
+    
+    Returns:
+        dict: {busy, log_pages, checkpointed_pages}
+    
+    TRUNCATE 模式会截断 WAL 文件为零，效果最彻底但会阻塞写入。
+    PASSIVE 模式不阻塞但可能无法完成全部 checkpoint。
+    """
+    conn = get_evolution_db(db_name)
+    # 先尝试 PASSIVE（不阻塞），如果 WAL 太大改用 TRUNCATE
+    result = conn.execute(f"PRAGMA wal_checkpoint({mode})").fetchone()
+    wal_size = _get_wal_size(db_name)
+    logger.info(
+        "WAL checkpoint (%s): busy=%s, log=%s, checkpointed=%s, wal_size=%s",
+        mode, result[0], result[1], result[2],
+        f"{wal_size / 1024 / 1024:.1f}MB" if wal_size else "N/A"
+    )
+    return {"busy": result[0], "log_pages": result[1], "checkpointed_pages": result[2]}
+
+
+def _get_wal_size(db_name: str) -> int:
+    """获取 WAL 文件大小（字节），不存在则返回 0"""
+    if os.path.isabs(db_name):
+        db_path = db_name
+    else:
+        db_path = str(_resolve_data_dir() / db_name)
+    wal_path = db_path + "-wal"
+    if os.path.exists(wal_path):
+        return os.path.getsize(wal_path)
+    return 0
+
+
+def auto_checkpoint_if_needed(db_name: str, max_wal_mb: int = 100):
+    """
+    如果 WAL 文件超过指定大小，自动执行 checkpoint。
+    
+    应在每次大量写入操作后调用。
+    """
+    wal_bytes = _get_wal_size(db_name)
+    wal_mb = wal_bytes / 1024 / 1024
+    if wal_mb > max_wal_mb:
+        logger.warning("WAL 文件过大 (%.1fMB)，执行 checkpoint...", wal_mb)
+        wal_checkpoint(db_name, mode="PASSIVE")
+        # 如果 PASSIVE 无法清完，强制 TRUNCATE
+        remaining = _get_wal_size(db_name) / 1024 / 1024
+        if remaining > max_wal_mb:
+            logger.warning("PASSIVE 后 WAL 仍 %.1fMB，执行 TRUNCATE...", remaining)
+            wal_checkpoint(db_name, mode="TRUNCATE")
+
+
 def vacuum_database(db_name: str):
     """压缩指定数据库"""
     conn = get_evolution_db(db_name)
