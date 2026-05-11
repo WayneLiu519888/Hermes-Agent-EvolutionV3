@@ -47,3 +47,4 @@ _check_v2_imports.py
 backup_*/
 *.db
 *.jsonl
+MagicMock/
