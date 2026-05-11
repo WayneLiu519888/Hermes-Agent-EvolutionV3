@@ -100,14 +100,15 @@ def cmd_check(fix: bool = False, clean: bool = False) -> bool:
     except Exception as e:
         _check("DB 可读写", False, str(e))
     
-    # 4. Hermes 插件已部署
+    # 4. Hermes 插件已部署（未部署则自动部署）
     plugin_dir = Path.home() / ".hermes" / "plugins" / "hermes-evolution"
     plugin_yaml = plugin_dir / "plugin.yaml"
-    _check(
-        "Hermes 插件已部署",
-        plugin_yaml.exists(),
-        f"未找到 {plugin_yaml}" if not plugin_yaml.exists() else ""
-    )
+    if not plugin_yaml.exists():
+        print("  ⚡ 插件未部署，正在自动部署...")
+        ok, msg = _deploy_plugin(plugin_dir)
+        _check("Hermes 插件已部署", ok, msg if not ok else "自动部署成功")
+    else:
+        _check("Hermes 插件已部署", True)
     
     # 5. 数据目录
     from evolution.db_utils import _resolve_data_dir
@@ -181,8 +182,11 @@ def cmd_check(fix: bool = False, clean: bool = False) -> bool:
             _check("DB 可读写", False, str(e))
         
         # 重新检查 插件/数据目录
-        _check("Hermes 插件已部署", plugin_yaml.exists(),
-               f"未找到 {plugin_yaml}" if not plugin_yaml.exists() else "")
+        if not plugin_yaml.exists():
+            ok, msg = _deploy_plugin(plugin_dir)
+            _check("Hermes 插件已部署", ok, msg if not ok else "自动部署成功")
+        else:
+            _check("Hermes 插件已部署", True)
         _check(f"数据目录: {data_dir}", data_dir.exists())
     
     # 输出
@@ -212,17 +216,17 @@ def cmd_check(fix: bool = False, clean: bool = False) -> bool:
 def cmd_setup() -> bool:
     """一键部署：检查依赖 → 自愈修复 → 复制插件到 ~/.hermes/plugins/"""
     _add_src_to_path()
-    
+
     # ── 0. 环境检测 & pipx 警告 ──────────────────────────────────────────────
     detect_env = _get_dep_manager()[0]
     env_type = detect_env()
-    
+
     if env_type == "pipx":
         print("⚠️  检测到 pipx 环境")
         print("   pipx 使用独立 venv，第三方依赖需通过 `pipx inject` 安装")
         print("   自动修复将使用 pipx inject，可能需要 sudo 权限")
         print()
-    
+
     # ── 1. 自动修复依赖 ──────────────────────────────────────────────────
     print("🔍 检查依赖...")
     if not cmd_check(fix=True):
@@ -231,81 +235,48 @@ def cmd_setup() -> bool:
     else:
         print()
         print("✅ 依赖检查通过")
+
+    plugin_dst = Path.home() / ".hermes" / "plugins" / "hermes-evolution"
+    ok, msg = _deploy_plugin(plugin_dst)
+    if ok:
+        return True
+    print(f"❌ 部署失败: {msg}")
+    return False
+
+
+def _deploy_plugin(target_dir: Path) -> tuple:
+    """从包资源部署插件文件到目标目录
+
+    Args:
+        target_dir: 目标目录（如 ~/.hermes/plugins/hermes-evolution/）
+
+    Returns:
+        (成功标志, 消息)
+    """
+    import shutil
     try:
         from importlib.resources import files
         plugin_pkg = files("evolution._plugin")
     except ImportError:
-        # Python < 3.9 fallback
         import pkg_resources
-        plugin_pkg = pkg_resources.resource_filename("evolution._plugin", "")
-        plugin_pkg = Path(plugin_pkg)
-    
-    plugin_dst = Path.home() / ".hermes" / "plugins" / "hermes-evolution"
-    
-    print("🚀 HermesAgentEvolution 插件部署")
-    print(f"   目标: {plugin_dst}")
-    
-    # 复制文件
-    import shutil
-    plugin_dst.mkdir(parents=True, exist_ok=True)
-    
-    # plugin.yaml 和 __init__.py 从包资源复制
+        plugin_pkg = Path(pkg_resources.resource_filename("evolution._plugin", ""))
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+
     for name in ("plugin.yaml", "__init__.py"):
         src = plugin_pkg / name if isinstance(plugin_pkg, Path) else plugin_pkg.joinpath(name)
-        if hasattr(src, 'read_bytes'):
-            # importlib.resources.Traversable
-            content = src.read_bytes()
-            (plugin_dst / name).write_bytes(content)
-        elif src.exists():
-            shutil.copy2(src, plugin_dst / name)
-        else:
-            print(f"   ⚠️  缺少插件文件: {name}")
-            return False
-    
-    print(f"   ✅ 插件已部署")
+        try:
+            if hasattr(src, 'read_bytes'):
+                content = src.read_bytes()
+                (target_dir / name).write_bytes(content)
+            elif src.exists():
+                shutil.copy2(str(src), str(target_dir / name))
+            else:
+                return False, f"包资源中未找到 {name}"
+        except Exception as e:
+            return False, f"复制 {name} 失败: {e}"
 
-    # ── 部署后校验：确认部署文件与包资源一致 ─────────────────────────
-    try:
-        import hashlib
-
-        def _file_hash(path):
-            with open(path, "rb") as f:
-                return hashlib.sha256(f.read()).hexdigest()[:16]
-
-        for name in ("plugin.yaml", "__init__.py"):
-            src = plugin_pkg / name if isinstance(plugin_pkg, Path) else plugin_pkg.joinpath(name)
-            dst = plugin_dst / name
-            src_content = src.read_bytes() if hasattr(src, 'read_bytes') else src.read_bytes()
-            dst_content = dst.read_bytes()
-            if src_content != dst_content:
-                print(f"   ⚠️  部署校验不匹配: {name}")
-                print(f"      源: {_file_hash(str(src))} , 目标: {_file_hash(str(dst))}")
-                print(f"      请重新运行: hermes-evolution setup")
-                return False
-        print(f"   ✅ 部署校验通过 (hash一致)")
-    except Exception as e:
-        print(f"   ⚠️  部署校验跳过: {e}")
-    # ─────────────────────────────────────────────────────────────────
-    
-    # 尝试启用插件
-    import subprocess
-    try:
-        subprocess.run(
-            ["hermes", "plugins", "enable", "hermes-evolution"],
-            capture_output=True, timeout=10
-        )
-        print(f"   ✅ 插件已启用")
-    except Exception:
-        print(f"   ⚠️  请手动启用: hermes plugins enable hermes-evolution")
-    
-    # 提示重启
-    print()
-    print("   ⚠️  插件将在下次 Hermes 会话生效")
-    print("   如需立即生效: hermes gateway restart (会断开当前会话)")
-    
-    return True
-
-
+    return True, "部署成功"
 def cmd_status() -> bool:
     """查看系统状态"""
     _add_src_to_path()

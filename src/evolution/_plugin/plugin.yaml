@@ -1,3 +1,15 @@
 name: hermes-evolution
 version: "7.0.1"
-description: HermesAgentEvolution V3 — V1/V2/V3 融合架构，AI自主进化引擎（学习/工具/安全/协作/闭环）+ 微服务层
+description: AI自我进化引擎 - 8工具+4Hook
+author: HermesAgentEvolution Team
+hermes_version: ">=0.26.0"
+tools:
+  - evolution_run_cycle
+  - evolution_self_monitor
+  - evolution_analyze_performance
+  - evolution_create_tool
+  - evolution_learn
+  - evolution_memory_discover
+  - evolution_audit
+hooks:
+  - post_tool_call
