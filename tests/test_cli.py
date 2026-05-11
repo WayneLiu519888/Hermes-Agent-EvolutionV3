@@ -211,7 +211,7 @@ class TestCMDStatus(unittest.TestCase):
         mock_run.return_value = mock_result
 
         with patch('pathlib.Path.read_text') as mock_read:
-            mock_read.return_value = 'version = "5.0.0"'
+            mock_read.return_value = 'version = "7.0.1"'
             result = cmd_status()
             self.assertTrue(result)
 
@@ -226,7 +226,7 @@ class TestCMDStatus(unittest.TestCase):
         mock_run.return_value = mock_result
 
         with patch('pathlib.Path.read_text') as mock_read:
-            mock_read.return_value = 'version = "5.0.0"'
+            mock_read.return_value = 'version = "7.0.1"'
             result = cmd_status()
             self.assertTrue(result)
 
@@ -241,7 +241,7 @@ class TestCMDStatus(unittest.TestCase):
         mock_run.return_value = mock_result
 
         with patch('pathlib.Path.read_text') as mock_read:
-            mock_read.return_value = 'version = "5.0.0"'
+            mock_read.return_value = 'version = "7.0.1"'
             result = cmd_status()
             self.assertTrue(result)
 

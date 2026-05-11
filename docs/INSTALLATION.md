@@ -1,6 +1,6 @@
 # HermesAgentEvolution 安装指南
 
-> 版本: v5.0.0
+> 版本: v7.0.1
 > 最后更新: 2026-05-09
 > Python: 3.9+ | 测试: 439 passed (24 测试文件) | 核心代码: ~26561 行
 
@@ -41,7 +41,7 @@
 
 ### 依赖概览
 
-v5.0.0 采用**零外部依赖**设计，核心依赖仅 Python 标准库：
+v7.0.1 采用**零外部依赖**设计，核心依赖仅 Python 标准库：
 
 | 依赖 | 用途 | 必需 |
 |------|------|:--:|
@@ -186,12 +186,12 @@ CMD ["hermes-evolution", "check"]
 
 ```bash
 # 构建镜像
-docker build -t hermes-agent-evolution:v5.0.0 .
+docker build -t hermes-agent-evolution:v7.0.1 .
 
 # 运行容器
 docker run -it --rm \
   -v hermes_data:/root/.hermes/data/evolution \
-  hermes-agent-evolution:v5.0.0
+  hermes-agent-evolution:v7.0.1
 ```
 
 ### 4.3 Docker Compose
@@ -201,7 +201,7 @@ version: '3.8'
 
 services:
   evolution:
-    image: hermes-agent-evolution:v5.0.0
+    image: hermes-agent-evolution:v7.0.1
     container_name: hermes-evolution
     volumes:
       - evolution_data:/root/.hermes/data/evolution
@@ -237,7 +237,7 @@ hermes-evolution check
 输出示例：
 
 ```
-🔍 HermesAgentEvolution 环境自检 (v5.0.0)
+🔍 HermesAgentEvolution 环境自检 (v7.0.1)
 ==================================================
   ✅ Python 3.12.3 ≥ 3.9
   ✅ 模块 工具注册表
@@ -264,7 +264,7 @@ hermes-evolution status
 输出示例：
 
 ```
-版本: v5.0.0
+版本: v7.0.1
 测试: 439 passed (24 测试文件)
 工具: 7 个
 数据库: 7 个 (tools / tool_performance / learning_experiences /
@@ -342,7 +342,7 @@ hermes_agent_evolution/
 │       │   ├── action_executor.py  # 动作执行器
 │       │   ├── daemon.py           # 守护进程
 │       │   ├── metrics_collector.py  # 指标收集器
-│       │   └── evolution_auditor.py  # 自进化审计器 (v5.0.0 新增)
+│       │   └── evolution_auditor.py  # 自进化审计器 (v7.0.1 新增)
 │       └── fusion/                 # V1↔V2 融合桥 (3 模块)
 │           ├── __init__.py
 │           ├── bridge.py
@@ -369,7 +369,7 @@ hermes_agent_evolution/
 ├── associations.db              # 记忆关联数据
 ├── retrieval_optimization.db    # 检索优化配置
 ├── closed_loop.db               # 闭环控制状态
-└── evolution_audit.db           # 自进化审计 (v5.0.0 新增)
+└── evolution_audit.db           # 自进化审计 (v7.0.1 新增)
 ```
 
 ---

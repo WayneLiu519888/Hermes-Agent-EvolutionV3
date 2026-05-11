@@ -34,7 +34,7 @@ install_requires = parse_requirements()
 
 setup(
     name="hermes-agent-evolution",
-    version="5.0.0",
+    version="7.0.1",
     author="HermesAgentEvolution Team",
     author_email="contact@example.com",
     description="AI自我进化系统 V1/V2/V3 融合版 — 单体+微服务混合架构",
@@ -64,7 +64,7 @@ setup(
     install_requires=install_requires,
     extras_require={
         "dev": [
-            "pytest>=7.0.0",
+            "pytest>=7.0.1",
             "pytest-cov>=4.0.0",
         ],
         "full": [

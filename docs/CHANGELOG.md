@@ -4,6 +4,43 @@
 
 ---
 
+## [7.0.1] — 2026-05-11
+
+### Bug修复：pip install 一键部署
+
+**问题**：pip install 后插件文件在 site-packages 但未部署到 ~/.hermes/plugins/，用户必须手动运行 `hermes-evolution setup`。
+
+**修复**：CLI 懒部署 — 首次运行任何命令时自动检测并部署插件。用户 pip install 后直接使用，无需额外操作。
+
+---
+
+## [7.0.0] — 2026-05-11
+
+### V7: 数据消费闭环 + prompt 注入
+
+详见 docs/v7_plan.md
+
+---
+
+## [5.0.0] — 2026-05-11
+
+### V4→V5: 架构优化 + DFX 工程化
+
+#### 架构优化
+- **Hermes 原生对齐**: 复用 registry.register()/hermes mcp serve/hermes doctor/plugin.yaml
+- **消除镜像重复**: hermes-plugin 与 _plugin → plugin_core.py 单源
+- **DatabasePool**: 统一连接池替代裸 sqlite3.connect()
+- **WAL 7db 全覆盖**: checkpoint 零调用→全部覆盖
+- **状态机编排**: 线性链→中断恢复
+- **记忆分层**: 无界→LRU+FTS5
+
+#### DFX 工程化
+- 8 维 DFX 审视完成
+- 业界 6 大框架对标
+- 代码净减 375 行
+
+---
+
 ## [3.0.6] — 2026-05-09
 
 ### 迭代 10: 自进化审计器 (Iteration 10)

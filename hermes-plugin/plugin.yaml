@@ -1,5 +1,5 @@
 name: hermes-evolution
-version: "7.0.0"
+version: "7.0.1"
 description: AI自我进化引擎 - 8工具+4Hook
 author: HermesAgentEvolution Team
 hermes_version: ">=0.26.0"

@@ -436,7 +436,7 @@ COMMANDS = {
 def main():
     """CLI 主入口"""
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
-        print("HermesAgentEvolution CLI v5.0.0")
+        print("HermesAgentEvolution CLI v7.0.1")
         print()
         print("用法: python3 -m src.evolution.cli <命令> [选项]")
         print()
@@ -468,6 +468,16 @@ def main():
     dry_run = "--dry-run" in sys.argv
 
     func, _ = COMMANDS[cmd]
+
+    # ── 自动懒部署：pip install 后首次运行任何命令时自动部署插件 ──────
+    if cmd != "setup":
+        plugin_dst = Path.home() / ".hermes" / "plugins" / "hermes-evolution" / "plugin.yaml"
+        if not plugin_dst.exists():
+            print("🔧 检测到插件未部署，自动执行一键部署...")
+            if not cmd_setup():
+                print("⚠️  自动部署失败，请手动运行: hermes-evolution setup")
+    # ──────────────────────────────────────────────────────────────────────
+
     if cmd == "check":
         success = cmd_check(fix=fix_mode, clean=clean_mode)
     elif cmd == "clean":

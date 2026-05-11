@@ -1,6 +1,6 @@
 # 测试指南
 
-> HermesAgentEvolution v5.0.0 — 24 测试文件，439 passed
+> HermesAgentEvolution v7.0.1 — 24 测试文件，439 passed
 
 ---
 
@@ -55,7 +55,7 @@ python3 -m pytest tests/ --collect-only -q
 | `test_retrieval_optimizer.py` | retrieval_optimizer | 14 | ✅ |
 | `test_tool_strategy_persistence.py` | tool_strategy_learner 持久化 (v3.0.5 新增) | 12 | ✅ |
 | `test_association_discovery.py` | association_discoverer, database | 12 | ✅ |
-| `test_evolution_auditor.py` | evolution_auditor (v5.0.0 新增) | 11 | ✅ |
+| `test_evolution_auditor.py` | evolution_auditor (v7.0.1 新增) | 11 | ✅ |
 | `test_association_optimizer.py` | association_optimizer | 8 | ✅ |
 | `test_learning_evolution_integration.py` | 学习系统集成 | 8 | ✅ |
 | `test_enhanced_tool_creator.py` | enhanced_tool_creator | 8 | ✅ |
@@ -65,7 +65,7 @@ python3 -m pytest tests/ --collect-only -q
 | `test_tool_performance.py` | tool_performance_analyzer | 4 | ✅ |
 | `test_core_functionality.py` | 核心功能 | 3 | ✅ |
 | `test_simple_integration.py` | 简化集成 | 2 | ✅ |
-| `test_ci_guards.py` | CI 守卫/快速冒烟 (v5.0.0 新增) | 8 | ✅ |
+| `test_ci_guards.py` | CI 守卫/快速冒烟 (v7.0.1 新增) | 8 | ✅ |
 
 ---
 
@@ -80,7 +80,7 @@ python3 -m pytest tests/ --collect-only -q
 - `_load_from_db` 重建内存状态
 - 重启后 `get_tool_performance_summary()` 非空
 
-### `test_evolution_auditor.py` (v5.0.0 新增)
+### `test_evolution_auditor.py` (v7.0.1 新增)
 
 验证 `EvolutionAuditor` 自进化审计模块：
 
@@ -90,7 +90,7 @@ python3 -m pytest tests/ --collect-only -q
 - `get_summary()` 统计汇总
 - 审计记录失败不影响进化流程
 
-### `test_ci_guards.py` (v5.0.0 新增)
+### `test_ci_guards.py` (v7.0.1 新增)
 
 CI 快速冒烟测试：
 

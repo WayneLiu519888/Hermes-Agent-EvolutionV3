@@ -1,6 +1,6 @@
 # HermesAgentEvolution
 
-![Version](https://img.shields.io/badge/version-7.0.0-blue)
+![Version](https://img.shields.io/badge/version-7.0.1-blue)
 ![Tests](https://img.shields.io/badge/tests-566%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -19,7 +19,7 @@
 | v3.0.6 | 2026-05-09 | EvolutionAuditor 自进化审计器 · 10 个子系统 |
 | v5.0.0 | 2026-05-11 | V4架构优化 · Hermes原生对齐 · WAL全覆盖 |
 | v6.0.0 | 2026-05-11 | OOM根因修复 · discover_all max_entries 防护 |
-| **v7.0.0** | **2026-05-11** | **数据消费闭环 · 关联质量打分 · 经验注入 · 8工具+4Hook** |
+| **v7.0.1** | **2026-05-11** | **数据消费闭环 · 关联质量打分 · 经验注入 · 8工具+4Hook** |
 
 ---
 
