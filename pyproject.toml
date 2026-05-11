@@ -63,5 +63,8 @@ where = ["src"]
 evolution = ["_plugin/*", "data/*.db", "config/*.json"]
 services = ["config/*.yaml"]
 
+[tool.setuptools.data-files]
+"hermes_agent_evolution/hermes-plugin" = ["hermes-plugin/plugin.yaml", "hermes-plugin/__init__.py"]
+
 [project.scripts]
 hermes-evolution = "evolution.cli:main"
