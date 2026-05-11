@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-agent-evolution"
-version = "7.0.1"
+version = "7.0.2"
 authors = [
     { name = "HermesAgentEvolution Team", email = "contact@example.com" },
 ]

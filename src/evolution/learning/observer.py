@@ -78,25 +78,7 @@ class LearningObserver:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_outcome ON experiences(outcome)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON experiences(timestamp)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tags ON experiences(tags)')
-        
-        # JSON 生成列索引（高频查询加速）
-        try:
-            cursor.execute(
-                "ALTER TABLE experiences ADD COLUMN _experience_type TEXT "
-                "GENERATED ALWAYS AS (json_extract(context, '$.experience_type')) STORED"
-            )
-        except sqlite3.OperationalError:
-            pass  # 列已存在
-        try:
-            cursor.execute(
-                "ALTER TABLE experiences ADD COLUMN _outcome TEXT "
-                "GENERATED ALWAYS AS (json_extract(context, '$.outcome')) STORED"
-            )
-        except sqlite3.OperationalError:
-            pass  # 列已存在
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_exp_type ON experiences(_experience_type)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_exp_outcome ON experiences(_outcome)')
-        
+
         conn.commit()
         # V5-P0: 连接由 DatabasePool 管理，不 close
     
