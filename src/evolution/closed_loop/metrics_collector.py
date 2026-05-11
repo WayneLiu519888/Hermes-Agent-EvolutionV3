@@ -139,10 +139,26 @@ class SystemMetricsCollector:
             cpu = self.process.cpu_percent(interval=0.1)
             metrics['system.cpu_percent'] = cpu
             
-            # 内存
+            # 内存（含峰值追踪，V7.0.3新增）
             mem = self.process.memory_info()
             metrics['system.memory_mb'] = mem.rss / 1024 / 1024
             metrics['system.memory_percent'] = self.process.memory_percent()
+            try:
+                mem_full = self.process.memory_full_info()
+                metrics['system.memory_peak_mb'] = mem_full.peak_wset / 1024 / 1024  # Windows
+            except AttributeError:
+                # Linux: 读取 /proc/self/status 中的 VmPeak
+                try:
+                    with open('/proc/self/status') as f:
+                        for line in f:
+                            if line.startswith('VmPeak:'):
+                                metrics['system.memory_peak_mb'] = int(line.split()[1]) / 1024
+                            elif line.startswith('VmSize:'):
+                                metrics['system.vm_size_mb'] = int(line.split()[1]) / 1024
+                            elif line.startswith('VmRSS:'):
+                                metrics['system.vm_rss_mb'] = int(line.split()[1]) / 1024
+                except Exception:
+                    pass
             
             # 线程数
             metrics['system.thread_count'] = self.process.num_threads()
@@ -366,6 +382,8 @@ class SystemMetricsCollector:
                 'timestamp': datetime.now().isoformat(),
                 'cpu': metrics.get('system.cpu_percent'),
                 'memory_mb': metrics.get('system.memory_mb'),
+                'memory_peak_mb': metrics.get('system.memory_peak_mb'),  # V7.0.3
+                'vm_size_mb': metrics.get('system.vm_size_mb'),         # V7.0.3
                 'success_rate': metrics.get('system.success_rate'),
                 'response_time': metrics.get('system.response_time_avg'),
                 'error_rate': metrics.get('system.error_rate'),
