@@ -108,13 +108,15 @@ TOOL_CREATE_TOOL_SCHEMA = {
 def _handle_create_tool(params, **kwargs):
     try:
         from evolution.tools.tool_creator import ToolCreator
-        from evolution.db_utils import get_data_dir
-        creator = ToolCreator(db_path=str(get_data_dir() / "tools.db"))
-        result = creator.create_tool(
+        creator = ToolCreator()
+        result = creator.create_from_code(
             name=params["tool_name"], description=params.get("description", ""),
-            api_spec=params.get("api_spec", {}), category=params.get("category", "custom"),
+            code=params.get("api_spec", {}).get("code", "# placeholder"),
+            category=params.get("category", "custom"),
+            parameters=params.get("api_spec", {}).get("parameters"),
             tags=params.get("tags", []))
-        return json.dumps(result, default=str, ensure_ascii=False)
+        return json.dumps({"success": result.success, "tool_definition": str(result.tool_definition) if result.tool_definition else None,
+                           "message": result.error_message or "created"}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
 
@@ -142,8 +144,20 @@ def _handle_analyze_performance(params, **kwargs):
         db = str(get_data_dir())
         registry = ToolRegistry(db_path=db + "/tools.db")
         analyzer = ToolPerformanceAnalyzer(registry=registry, db_path=db + "/tool_performance.db")
-        result = analyzer.analyze(tool_name=params.get("tool_name"), output_format=params.get("output_format", "json"))
-        return result if isinstance(result, str) else json.dumps(result, default=str)
+        tool_name = params.get("tool_name")
+        output_format = params.get("output_format", "json")
+        if tool_name:
+            summary = analyzer.analyze_tool_performance(tool_name)
+            result = json.dumps({
+                "tool_name": summary.tool_name,
+                "overall_score": summary.overall_score,
+                "performance_level": summary.performance_level.value,
+                "key_insights": summary.key_insights,
+                "optimization_opportunities": summary.optimization_opportunities,
+            }, default=str, ensure_ascii=False)
+            return result
+        else:
+            return analyzer.generate_performance_report(output_format)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
 
@@ -508,6 +522,39 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
             pass
 
 
+# ── Python import 缓存绕过：每次工具调用强制 reload 最新 handler ──
+import importlib as _importlib
+
+def _make_dynamic_handler(tool_name):
+    """生成动态 handler：每次调用重新 import plugin_core 获取最新函数。"""
+    _handler_attr = {
+        "evolution_run_cycle": "_handle_run_cycle",
+        "evolution_create_tool": "_handle_create_tool",
+        "evolution_analyze_performance": "_handle_analyze_performance",
+        "evolution_learn": "_handle_learn",
+        "evolution_self_monitor": "_handle_self_monitor",
+        "evolution_memory_discover": "_handle_memory_discover",
+        "evolution_audit": "_handle_audit",
+        "evolution_recall_lessons": "_handle_recall_lessons",
+    }
+    attr_name = _handler_attr[tool_name]
+    
+    def dynamic_handler(params, **kwargs):
+        try:
+            _importlib.invalidate_caches()
+            mod = _importlib.import_module("evolution.plugin_core")
+            _importlib.reload(mod)
+            fn = getattr(mod, attr_name, None)
+            if fn:
+                return fn(params, **kwargs)
+        except Exception:
+            pass
+        mod = _importlib.import_module("evolution.plugin_core")
+        fn = getattr(mod, attr_name)
+        return fn(params, **kwargs)
+    return dynamic_handler
+
+
 # ---------------------------------------------------------------------------
 # Plugin entry point: register(ctx)
 # ---------------------------------------------------------------------------
@@ -525,14 +572,14 @@ def register(ctx):
     get_data_dir()
 
     tools = [
-        ("evolution_run_cycle", TOOL_RUN_CYCLE_SCHEMA, _handle_run_cycle),
-        ("evolution_create_tool", TOOL_CREATE_TOOL_SCHEMA, _handle_create_tool),
-        ("evolution_analyze_performance", TOOL_ANALYZE_PERFORMANCE_SCHEMA, _handle_analyze_performance),
-        ("evolution_learn", TOOL_LEARN_SCHEMA, _handle_learn),
-        ("evolution_self_monitor", TOOL_SELF_MONITOR_SCHEMA, _handle_self_monitor),
-        ("evolution_memory_discover", TOOL_MEMORY_DISCOVER_SCHEMA, _handle_memory_discover),
-        ("evolution_audit", TOOL_AUDIT_SCHEMA, _handle_audit),
-        ("evolution_recall_lessons", TOOL_RECALL_LESSONS_SCHEMA, _handle_recall_lessons),
+        ("evolution_run_cycle", TOOL_RUN_CYCLE_SCHEMA, _make_dynamic_handler("evolution_run_cycle")),
+        ("evolution_create_tool", TOOL_CREATE_TOOL_SCHEMA, _make_dynamic_handler("evolution_create_tool")),
+        ("evolution_analyze_performance", TOOL_ANALYZE_PERFORMANCE_SCHEMA, _make_dynamic_handler("evolution_analyze_performance")),
+        ("evolution_learn", TOOL_LEARN_SCHEMA, _make_dynamic_handler("evolution_learn")),
+        ("evolution_self_monitor", TOOL_SELF_MONITOR_SCHEMA, _make_dynamic_handler("evolution_self_monitor")),
+        ("evolution_memory_discover", TOOL_MEMORY_DISCOVER_SCHEMA, _make_dynamic_handler("evolution_memory_discover")),
+        ("evolution_audit", TOOL_AUDIT_SCHEMA, _make_dynamic_handler("evolution_audit")),
+        ("evolution_recall_lessons", TOOL_RECALL_LESSONS_SCHEMA, _make_dynamic_handler("evolution_recall_lessons")),
     ]
 
     for name, schema, handler in tools:
