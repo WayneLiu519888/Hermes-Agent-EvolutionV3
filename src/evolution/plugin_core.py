@@ -243,9 +243,11 @@ TOOL_RUN_CYCLE_SCHEMA = {
 
 
 def _handle_run_cycle(params, **kwargs):
-    """Handler for evolution_run_cycle."""
+    """Handler for evolution_run_cycle (V7.0.10: 绕过缓存)."""
     try:
         orchestrator = _get_orchestrator()
+        if orchestrator is None:
+            orchestrator = _force_create_orchestrator()
         if orchestrator is None:
             return json.dumps({
                 "success": False,
@@ -623,9 +625,12 @@ TOOL_SELF_MONITOR_SCHEMA = {
 
 
 def _handle_self_monitor(params, **kwargs):
-    """Handler for evolution_self_monitor."""
+    """Handler for evolution_self_monitor (V7.0.10: 绕过缓存直接创建)."""
     try:
         self_monitor = _get_self_monitor()
+        if self_monitor is None:
+            # V7.0.10: 暴力修复——绕过_engine_instances，直接创建
+            self_monitor = _force_create_self_monitor()
         if self_monitor is None:
             # Try a lightweight fallback using individual components
             observer = _get_learning_observer()
@@ -1209,6 +1214,60 @@ def _handle_recall_lessons(params, **kwargs):
             "error": str(e),
             "timestamp": datetime.now().isoformat(),
         })
+
+
+
+
+# ---------------------------------------------------------------------------
+# V7.0.10: 暴力绕过 _engine_instances 缓存的直接创建函数
+# ---------------------------------------------------------------------------
+
+def _force_create_self_monitor():
+    """直接创建 SelfMonitor，完全绕过 _engine_instances 缓存"""
+    try:
+        from evolution.learning import LearningObserver, ExperienceAnalyzer, ToolStrategyLearner
+        from evolution import SelfMonitor
+        db_base = str(get_data_dir())
+        observer = LearningObserver(db_path=os.path.join(db_base, "learning_experiences.db"))
+        analyzer = ExperienceAnalyzer(observer)
+        learner = ToolStrategyLearner(db_path=os.path.join(db_base, "tools.db"))
+        monitor = SelfMonitor(observer, analyzer, learner)
+        # 回写缓存供后续使用
+        _engine_instances["self_monitor"] = monitor
+        _engine_instances["learning_observer"] = observer
+        return monitor
+    except Exception as e:
+        logger.warning("_force_create_self_monitor failed: %s", e)
+        return None
+
+
+def _force_create_orchestrator():
+    """直接创建 ClosedLoopOrchestrator，完全绕过 _engine_instances 缓存"""
+    try:
+        from evolution.closed_loop import ClosedLoopOrchestrator, SystemMetricsCollector, ActionExecutor
+        from evolution.learning import LearningObserver, ExperienceAnalyzer, PatternRecognizer, ToolStrategyLearner
+        from evolution import SelfMonitor
+        db_base = str(get_data_dir())
+        observer = LearningObserver(db_path=os.path.join(db_base, "learning_experiences.db"))
+        analyzer = ExperienceAnalyzer(observer)
+        learner = ToolStrategyLearner(db_path=os.path.join(db_base, "tools.db"))
+        monitor = SelfMonitor(observer, analyzer, learner)
+        orch = ClosedLoopOrchestrator(
+            metrics_collector=SystemMetricsCollector(),
+            self_monitor=monitor,
+            experience_analyzer=analyzer,
+            pattern_recognizer=PatternRecognizer(),
+            strategy_learner=learner,
+            action_executor=ActionExecutor(),
+            learning_observer=observer,
+        )
+        _engine_instances["orchestrator"] = orch
+        _engine_instances["self_monitor"] = monitor
+        _engine_instances["learning_observer"] = observer
+        return orch
+    except Exception as e:
+        logger.warning("_force_create_orchestrator failed: %s", e)
+        return None
 
 
 # ---------------------------------------------------------------------------
