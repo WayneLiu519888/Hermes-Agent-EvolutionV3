@@ -95,6 +95,24 @@ class AssociationDatabase:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_session ON context_injection_logs(session_id, injected_at)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_hash ON context_injection_logs(user_msg_hash)")
 
+            # V7.0.9: 对话缓存表（后台知识Agent异步消费）
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS conversation_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT,
+                    user_msg_hash TEXT NOT NULL,
+                    user_summary TEXT NOT NULL,
+                    reply_summary TEXT NOT NULL,
+                    keywords TEXT,
+                    cached_at DATETIME NOT NULL,
+                    processed INTEGER DEFAULT 0,
+                    processed_at DATETIME,
+                    extracted_count INTEGER DEFAULT 0
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cc_processed ON conversation_cache(processed, cached_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cc_hash ON conversation_cache(user_msg_hash)")
+
             self.connection.commit()
             logger.info(f"数据库初始化完成: {self.db_path}")
             

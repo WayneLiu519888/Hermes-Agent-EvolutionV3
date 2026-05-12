@@ -1008,78 +1008,55 @@ def _auto_tags(content_text: str) -> list:
     return sorted_w[:5]
 
 
-def _extract_and_store_knowledge(llm_response: str, messages=None):
-    """V7.0.8: 从 LLM 回复中自动提取知识点写入 memory_entries"""
-    if not llm_response or len(llm_response) < 20:
-        return
-    snippets = _extract_knowledge_snippets(llm_response)
-    if not snippets:
+def _last_user_message(messages) -> str:
+    """从消息列表中提取最后一条用户消息"""
+    if not messages:
+        return ""
+    for msg in reversed(messages):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            return msg.get("content", "")
+        if hasattr(msg, "role") and msg.role == "user":
+            return getattr(msg, "content", "")
+    return ""
+
+
+def _cache_conversation(user_msg: str, reply: str) -> None:
+    """V7.0.9: 缓存对话摘要到 conversation_cache 表"""
+    if not user_msg or not reply:
         return
     try:
         from evolution.memory.database import AssociationDatabase
         db = AssociationDatabase(str(get_data_dir() / "associations.db"))
-        now = datetime.now().isoformat()
-        session_count = db.connection.execute(
-            "SELECT COUNT(*) FROM memory_entries WHERE content_type='auto_session' AND updated_at > ?",
-            (datetime.now().replace(hour=0,minute=0,second=0).isoformat(),)
-        ).fetchone()[0]
-        stored = 0
-        for snippet in snippets:
-            if session_count + stored >= 1000:
-                break
-            content_hash = hashlib.sha256(snippet.encode()).hexdigest()[:16]
-            exists = db.connection.execute(
-                "SELECT id FROM memory_entries WHERE content_hash=?", (content_hash,)
-            ).fetchone()
-            if exists:
-                continue
-            entry_id = f"auto_{content_hash}"
-            tags = _auto_tags(snippet)
-            db.connection.execute(
-                "INSERT INTO memory_entries (id,content,content_type,content_hash,tags,created_at,updated_at,importance_score) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                (entry_id, snippet[:200], "auto_session", content_hash,
-                 ",".join(tags), now, now, 0.3)
-            )
-            stored += 1
-        if stored:
-            db.connection.commit()
-            total = db.connection.execute(
-                "SELECT COUNT(*) FROM memory_entries WHERE content_type='auto_session'"
-            ).fetchone()[0]
-            if total > 10000:
-                excess = total - 10000
-                db.connection.execute(
-                    "DELETE FROM memory_entries WHERE id IN ("
-                    "SELECT id FROM memory_entries WHERE content_type='auto_session' ORDER BY created_at ASC LIMIT ?)",
-                    (excess,)
-                )
-                db.connection.commit()
+        user_hash = hashlib.sha256(user_msg.encode()).hexdigest()[:16]
+        # 5分钟内同一哈希不重复缓存
+        existing = db.connection.execute(
+            "SELECT id FROM conversation_cache WHERE user_msg_hash=? AND cached_at>?",
+            (user_hash, (datetime.now() - timedelta(minutes=5)).isoformat())
+        ).fetchone()
+        if existing:
+            return
+
+        user_summary = user_msg[:5000].replace("\n", " ")
+        reply_summary = reply[:5000].replace("\n", " ")
+        kw = _auto_tags(user_msg + " " + reply)
+
+        db.connection.execute(
+            "INSERT INTO conversation_cache "
+            "(user_msg_hash,user_summary,reply_summary,keywords,cached_at) "
+            "VALUES (?,?,?,?,?)",
+            (user_hash, user_summary, reply_summary, ",".join(kw), datetime.now().isoformat())
+        )
+        db.connection.commit()
+
+        # 保留最近 1000 条
+        db.connection.execute(
+            "DELETE FROM conversation_cache WHERE id IN ("
+            "SELECT id FROM conversation_cache ORDER BY cached_at ASC "
+            "LIMIT MAX(0, (SELECT COUNT(*)-1000 FROM conversation_cache)))"
+        )
+        db.connection.commit()
     except Exception as e:
-        logger.debug("知识点提取跳过: %s", e)
-
-
-def _extract_knowledge_snippets(text: str) -> list:
-    """从文本中提取候选知识点片段（基于规则）"""
-    import re
-    text = text[:2000]
-    snippets, seen = [], set()
-    patterns = [
-        r'([\w\u4e00-\u9fff]{2,})是([\w\u4e00-\u9fff]{2,})',
-        r'([\w/.-]{3,})\s*[路径位置].*?[:：]\s*(\S+)',
-        r'(v?\d+\.\d+\.\d+)',
-        r'`([^`]{3,40})`',
-        r'([\w\u4e00-\u9fff]{3,})[:：]([\w\u4e00-\u9fff\s]{3,40})',
-    ]
-    for pattern in patterns:
-        for match in re.finditer(pattern, text):
-            snippet = match.group(0).strip()
-            if len(snippet) >= 6 and snippet not in seen:
-                snippets.append(snippet)
-                seen.add(snippet)
-                if len(snippets) >= 20:
-                    return snippets
-    return snippets
+        logger.debug("对话缓存失败: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -1164,21 +1141,19 @@ def _on_pre_llm_call(messages, model=None, **kwargs):
 # V7 Hook: post_llm_call — 关联质量打分
 # ---------------------------------------------------------------------------
 def _on_post_llm_call(response, messages=None, model=None, **kwargs):
-    """LLM 回复后：检查是否引用注入的关联，更新质量分数"""
+    """LLM 回复后：关联质量打分 + 缓存对话摘要（V7.0.9: 异步Agent提取）"""
     try:
         from evolution.db_pool import db_pool
         consumer = AssociationConsumer(db_pool)
-        # response 可能是字符串或 dict
         text = response if isinstance(response, str) else response.get("content", "")
         if text:
             consumer.score_usage(text)
         consumer.cleanup()
 
-        # V7.0.8: 自动提取知识点 → memory_entries
-        try:
-            _extract_and_store_knowledge(text, messages)
-        except Exception:
-            pass
+        # V7.0.9: 缓存对话摘要（只存不提取，留给后台知识Agent）
+        user_msg = _last_user_message(messages)
+        if user_msg and text:
+            _cache_conversation(user_msg, text)
     except Exception as exc:
         logger.debug("post_llm_call hook: %s", exc)
 
@@ -1296,7 +1271,7 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    manifest_version = "7.0.8"  # read from plugin.yaml
+    manifest_version = "7.0.9"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 8 tools + 4 hooks", manifest_version
     )
