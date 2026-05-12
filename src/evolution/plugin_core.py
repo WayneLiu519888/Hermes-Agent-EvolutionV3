@@ -46,27 +46,41 @@ atexit.register(_shutdown)
 # Module-level singletons — lazily initialized (V7.0.4: thread-safe)
 # ---------------------------------------------------------------------------
 import threading
+import time
 _engine_instances = {}
 _engine_lock = threading.Lock()
+_engine_failures = {}  # V7.0.5: {key: unix_timestamp}，失败后TTL冷却
 
 
-def _init_instance(key: str, factory, *args, **kwargs):
-    """线程安全的懒初始化单例。
+def _init_instance(key: str, factory, *args, retry_after: float = 30, **kwargs):
+    """线程安全的懒初始化单例（V7.0.5: TTL自动恢复）。
 
     双重检查：先无锁读，不存在时加锁创建。
-    防止多线程并发导致 None 被缓存。
+    失败后不永久缓存None——retry_after秒后自动清除，下次调用重新尝试。
     """
-    if key in _engine_instances:
+    # 快速路径：已有有效实例
+    if key in _engine_instances and _engine_instances[key] is not None:
         return _engine_instances[key]
+
+    # TTL 冷却：失败后等待 retry_after 秒再重试
+    failed_at = _engine_failures.get(key)
+    if failed_at is not None and (time.time() - failed_at) < retry_after:
+        return None
+
     with _engine_lock:
-        if key in _engine_instances:
+        # 双重检查
+        if key in _engine_instances and _engine_instances[key] is not None:
             return _engine_instances[key]
         try:
-            _engine_instances[key] = factory(*args, **kwargs)
+            instance = factory(*args, **kwargs)
+            _engine_instances[key] = instance
+            _engine_failures.pop(key, None)  # 成功后清除失败记录
+            return instance
         except Exception as e:
-            logger.warning("Failed to create %s: %s", key, e)
+            logger.warning("Failed to create %s (will retry in %.0fs): %s", key, retry_after, e)
             _engine_instances[key] = None
-    return _engine_instances[key]
+            _engine_failures[key] = time.time()
+            return None
 
 
 # ---------------------------------------------------------------------------
@@ -93,12 +107,17 @@ def _get_learning_observer():
 
 
 def _get_orchestrator():
-    """Get or create a ClosedLoopOrchestrator singleton (thread-safe)."""
+    """Get or create a ClosedLoopOrchestrator singleton (thread-safe, V7.0.5 TTL)."""
     key = "orchestrator"
-    if key in _engine_instances:
+    # 快速路径：已有有效实例
+    if key in _engine_instances and _engine_instances[key] is not None:
         return _engine_instances[key]
+    # TTL 冷却
+    failed_at = _engine_failures.get(key)
+    if failed_at is not None and (time.time() - failed_at) < 30:
+        return None
     with _engine_lock:
-        if key in _engine_instances:
+        if key in _engine_instances and _engine_instances[key] is not None:
             return _engine_instances[key]
         try:
             from evolution.closed_loop import (
@@ -141,6 +160,7 @@ def _get_orchestrator():
         except Exception as e:
             logger.warning("Failed to create ClosedLoopOrchestrator: %s", e)
             _engine_instances[key] = None
+            _engine_failures[key] = time.time()  # V7.0.5: TTL恢复
     return _engine_instances[key]
 
 
@@ -1130,7 +1150,7 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    manifest_version = "7.0.4"  # read from plugin.yaml
+    manifest_version = "7.0.5"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 8 tools + 4 hooks", manifest_version
     )
