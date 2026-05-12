@@ -7,7 +7,7 @@ CLI 模块测试 - test_cli.py
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import Mock, patch, MagicMock, call
 from pathlib import Path
 import tempfile
 
@@ -356,33 +356,35 @@ class TestMainRouting(unittest.TestCase):
             mock_clean.assert_called_once_with(dry_run=True)
             self.assertEqual(cm.exception.code, 0)
 
-    @patch('evolution.cli.cmd_setup')
-    def test_main_routes_setup(self, mock_setup):
+    def test_main_routes_setup(self):
         """测试 main 路由到 setup"""
-        mock_setup.return_value = True
-        with patch.object(sys, 'argv', ['cli', 'setup']):
-            with self.assertRaises(SystemExit) as cm:
-                main()
-            self.assertEqual(cm.exception.code, 0)
+        mock_func = Mock(return_value=True)
+        with patch.dict('evolution.cli.COMMANDS', {'setup': (mock_func, '一键部署')}):
+            with patch.object(sys, 'argv', ['cli', 'setup']):
+                with self.assertRaises(SystemExit) as cm:
+                    main()
+                self.assertEqual(cm.exception.code, 0)
+        mock_func.assert_called_once()
 
-    @patch('evolution.cli.cmd_status')
-    @unittest.skip("pre-existing: cmd_status subprocess.pytest 递归调用超时，非本次改动引起")
-    def test_main_routes_status(self, mock_status):
+    def test_main_routes_status(self):
         """测试 main 路由到 status"""
-        mock_status.return_value = True
-        with patch.object(sys, 'argv', ['cli', 'status']):
-            with self.assertRaises(SystemExit) as cm:
-                main()
-            self.assertEqual(cm.exception.code, 0)
+        mock_func = Mock(return_value=True)
+        with patch.dict('evolution.cli.COMMANDS', {'status': (mock_func, '查看系统状态')}):
+            with patch.object(sys, 'argv', ['cli', 'status']):
+                with self.assertRaises(SystemExit) as cm:
+                    main()
+                self.assertEqual(cm.exception.code, 0)
+        mock_func.assert_called_once()
 
-    @patch('evolution.cli.cmd_test')
-    def test_main_routes_test(self, mock_test):
+    def test_main_routes_test(self):
         """测试 main 路由到 test"""
-        mock_test.return_value = True
-        with patch.object(sys, 'argv', ['cli', 'test']):
-            with self.assertRaises(SystemExit) as cm:
-                main()
-            self.assertEqual(cm.exception.code, 0)
+        mock_func = Mock(return_value=True)
+        with patch.dict('evolution.cli.COMMANDS', {'test': (mock_func, '运行自测')}):
+            with patch.object(sys, 'argv', ['cli', 'test']):
+                with self.assertRaises(SystemExit) as cm:
+                    main()
+                self.assertEqual(cm.exception.code, 0)
+        mock_func.assert_called_once()
 
 
 # ══════════════════════════════════════════════════════════════════════

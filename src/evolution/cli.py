@@ -388,7 +388,7 @@ def cmd_test() -> bool:
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=line"],
         cwd=_project_root,
-        timeout=180
+        timeout=600
     )
     return result.returncode == 0
 
