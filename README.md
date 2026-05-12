@@ -1,6 +1,6 @@
 # HermesAgentEvolution
 
-![Version](https://img.shields.io/badge/version-7.0.9-blue)
+![Version](https://img.shields.io/badge/version-7.0.10-blue)
 ![Tests](https://img.shields.io/badge/tests-566%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -19,7 +19,8 @@
 | v3.0.6 | 2026-05-09 | EvolutionAuditor 自进化审计器 · 10 个子系统 |
 | v5.0.0 | 2026-05-11 | V4架构优化 · Hermes原生对齐 · WAL全覆盖 |
 | v6.0.0 | 2026-05-11 | OOM根因修复 · discover_all max_entries 防护 |
-| **v7.0.9** | **2026-05-13** | **MemGPT异步知识Agent+对话缓存** |
+| **v7.0.10** | **2026-05-13** | **极简独立handler · 删除全局缓存 · 761行精简** |
+| v7.0.9 | 2026-05-13 | MemGPT异步知识Agent+对话缓存 |
 | v7.0.8 | 2026-05-12 | hermes memory同步+知识点自动提取 |
 | v7.0.7 | 2026-05-12 | FTS5索引修复+采纳日志+智能匹配优化 |
 | v7.0.6 | 2026-05-12 | 三阶段智能上下文匹配 · 不机械切词 |
