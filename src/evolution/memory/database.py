@@ -55,15 +55,46 @@ class AssociationDatabase:
             # 创建索引
             self._create_indexes(cursor)
             
-            # FTS5 全文搜索虚拟表
+            # FTS5 全文搜索虚拟表（V7.0.7: content_rowid 用 rowid 而非 id，修复空索引）
             try:
+                # 检测旧版 FTS5（content_rowid='id' 的无效配置）
+                cursor.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='memory_entries_fts'"
+                )
+                old_sql = cursor.fetchone()
+                if old_sql and "content_rowid='id'" in old_sql[0]:
+                    cursor.execute("DROP TABLE IF EXISTS memory_entries_fts")
+                    logger.info("已删除旧版 FTS5 表（content_rowid='id'）")
+                
                 cursor.execute(
                     "CREATE VIRTUAL TABLE IF NOT EXISTS memory_entries_fts "
-                    "USING fts5(content, content='memory_entries', content_rowid='id')"
+                    "USING fts5(content, content='memory_entries', content_rowid='rowid')"
                 )
+                # 强制全量重建索引
+                cursor.execute("INSERT INTO memory_entries_fts(memory_entries_fts) VALUES('rebuild')")
             except sqlite3.OperationalError:
                 logger.debug("FTS5 表已存在或当前版本不支持")
-            
+
+            # V7.0.7: 上下文注入采纳日志表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS context_injection_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    injected_at DATETIME NOT NULL,
+                    association_id INTEGER NOT NULL,
+                    association_type TEXT NOT NULL,
+                    strength REAL NOT NULL,
+                    user_msg_hash TEXT NOT NULL,
+                    user_msg_len INTEGER NOT NULL DEFAULT 0,
+                    accepted INTEGER NOT NULL DEFAULT 0,
+                    accepted_evidence TEXT DEFAULT ''
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_accepted_time ON context_injection_logs(accepted, injected_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_assoc ON context_injection_logs(association_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_session ON context_injection_logs(session_id, injected_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cil_hash ON context_injection_logs(user_msg_hash)")
+
             self.connection.commit()
             logger.info(f"数据库初始化完成: {self.db_path}")
             
@@ -279,7 +310,7 @@ class AssociationDatabase:
             cursor = self.connection.cursor()
             cursor.execute(
                 """SELECT me.* FROM memory_entries me
-                   INNER JOIN memory_entries_fts fts ON me.id = fts.id
+                   INNER JOIN memory_entries_fts fts ON me.rowid = fts.rowid
                    WHERE memory_entries_fts MATCH ?
                    ORDER BY rank LIMIT ?""",
                 (keyword, limit)

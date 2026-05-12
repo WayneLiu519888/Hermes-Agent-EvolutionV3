@@ -11,6 +11,7 @@ V7.0.6: 三阶段智能匹配 — tags优先 → FTS5全文 → 最近记忆兜�
 import json
 import logging
 import re
+import hashlib
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -23,6 +24,7 @@ class AssociationConsumer:
     def __init__(self, db_pool):
         self._db_pool = db_pool
         self._injected_ids: List[int] = []
+        self._injected_meta: List[Dict[str, Any]] = []  # V7.0.7: 注入元数据
 
     # ── 上下文注入（V7.0.6：三阶段智能匹配）─────────────────────
 
@@ -44,6 +46,8 @@ class AssociationConsumer:
                 return ""
 
             lines = []
+            msg_hash = hashlib.sha256(user_message.encode()).hexdigest()[:16]
+            msg_len = len(user_message)
             for assoc in associations:
                 src_title = assoc.get("src_content", assoc["source_id"])[:30]
                 tgt_title = assoc.get("tgt_content", assoc["target_id"])[:30]
@@ -52,6 +56,13 @@ class AssociationConsumer:
                     f"{src_title} ↔ {tgt_title}, 强度{strength:.1f}"
                 )
                 self._injected_ids.append(assoc["id"])
+                self._injected_meta.append({
+                    "association_id": assoc["id"],
+                    "association_type": "semantic",
+                    "strength": strength,
+                    "user_msg_hash": msg_hash,
+                    "user_msg_len": msg_len,
+                })
 
             if lines:
                 return "[相关记忆] " + " | ".join(lines)
@@ -146,13 +157,35 @@ class AssociationConsumer:
     # ── 质量反馈 ──────────────────────────────────────────────────
 
     def score_usage(self, llm_response: str) -> None:
-        """LLM 回复后打分"""
-        if not self._injected_ids or not llm_response:
+        """LLM 回复后打分 + V7.0.7: 写入 context_injection_logs"""
+        if (not self._injected_ids or not llm_response) and not self._injected_meta:
             self._injected_ids = []
+            self._injected_meta = []
             return
         try:
             conn = self._db_pool.get_connection("associations.db")
             now = datetime.now().isoformat()
+
+            # V7.0.7: 写入上下文注入采纳日志
+            for meta in self._injected_meta:
+                detail = self._get_assoc_detail(conn, meta["association_id"])
+                src_content = detail.get("src_content", "") if detail else ""
+                tgt_content = detail.get("tgt_content", "") if detail else ""
+                referenced = self._is_referenced(llm_response, src_content, tgt_content)
+                evidence = self._find_evidence(llm_response, src_content, tgt_content) if referenced else ""
+
+                conn.execute(
+                    "INSERT INTO context_injection_logs "
+                    "(session_id, injected_at, association_id, association_type, "
+                    "strength, user_msg_hash, user_msg_len, accepted, accepted_evidence) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    ("", now, meta["association_id"], meta["association_type"],
+                     meta["strength"], meta["user_msg_hash"], meta["user_msg_len"],
+                     1 if referenced else 0, evidence),
+                )
+                conn.commit()
+
+            # 关联质量打分（原有逻辑）
             for assoc_id in self._injected_ids:
                 detail = self._get_assoc_detail(conn, assoc_id)
                 if not detail:
@@ -177,14 +210,16 @@ class AssociationConsumer:
                     (assoc_id, json.dumps({"phase": "v7_consumer"}), now, round(new_score, 4), feedback),
                 )
                 conn.commit()
-            logger.debug("已为 %d 条关联打分", len(self._injected_ids))
+            logger.debug("已为 %d 条关联打分，%d 条写入采纳日志", len(self._injected_ids), len(self._injected_meta))
         except Exception as exc:
-            logger.warning("关联打分失败: %s", exc)
+            logger.warning("关联打分/日志写入失败: %s", exc)
         finally:
             self._injected_ids = []
+            self._injected_meta = []
 
     def cleanup(self) -> None:
         self._injected_ids = []
+        self._injected_meta = []
 
     # ── 教训召回 ──────────────────────────────────────────────────
 
@@ -261,3 +296,14 @@ class AssociationConsumer:
             if kw in response:
                 return True
         return False
+
+    @staticmethod
+    def _find_evidence(response: str, src_content: str, tgt_content: str) -> str:
+        """提取 LLM 回复中匹配到的关键词作为采纳证据"""
+        matched = []
+        for kw in re.findall(r'[\w\u4e00-\u9fff]{3,}', src_content + tgt_content):
+            if kw in response:
+                matched.append(kw)
+                if len(matched) >= 3:
+                    break
+        return ",".join(matched[:3])
