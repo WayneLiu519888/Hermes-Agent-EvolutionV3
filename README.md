@@ -1,6 +1,6 @@
 # HermesAgentEvolution
 
-![Version](https://img.shields.io/badge/version-7.0.6-blue)
+![Version](https://img.shields.io/badge/version-7.0.7-blue)
 ![Tests](https://img.shields.io/badge/tests-566%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -19,6 +19,8 @@
 | v3.0.6 | 2026-05-09 | EvolutionAuditor 自进化审计器 · 10 个子系统 |
 | v5.0.0 | 2026-05-11 | V4架构优化 · Hermes原生对齐 · WAL全覆盖 |
 | v6.0.0 | 2026-05-11 | OOM根因修复 · discover_all max_entries 防护 |
+| **v7.0.7** | **2026-05-12** | **FTS5索引修复+采纳日志+智能匹配优化** |
+| v7.0.6 | 2026-05-12 | 三阶段智能上下文匹配 · 不机械切词 |
 | **v7.0.5** | **2026-05-12** | **_init_instance TTL自动恢复 · None缓存30s重试** |
 | v7.0.4 | 2026-05-12 | 线程安全+工具追踪隔离+内存监控确认 |
 | v7.0.3 | 2026-05-11 | DFX补漏：VmPeak内存监控 + MemoryMax=4GB |
