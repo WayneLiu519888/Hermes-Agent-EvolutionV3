@@ -43,9 +43,30 @@ def _shutdown():
 atexit.register(_shutdown)
 
 # ---------------------------------------------------------------------------
-# Module-level singletons — lazily initialized
+# Module-level singletons — lazily initialized (V7.0.4: thread-safe)
 # ---------------------------------------------------------------------------
+import threading
 _engine_instances = {}
+_engine_lock = threading.Lock()
+
+
+def _init_instance(key: str, factory, *args, **kwargs):
+    """线程安全的懒初始化单例。
+
+    双重检查：先无锁读，不存在时加锁创建。
+    防止多线程并发导致 None 被缓存。
+    """
+    if key in _engine_instances:
+        return _engine_instances[key]
+    with _engine_lock:
+        if key in _engine_instances:
+            return _engine_instances[key]
+        try:
+            _engine_instances[key] = factory(*args, **kwargs)
+        except Exception as e:
+            logger.warning("Failed to create %s: %s", key, e)
+            _engine_instances[key] = None
+    return _engine_instances[key]
 
 
 # ---------------------------------------------------------------------------
@@ -65,21 +86,20 @@ def _get_tool_registry():
 
 
 def _get_learning_observer():
-    """Get or create a LearningObserver singleton."""
-    if "learning_observer" not in _engine_instances:
-        try:
-            from evolution.learning import LearningObserver
-            db_path = str(get_data_dir() / "learning_experiences.db")
-            _engine_instances["learning_observer"] = LearningObserver(db_path=db_path)
-        except Exception as e:
-            logger.warning("Failed to create LearningObserver: %s", e)
-            _engine_instances["learning_observer"] = None
-    return _engine_instances["learning_observer"]
+    """Get or create a LearningObserver singleton (thread-safe)."""
+    from evolution.learning import LearningObserver
+    db_path = str(get_data_dir() / "learning_experiences.db")
+    return _init_instance("learning_observer", LearningObserver, db_path=db_path)
 
 
 def _get_orchestrator():
-    """Get or create a ClosedLoopOrchestrator singleton."""
-    if "orchestrator" not in _engine_instances:
+    """Get or create a ClosedLoopOrchestrator singleton (thread-safe)."""
+    key = "orchestrator"
+    if key in _engine_instances:
+        return _engine_instances[key]
+    with _engine_lock:
+        if key in _engine_instances:
+            return _engine_instances[key]
         try:
             from evolution.closed_loop import (
                 ClosedLoopOrchestrator,
@@ -95,7 +115,6 @@ def _get_orchestrator():
 
             db_base = str(get_data_dir())
 
-            # Wire dependencies
             observer = LearningObserver(db_path=os.path.join(db_base, "learning_experiences.db"))
             analyzer = ExperienceAnalyzer(observer)
             strategy_learner = ToolStrategyLearner(db_path=os.path.join(db_base, "tools.db"))
@@ -105,7 +124,7 @@ def _get_orchestrator():
             from evolution.closed_loop import ActionExecutor
             action_executor = ActionExecutor()
 
-            _engine_instances["orchestrator"] = ClosedLoopOrchestrator(
+            orch = ClosedLoopOrchestrator(
                 metrics_collector=metrics_collector,
                 self_monitor=self_monitor,
                 experience_analyzer=analyzer,
@@ -114,15 +133,15 @@ def _get_orchestrator():
                 action_executor=action_executor,
                 learning_observer=observer,
             )
-            # Cache sub-components for reuse
+            _engine_instances[key] = orch
             _engine_instances["learning_observer"] = observer
             _engine_instances["self_monitor"] = self_monitor
             _engine_instances["experience_analyzer"] = analyzer
             _engine_instances["strategy_learner"] = strategy_learner
         except Exception as e:
             logger.warning("Failed to create ClosedLoopOrchestrator: %s", e)
-            _engine_instances["orchestrator"] = None
-    return _engine_instances["orchestrator"]
+            _engine_instances[key] = None
+    return _engine_instances[key]
 
 
 def _get_self_monitor():
@@ -1111,7 +1130,7 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    manifest_version = "7.0.3"  # read from plugin.yaml
+    manifest_version = "7.0.4"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 8 tools + 4 hooks", manifest_version
     )
