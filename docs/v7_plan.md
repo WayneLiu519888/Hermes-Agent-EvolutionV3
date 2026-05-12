@@ -241,3 +241,63 @@ consumer.py
 4. **evolution_recall_lessons**：能够返回中文经验教训列表
 5. **关联质量**：3轮对话后，score≥0.7 的关联能被优先注入
 6. **测试**：全量566测试无回归，新增测试覆盖率 ≥ 85%
+
+---
+
+## 附录：上下文匹配优化（V7.0.6 → V7.0.7）
+
+### A.1 原方案缺陷
+
+```
+用户消息 → _extract_keywords(按中文标点切分取前8个) → FTS5 MATCH → 查关联
+```
+
+问题：
+- 机械切词，仅中文，"关联记忆数据库性能" 被切成一个词
+- FTS5 content_rowid='id' 配置错误（TEXT映射失败），索引始终为空
+- 无兜底——关键词匹配失败时返回空
+
+### A.2 优化方案（V7.0.6）
+
+三阶段智能匹配，不客户端切词：
+
+| 阶段 | 方法 | 说明 |
+|------|------|------|
+| S1 tags优先 | 消息中2-4字片段 LIKE match `memory_entries.tags` | 最精确的语义匹配 |
+| S2 FTS5全文 | SQLite BM25原生排序, `\w`+中文混合正则 | 中英文混合原生支持 |
+| S3 最近记忆 | `ORDER BY updated_at DESC LIMIT 5` | 兜底保障 |
+
+### A.3 FTS5 修复（V7.0.7）
+
+| 问题 | 修复 |
+|------|------|
+| `content_rowid='id'` — id 是 TEXT 列 | → `content_rowid='rowid'` |
+| 旧表残留 | 自动检测 DROP 并 REBUILD |
+| `search_fts` SQL `me.id=fts.id` | → `me.rowid=fts.rowid` |
+
+### A.4 采纳效果追踪（V7.0.7）
+
+新增 `context_injection_logs` 表：
+
+```sql
+id, session_id, injected_at,
+association_id, association_type, strength,
+user_msg_hash,     -- SHA256[:16], 消息去重
+user_msg_len,      -- 相关性分析
+accepted,          -- 0/1
+accepted_evidence  -- 匹配关键词(≤3个)
+```
+
+4 索引：`(accepted, injected_at)` / `(association_id)` / `(session_id, injected_at)` / `(user_msg_hash)`
+
+统计查询示例：
+```sql
+-- 采纳率时间趋势
+SELECT date(injected_at), ROUND(AVG(accepted)*100,1)||'%' 
+FROM context_injection_logs GROUP BY 1 ORDER BY 1;
+
+-- 最被采纳的关联
+SELECT association_id, COUNT(*) as accepted_count
+FROM context_injection_logs WHERE accepted=1 
+GROUP BY 1 ORDER BY 2 DESC LIMIT 10;
+```

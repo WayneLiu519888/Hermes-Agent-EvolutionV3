@@ -211,3 +211,25 @@ A组（算法）→ B组（消费者）→ C组（Hook）→ D组（测试）
 1. 运行相关测试
 2. 暂停，等你确认
 3. 继续下一组
+
+---
+
+## 开发后优化记录
+
+### V7.0.6：三阶段智能匹配
+
+原 B 组的 `consumer.py` 设计为 `_extract_keywords` + `_fts_search`，开发后暴露出问题：
+- 机械切词仅限中文，英文消息匹配失败
+- FTS5 索引配置错误（content_rowid='id'）导致 S2 从未生效
+
+**实际优化实现**（迭代于 V7.0.6）：
+- `inject_context` 重写为 `_match_entries` 三阶段
+- S1: tags LIKE（公式 `[\w\u4e00-\u9fff]{2,4}` 支持混合语言）
+- S2: FTS5 MATCH
+- S3: ORDER BY updated_at DESC 兜底
+
+### V7.0.7：FTS5 修复 + 采纳日志
+
+- `database.py` FTS5 content_rowid 从 'id' 改为 'rowid'
+- 旧表自动检测 DROP + REBUILD
+- 新增 `context_injection_logs` 表，score_usage 写入采纳记录
