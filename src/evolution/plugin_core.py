@@ -47,6 +47,7 @@ atexit.register(_shutdown)
 # ---------------------------------------------------------------------------
 import threading
 import time
+import hashlib
 _engine_instances = {}
 _engine_lock = threading.Lock()
 _engine_failures = {}  # V7.0.5: {key: unix_timestamp}，失败后TTL冷却
@@ -833,6 +834,13 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
         # Hook must never raise — silently log and continue
         pass
 
+    # ── V7.0.8: hermes memory → HAE memory_entries 同步 ──
+    if tool_name == "memory" and not error:
+        try:
+            _sync_hermes_memory(params)
+        except Exception:
+            pass
+
 
 # ---------------------------------------------------------------------------
 # Tool 7: evolution_audit
@@ -1033,6 +1041,12 @@ def _on_post_llm_call(response, messages=None, model=None, **kwargs):
         if text:
             consumer.score_usage(text)
         consumer.cleanup()
+
+        # V7.0.8: 自动提取知识点 → memory_entries
+        try:
+            _extract_and_store_knowledge(text, messages)
+        except Exception:
+            pass
     except Exception as exc:
         logger.debug("post_llm_call hook: %s", exc)
 
