@@ -133,7 +133,9 @@ class AssociationConsumer:
             conn = self._db_pool.get_connection("associations.db")
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id FROM memory_entries_fts WHERE content MATCH ? LIMIT 15",
+                "SELECT m.id FROM memory_entries_fts f "
+                "JOIN memory_entries m ON m.rowid = f.rowid "
+                "WHERE f.content MATCH ? LIMIT 15",
                 (query,),
             )
             return [str(row[0]) for row in cursor.fetchall()]

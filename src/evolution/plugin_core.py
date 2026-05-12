@@ -950,6 +950,138 @@ def _handle_audit(params, **kwargs):
         })
 
 
+
+
+# ---------------------------------------------------------------------------
+# V7.0.8: hermes memory → HAE memory_entries 同步 + 知识点自动提取
+# ---------------------------------------------------------------------------
+
+def _sync_hermes_memory(params):
+    """拦截 memory 工具调用, 同步到 HAE memory_entries"""
+    action = params.get("action", "")
+    if action not in ("add", "replace"):
+        return
+    content_text = params.get("content", "")
+    target = params.get("target", "memory")
+    if not content_text or len(content_text) < 10:
+        return
+    try:
+        from evolution.memory.database import AssociationDatabase
+        db = AssociationDatabase(str(get_data_dir() / "associations.db"))
+        content_hash = hashlib.sha256(content_text.encode()).hexdigest()[:16]
+        tags = _auto_tags(content_text)
+        existing = db.connection.execute(
+            "SELECT id FROM memory_entries WHERE content_hash = ?", (content_hash,)
+        ).fetchone()
+        now = datetime.now().isoformat()
+        if existing:
+            db.connection.execute(
+                "UPDATE memory_entries SET updated_at=?, tags=? WHERE id=?",
+                (now, ",".join(tags), existing[0])
+            )
+        else:
+            entry_id = f"hmem_{content_hash}"
+            db.connection.execute(
+                "INSERT INTO memory_entries (id,content,content_type,content_hash,tags,created_at,updated_at,importance_score) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (entry_id, content_text, target, content_hash,
+                 ",".join(tags), now, now, 0.5)
+            )
+        db.connection.commit()
+    except Exception as e:
+        logger.debug("hermes memory 同步跳过: %s", e)
+
+
+def _auto_tags(content_text: str) -> list:
+    """从内容自动提取标签（中英文混合，过滤停用词，top5）"""
+    import re
+    from collections import Counter
+    words = re.findall(r'[\w\u4e00-\u9fff]{2,8}', content_text)
+    stop = {'的','是','在','和','了','有','不','这','也','就','都','要','一个',
+            '可以','使用','需要','没有','如果','这个','那个','什么','怎么','为什么',
+            'the','is','in','and','to','of','for','with','that','this','not','be','are'}
+    words = [w for w in words if w.lower() not in stop]
+    if not words:
+        return []
+    freq = Counter(words)
+    sorted_w = sorted(freq, key=lambda w: (freq[w], len(w)), reverse=True)
+    return sorted_w[:5]
+
+
+def _extract_and_store_knowledge(llm_response: str, messages=None):
+    """V7.0.8: 从 LLM 回复中自动提取知识点写入 memory_entries"""
+    if not llm_response or len(llm_response) < 20:
+        return
+    snippets = _extract_knowledge_snippets(llm_response)
+    if not snippets:
+        return
+    try:
+        from evolution.memory.database import AssociationDatabase
+        db = AssociationDatabase(str(get_data_dir() / "associations.db"))
+        now = datetime.now().isoformat()
+        session_count = db.connection.execute(
+            "SELECT COUNT(*) FROM memory_entries WHERE content_type='auto_session' AND updated_at > ?",
+            (datetime.now().replace(hour=0,minute=0,second=0).isoformat(),)
+        ).fetchone()[0]
+        stored = 0
+        for snippet in snippets:
+            if session_count + stored >= 1000:
+                break
+            content_hash = hashlib.sha256(snippet.encode()).hexdigest()[:16]
+            exists = db.connection.execute(
+                "SELECT id FROM memory_entries WHERE content_hash=?", (content_hash,)
+            ).fetchone()
+            if exists:
+                continue
+            entry_id = f"auto_{content_hash}"
+            tags = _auto_tags(snippet)
+            db.connection.execute(
+                "INSERT INTO memory_entries (id,content,content_type,content_hash,tags,created_at,updated_at,importance_score) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (entry_id, snippet[:200], "auto_session", content_hash,
+                 ",".join(tags), now, now, 0.3)
+            )
+            stored += 1
+        if stored:
+            db.connection.commit()
+            total = db.connection.execute(
+                "SELECT COUNT(*) FROM memory_entries WHERE content_type='auto_session'"
+            ).fetchone()[0]
+            if total > 10000:
+                excess = total - 10000
+                db.connection.execute(
+                    "DELETE FROM memory_entries WHERE id IN ("
+                    "SELECT id FROM memory_entries WHERE content_type='auto_session' ORDER BY created_at ASC LIMIT ?)",
+                    (excess,)
+                )
+                db.connection.commit()
+    except Exception as e:
+        logger.debug("知识点提取跳过: %s", e)
+
+
+def _extract_knowledge_snippets(text: str) -> list:
+    """从文本中提取候选知识点片段（基于规则）"""
+    import re
+    text = text[:2000]
+    snippets, seen = [], set()
+    patterns = [
+        r'([\w\u4e00-\u9fff]{2,})是([\w\u4e00-\u9fff]{2,})',
+        r'([\w/.-]{3,})\s*[路径位置].*?[:：]\s*(\S+)',
+        r'(v?\d+\.\d+\.\d+)',
+        r'`([^`]{3,40})`',
+        r'([\w\u4e00-\u9fff]{3,})[:：]([\w\u4e00-\u9fff\s]{3,40})',
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text):
+            snippet = match.group(0).strip()
+            if len(snippet) >= 6 and snippet not in seen:
+                snippets.append(snippet)
+                seen.add(snippet)
+                if len(snippets) >= 20:
+                    return snippets
+    return snippets
+
+
 # ---------------------------------------------------------------------------
 # V7 Hook: on_session_start — 注入最近失败教训到 memory
 # ---------------------------------------------------------------------------
@@ -1164,7 +1296,7 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    manifest_version = "7.0.7"  # read from plugin.yaml
+    manifest_version = "7.0.8"  # read from plugin.yaml
     logger.info(
         "Hermes Evolution Plugin v%s registered — 8 tools + 4 hooks", manifest_version
     )
