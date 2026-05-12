@@ -57,17 +57,29 @@ def _handle_run_cycle(params, **kwargs):
     try:
         from evolution.closed_loop import ClosedLoopOrchestrator, SystemMetricsCollector, ActionExecutor
         from evolution.learning import LearningObserver, ExperienceAnalyzer, PatternRecognizer, ToolStrategyLearner
+        from evolution.tools.tool_registry import ToolRegistry
+        from evolution.tools.tool_integration import ToolEvolutionEngine
         from evolution import SelfMonitor
         from evolution.db_utils import get_data_dir
         db = str(get_data_dir())
         obs = LearningObserver(db_path=db + "/learning_experiences.db")
-        mon = SelfMonitor(obs, ExperienceAnalyzer(obs), ToolStrategyLearner(db_path=db + "/tools.db"))
+        strategy_learner = ToolStrategyLearner(db_path=db + "/tools.db")
+        tool_registry = ToolRegistry(db_path=db + "/tools.db")
+        tool_engine = ToolEvolutionEngine(registry=tool_registry)
+        mon = SelfMonitor(obs, ExperienceAnalyzer(obs), strategy_learner)
         orch = ClosedLoopOrchestrator(
             metrics_collector=SystemMetricsCollector(),
             self_monitor=mon, experience_analyzer=ExperienceAnalyzer(obs),
             pattern_recognizer=PatternRecognizer(),
-            strategy_learner=ToolStrategyLearner(db_path=db + "/tools.db"),
-            action_executor=ActionExecutor(), learning_observer=obs)
+            strategy_learner=strategy_learner,
+            action_executor=ActionExecutor(
+                strategy_learner=strategy_learner,
+                tool_evolution_engine=tool_engine,
+                tool_registry=tool_registry,
+                pattern_recognizer=PatternRecognizer(),
+            ),
+            learning_observer=obs,
+            tool_evolution_engine=tool_engine)
         result = orch.run_full_cycle()
         result["success"] = True
         return json.dumps(result, default=str, ensure_ascii=False)
@@ -125,8 +137,11 @@ TOOL_ANALYZE_PERFORMANCE_SCHEMA = {
 def _handle_analyze_performance(params, **kwargs):
     try:
         from evolution.tools.tool_performance_analyzer import ToolPerformanceAnalyzer
+        from evolution.tools.tool_registry import ToolRegistry
         from evolution.db_utils import get_data_dir
-        analyzer = ToolPerformanceAnalyzer(db_path=str(get_data_dir() / "tool_performance.db"))
+        db = str(get_data_dir())
+        registry = ToolRegistry(db_path=db + "/tools.db")
+        analyzer = ToolPerformanceAnalyzer(registry=registry, db_path=db + "/tool_performance.db")
         result = analyzer.analyze(tool_name=params.get("tool_name"), output_format=params.get("output_format", "json"))
         return result if isinstance(result, str) else json.dumps(result, default=str)
     except Exception as e:
@@ -271,7 +286,7 @@ def _handle_audit(params, **kwargs):
         elif action == "get_cycle_detail":
             result = auditor.get_cycle_detail(cycle_id=params.get("cycle_id"))
         elif action == "get_health_trend":
-            result = auditor.get_health_trend()
+            result = auditor.get_latest_health_trend()
         else:
             result = auditor.get_summary()
         return json.dumps(result, default=str, ensure_ascii=False)

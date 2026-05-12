@@ -1,2 +1,558 @@
-"""Hermes Agent Evolution Plugin - 一行转发到 plugin_core"""
-from evolution.plugin_core import register
+"""
+Hermes Evolution Plugin Core
+
+Shared logic extracted from the hermes-plugin / _plugin mirror files.
+Provides 8 tools + 4 hooks for the Hermes Agent self-evolution system:
+
+  Tools:
+    - evolution_run_cycle           — trigger one full evolution cycle
+    - evolution_create_tool         — create a new tool from an API description
+    - evolution_analyze_performance — analyze tool performance metrics
+    - evolution_learn               — record an experience / lesson learned
+    - evolution_self_monitor        — get current system health status
+    - evolution_memory_discover     — discover associations between memories
+    - evolution_audit               — query evolution audit records
+
+  Hook:
+    - post_tool_call                — auto-records tool execution experience
+
+This module is the single source of truth. Both hermes-plugin/__init__.py and
+_plugin/__init__.py forward to register() defined here.
+"""
+
+import json
+import sys
+import logging
+import os
+import uuid
+import atexit
+from pathlib import Path
+from datetime import datetime, timedelta
+
+from evolution.db_utils import get_data_dir, auto_checkpoint_if_needed
+from evolution.consumer import AssociationConsumer
+
+logger = logging.getLogger("hermes_evolution_plugin")
+
+
+# ── 优雅关闭：atexit 触发 WAL checkpoint + 关闭所有连接 ──
+def _shutdown():
+    from evolution.db_pool import db_pool
+    db_pool.checkpoint_all(max_wal_mb=0)  # 强制清空所有WAL
+    db_pool.close_all()
+atexit.register(_shutdown)
+
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Tool 1: evolution_run_cycle
+# ---------------------------------------------------------------------------
+TOOL_RUN_CYCLE_SCHEMA = {
+    "name": "evolution_run_cycle",
+    "description": "Trigger one full evolution cycle.",
+    "parameters": {"type": "object", "properties": {}, "required": []},
+}
+
+def _handle_run_cycle(params, **kwargs):
+    try:
+        from evolution.closed_loop import ClosedLoopOrchestrator, SystemMetricsCollector, ActionExecutor
+        from evolution.learning import LearningObserver, ExperienceAnalyzer, PatternRecognizer, ToolStrategyLearner
+        from evolution.tools.tool_registry import ToolRegistry
+        from evolution.tools.tool_integration import ToolEvolutionEngine
+        from evolution import SelfMonitor
+        from evolution.db_utils import get_data_dir
+        db = str(get_data_dir())
+        obs = LearningObserver(db_path=db + "/learning_experiences.db")
+        strategy_learner = ToolStrategyLearner(db_path=db + "/tools.db")
+        tool_registry = ToolRegistry(db_path=db + "/tools.db")
+        tool_engine = ToolEvolutionEngine(registry=tool_registry)
+        mon = SelfMonitor(obs, ExperienceAnalyzer(obs), strategy_learner)
+        orch = ClosedLoopOrchestrator(
+            metrics_collector=SystemMetricsCollector(),
+            self_monitor=mon, experience_analyzer=ExperienceAnalyzer(obs),
+            pattern_recognizer=PatternRecognizer(),
+            strategy_learner=strategy_learner,
+            action_executor=ActionExecutor(
+                strategy_learner=strategy_learner,
+                tool_evolution_engine=tool_engine,
+                tool_registry=tool_registry,
+                pattern_recognizer=PatternRecognizer(),
+            ),
+            learning_observer=obs,
+            tool_evolution_engine=tool_engine)
+        result = orch.run_full_cycle()
+        result["success"] = True
+        return json.dumps(result, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 2: evolution_create_tool
+# ---------------------------------------------------------------------------
+TOOL_CREATE_TOOL_SCHEMA = {
+    "name": "evolution_create_tool",
+    "description": "Create a new tool from an API description.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "tool_name": {"type": "string", "description": "Name of the tool"},
+            "description": {"type": "string", "description": "Tool description"},
+            "api_spec": {"type": "object", "description": "API spec with endpoint, method, parameters"},
+            "category": {"type": "string", "description": "Tool category", "default": "custom"},
+            "tags": {"type": "array", "items": {"type": "string"}, "description": "Optional tags"},
+        },
+        "required": ["tool_name", "description", "api_spec"],
+    },
+}
+
+def _handle_create_tool(params, **kwargs):
+    try:
+        from evolution.tools.tool_creator import ToolCreator
+        from evolution.db_utils import get_data_dir
+        creator = ToolCreator(db_path=str(get_data_dir() / "tools.db"))
+        result = creator.create_tool(
+            name=params["tool_name"], description=params.get("description", ""),
+            api_spec=params.get("api_spec", {}), category=params.get("category", "custom"),
+            tags=params.get("tags", []))
+        return json.dumps(result, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 3: evolution_analyze_performance
+# ---------------------------------------------------------------------------
+TOOL_ANALYZE_PERFORMANCE_SCHEMA = {
+    "name": "evolution_analyze_performance",
+    "description": "Analyze tool performance metrics.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "tool_name": {"type": "string", "description": "Specific tool name (optional)"},
+            "output_format": {"type": "string", "enum": ["json", "text", "html"], "default": "json"},
+        },
+        "required": [],
+    },
+}
+
+def _handle_analyze_performance(params, **kwargs):
+    try:
+        from evolution.tools.tool_performance_analyzer import ToolPerformanceAnalyzer
+        from evolution.tools.tool_registry import ToolRegistry
+        from evolution.db_utils import get_data_dir
+        db = str(get_data_dir())
+        registry = ToolRegistry(db_path=db + "/tools.db")
+        analyzer = ToolPerformanceAnalyzer(registry=registry, db_path=db + "/tool_performance.db")
+        result = analyzer.analyze(tool_name=params.get("tool_name"), output_format=params.get("output_format", "json"))
+        return result if isinstance(result, str) else json.dumps(result, default=str)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 4: evolution_learn
+# ---------------------------------------------------------------------------
+TOOL_LEARN_SCHEMA = {
+    "name": "evolution_learn",
+    "description": "Record a learning experience.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "description": {"type": "string", "description": "Experience description"},
+            "experience_type": {"type": "string", "enum": ["tool_usage","reasoning","problem_solving","error_recovery","pattern_recognition","adaptation"], "default": "tool_usage"},
+            "outcome": {"type": "string", "enum": ["success","partial_success","failure","uncertain"], "default": "success"},
+            "task_id": {"type": "string", "default": ""},
+            "lessons": {"type": "array", "items": {"type": "string"}},
+            "metrics": {"type": "object"},
+            "tags": {"type": "array", "items": {"type": "string"}},
+            "context": {"type": "object"},
+        },
+        "required": ["description"],
+    },
+}
+
+def _handle_learn(params, **kwargs):
+    try:
+        from evolution.learning import Experience, ExperienceType, Outcome
+        from evolution.learning.observer import LearningObserver
+        from evolution.db_utils import get_data_dir
+        import uuid
+        observer = LearningObserver(db_path=str(get_data_dir() / "learning_experiences.db"))
+        exp = Experience(
+            id=str(uuid.uuid4()),
+            experience_type=getattr(ExperienceType, params.get("experience_type", "TOOL_USAGE").upper(), ExperienceType.TOOL_USAGE),
+            task_id=params.get("task_id", ""), timestamp=datetime.now(),
+            description=params["description"],
+            context=params.get("context", {}), actions=[],
+            outcome=getattr(Outcome, params.get("outcome", "SUCCESS").upper(), Outcome.SUCCESS),
+            metrics=params.get("metrics", {}), lessons_learned=params.get("lessons", []),
+            tags=params.get("tags", []))
+        exp.calculate_confidence()
+        eid = observer.record_experience(exp)
+        return json.dumps({"success": True, "experience_id": eid, "timestamp": datetime.now().isoformat()})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 5: evolution_self_monitor
+# ---------------------------------------------------------------------------
+TOOL_SELF_MONITOR_SCHEMA = {
+    "name": "evolution_self_monitor",
+    "description": "Get system health status.",
+    "parameters": {
+        "type": "object",
+        "properties": {"include_history": {"type": "boolean", "default": False}},
+        "required": [],
+    },
+}
+
+def _handle_self_monitor(params, **kwargs):
+    try:
+        from evolution.learning import LearningObserver
+        from evolution.db_utils import get_data_dir
+        observer = LearningObserver(db_path=str(get_data_dir() / "learning_experiences.db"))
+        recent = observer.get_recent_experiences(days=7)
+        total = len(recent)
+        failures = sum(1 for e in recent if getattr(e, 'outcome', None) and str(e.outcome).lower() == 'failure')
+        success_rate = (total - failures) / max(total, 1)
+        return json.dumps({
+            "success": True,
+            "health_score": int(success_rate * 80 + 20),
+            "status": "healthy" if success_rate > 0.8 else "needs_attention",
+            "metrics": {"success_rate": round(success_rate, 2), "total_experiences": total,
+                        "monitored_tools": 8, "current_strategy": "V7.0.10-standalone"},
+            "timestamp": datetime.now().isoformat()
+        }, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 6: evolution_memory_discover
+# ---------------------------------------------------------------------------
+TOOL_MEMORY_DISCOVER_SCHEMA = {
+    "name": "evolution_memory_discover",
+    "description": "Discover memory associations.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "methods": {"type": "array", "items": {"type": "string", "enum": ["semantic","temporal","usage_pattern"]}},
+            "entry_id": {"type": "string"},
+            "max_entries": {"type": "integer", "default": 200, "minimum": 1, "maximum": 500},
+        },
+        "required": [],
+    },
+}
+
+def _handle_memory_discover(params, **kwargs):
+    try:
+        from evolution.memory.association_discoverer import AssociationDiscoverer
+        from evolution.memory.database import AssociationDatabase
+        from evolution.db_utils import get_data_dir
+        db = AssociationDatabase(str(get_data_dir() / "associations.db"))
+        discoverer = AssociationDiscoverer(db)
+        entry_id = params.get("entry_id")
+        methods = params.get("methods")
+        max_entries = params.get("max_entries", 200)
+        result = discoverer.discover_for_entry(entry_id, methods=methods) if entry_id else discoverer.discover_all(methods=methods, max_entries=max_entries)
+        return json.dumps({"success": True, "entry_id": entry_id, "total_associations": result.get("total_associations", 0),
+                           "methods": result.get("methods", {}), "timestamp": datetime.now().isoformat()}, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 7: evolution_audit
+# ---------------------------------------------------------------------------
+TOOL_AUDIT_SCHEMA = {
+    "name": "evolution_audit",
+    "description": "Query evolution audit records.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["query_cycles","get_cycle_detail","get_summary","get_health_trend"], "default": "get_summary"},
+            "cycle_id": {"type": "integer"},
+            "limit": {"type": "integer", "default": 10},
+            "success_only": {"type": "boolean", "default": False},
+        },
+        "required": [],
+    },
+}
+
+def _handle_audit(params, **kwargs):
+    try:
+        from evolution.closed_loop.evolution_auditor import EvolutionAuditor
+        from evolution.db_utils import get_data_dir
+        auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
+        action = params.get("action", "get_summary")
+        if action == "query_cycles":
+            result = auditor.query_cycles(limit=params.get("limit", 10), success_only=params.get("success_only", False))
+        elif action == "get_cycle_detail":
+            result = auditor.get_cycle_detail(cycle_id=params.get("cycle_id"))
+        elif action == "get_health_trend":
+            result = auditor.get_latest_health_trend()
+        else:
+            result = auditor.get_summary()
+        return json.dumps(result, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# ---------------------------------------------------------------------------
+# Tool 8: evolution_recall_lessons
+# ---------------------------------------------------------------------------
+TOOL_RECALL_LESSONS_SCHEMA = {
+    "name": "evolution_recall_lessons",
+    "description": "Recall historical lessons.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
+            "outcome": {"type": "string", "enum": ["failure","success","all"], "default": "all"},
+        },
+        "required": [],
+    },
+}
+
+def _handle_recall_lessons(params, **kwargs):
+    try:
+        from evolution.consumer import AssociationConsumer
+        from evolution.db_pool import db_pool as dp
+        consumer = AssociationConsumer(dp)
+        lessons = consumer.recall_lessons(limit=params.get("limit", 5), outcome=params.get("outcome", "all"))
+        return json.dumps({"success": True, "count": len(lessons), "lessons": lessons,
+                           "timestamp": datetime.now().isoformat()}, default=str, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
+
+# V7 Hook: on_session_start — 注入最近失败教训到 memory
+# ---------------------------------------------------------------------------
+def _on_session_start(session_id, model=None, platform=None, **kwargs):
+    """会话启动时：查询 HAE 学习经验，将高频失败教训写入 hermes memory"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        lessons = consumer.recall_lessons(limit=3, outcome="failure")
+        if not lessons:
+            return
+
+        # 生成教训摘要
+        lines = ["[HAE教训] 最近失败经验："]
+        for i, lesson in enumerate(lessons, 1):
+            desc = (lesson.get("content") or lesson.get("description") or "")[:80]
+            lines.append(f"  {i}. {desc}")
+        lines.append("以上教训已注入，请避免重复错误。")
+
+        # 写入 hermes memory（通过 memory 系统）
+        _inject_lesson_to_memory("\n".join(lines), session_id)
+
+    except Exception as exc:
+        logger.debug("on_session_start hook: %s", exc)
+
+
+def _inject_lesson_to_memory(lesson_text: str, session_id: str) -> None:
+    """将教训文本写入 hermes memory 的 key-value 存储"""
+    try:
+        from pathlib import Path
+        memory_file = Path("/root/.hermes/memory/hae_lessons.txt")
+        memory_file.parent.mkdir(parents=True, exist_ok=True)
+        # 追加模式，带时间戳和会话ID
+        with open(memory_file, "a", encoding="utf-8") as f:
+            f.write(f"=== {datetime.now().isoformat()[:19]} session={session_id[:8]} ===\n")
+            f.write(lesson_text + "\n\n")
+        # 只保留最近10条，避免文件膨胀
+        lines = memory_file.read_text(encoding="utf-8").split("\n") if memory_file.exists() else []
+        # 保留最近50行
+        if len(lines) > 50:
+            memory_file.write_text("\n".join(lines[-50:]), encoding="utf-8")
+    except Exception:
+        pass  # 静默失败，不影响主流程
+
+
+# ---------------------------------------------------------------------------
+# V7 Hook: pre_llm_call — 注入关联上下文到用户消息
+# ---------------------------------------------------------------------------
+def _on_pre_llm_call(messages, model=None, **kwargs):
+    """LLM 调用前：从关联数据库提取上下文，注入到用户消息尾部"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+
+        # 取最后一条 user 消息
+        user_msg = None
+        user_idx = -1
+        for i, msg in enumerate(messages):
+            if msg.get("role") == "user":
+                user_msg = msg
+                user_idx = i
+
+        if not user_msg:
+            return messages
+
+        context = consumer.inject_context(user_msg.get("content", ""))
+        if context:
+            # 追加到用户消息尾部
+            modified = dict(user_msg)
+            modified["content"] = user_msg.get("content", "") + "\n\n" + context
+            messages[user_idx] = modified
+
+    except Exception as exc:
+        logger.debug("pre_llm_call hook: %s", exc)
+
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# V7 Hook: post_llm_call — 关联质量打分
+# ---------------------------------------------------------------------------
+def _on_post_llm_call(response, messages=None, model=None, **kwargs):
+    """LLM 回复后：关联质量打分 + 缓存对话摘要（V7.0.9: 异步Agent提取）"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        text = response if isinstance(response, str) else response.get("content", "")
+        if text:
+            consumer.score_usage(text)
+        consumer.cleanup()
+
+        # V7.0.9: 缓存对话摘要（只存不提取，留给后台知识Agent）
+        user_msg = _last_user_message(messages)
+        if user_msg and text:
+            _cache_conversation(user_msg, text)
+    except Exception as exc:
+        logger.debug("post_llm_call hook: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Tool 8: evolution_recall_lessons — 经验教训召回
+# ---------------------------------------------------------------------------
+TOOL_RECALL_LESSONS_SCHEMA = {
+    "name": "evolution_recall_lessons",
+    "description": "查询历史经验教训，返回可执行的行为改进建议。帮助避免重复错误。",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "description": "返回条数，默认5",
+                "default": 5,
+                "minimum": 1,
+                "maximum": 20,
+            },
+            "outcome": {
+                "type": "string",
+                "enum": ["failure", "success", "all"],
+                "description": "筛选结果类型：failure=失败教训, success=成功经验, all=全部",
+                "default": "all",
+            },
+        },
+        "required": [],
+    },
+}
+
+
+def _handle_recall_lessons(params, **kwargs):
+    """Handler for evolution_recall_lessons"""
+    try:
+        from evolution.db_pool import db_pool
+        consumer = AssociationConsumer(db_pool)
+        limit = params.get("limit", 5)
+        outcome = params.get("outcome", "all")
+        lessons = consumer.recall_lessons(limit=limit, outcome=outcome)
+
+        return json.dumps({
+            "success": True,
+            "count": len(lessons),
+            "lessons": lessons,
+            "timestamp": datetime.now().isoformat(),
+        }, default=str, ensure_ascii=False)
+
+    except Exception as e:
+        logger.exception("evolution_recall_lessons failed")
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat(),
+        })
+
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# Hook: post_tool_call — tool execution experience + memory sync
+# ---------------------------------------------------------------------------
+def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
+    """Hook for post_tool_call: auto-record experience + sync memory"""
+    try:
+        from evolution.learning import Experience, ExperienceType, Outcome
+        from evolution.learning.observer import LearningObserver
+        from evolution.db_utils import get_data_dir
+        import uuid
+        observer = LearningObserver(db_path=str(get_data_dir() / "learning_experiences.db"))
+        if observer is None:
+            return
+        outcome = Outcome.FAILURE if error else (Outcome.SUCCESS if result is not None else Outcome.UNCERTAIN)
+        exp = Experience(
+            id=str(uuid.uuid4()), experience_type=ExperienceType.TOOL_USAGE,
+            task_id=f"tool_call_{tool_name}", timestamp=datetime.now(),
+            description=f"Tool execution: {tool_name}", context={"tool_name": tool_name},
+            outcome=outcome, metrics={"duration_ms": float(duration_ms) if duration_ms else 0},
+            tags=["auto_recorded", tool_name])
+        exp.calculate_confidence()
+        observer.record_experience(exp)
+    except Exception:
+        pass
+
+    # V7.0.8: hermes memory sync
+    if tool_name == "memory" and not error:
+        try:
+            _sync_hermes_memory(params)
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Plugin entry point: register(ctx)
+# ---------------------------------------------------------------------------
+def register(ctx):
+    """Register all Hermes Evolution tools and hooks."""
+    from evolution.schema import initialize_all
+    initialize_all()
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(levelname)s [hermes-evolution] %(message)s'))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+    get_data_dir()
+
+    tools = [
+        ("evolution_run_cycle", TOOL_RUN_CYCLE_SCHEMA, _handle_run_cycle),
+        ("evolution_create_tool", TOOL_CREATE_TOOL_SCHEMA, _handle_create_tool),
+        ("evolution_analyze_performance", TOOL_ANALYZE_PERFORMANCE_SCHEMA, _handle_analyze_performance),
+        ("evolution_learn", TOOL_LEARN_SCHEMA, _handle_learn),
+        ("evolution_self_monitor", TOOL_SELF_MONITOR_SCHEMA, _handle_self_monitor),
+        ("evolution_memory_discover", TOOL_MEMORY_DISCOVER_SCHEMA, _handle_memory_discover),
+        ("evolution_audit", TOOL_AUDIT_SCHEMA, _handle_audit),
+        ("evolution_recall_lessons", TOOL_RECALL_LESSONS_SCHEMA, _handle_recall_lessons),
+    ]
+
+    for name, schema, handler in tools:
+        try:
+            ctx.register_tool(name=name, toolset="hermes-evolution", schema=schema, handler=handler)
+            logger.info("Registered tool: %s", name)
+        except Exception as e:
+            logger.error("Failed to register tool %s: %s", name, e)
+
+    hooks = [
+        ("post_tool_call", _on_post_tool_call),
+        ("on_session_start", _on_session_start),
+        ("pre_llm_call", _on_pre_llm_call),
+        ("post_llm_call", _on_post_llm_call),
+    ]
+    for hook_name, callback in hooks:
+        try:
+            ctx.register_hook(hook_name, callback)
+            logger.info("Registered hook: %s", hook_name)
+        except Exception as e:
+            logger.error("Failed to register hook %s: %s", hook_name, e)
+
+    logger.info("Hermes Evolution Plugin v7.0.10 registered — 8 tools + 4 hooks")
