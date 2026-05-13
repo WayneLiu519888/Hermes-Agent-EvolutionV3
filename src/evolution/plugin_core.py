@@ -232,7 +232,7 @@ def _handle_self_monitor(params, **kwargs):
             "health_score": int(success_rate * 80 + 20),
             "status": "healthy" if success_rate > 0.8 else "needs_attention",
             "metrics": {"success_rate": round(success_rate, 2), "total_experiences": total,
-                        "monitored_tools": 8, "current_strategy": "V7.0.10-standalone"},
+                        "monitored_tools": 8, "current_strategy": "V7.0.11-standalone"},
             "timestamp": datetime.now().isoformat()
         }, default=str, ensure_ascii=False)
     except Exception as e:
@@ -602,4 +602,4 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    logger.info("Hermes Evolution Plugin v7.0.10 registered — 8 tools + 4 hooks")
+    logger.info("Hermes Evolution Plugin v7.0.11 registered — 8 tools + 4 hooks")
