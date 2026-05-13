@@ -1,6 +1,6 @@
 # HermesAgentEvolution
 
-![Version](https://img.shields.io/badge/version-7.0.10-blue)
+![Version](https://img.shields.io/badge/version-7.0.13-blue)
 ![Tests](https://img.shields.io/badge/tests-566%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)

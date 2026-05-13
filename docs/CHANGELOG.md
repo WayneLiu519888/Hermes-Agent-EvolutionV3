@@ -25,6 +25,20 @@
 
 - `feedback()` 阶段检查最近经验中是否已存在相同 `task_id`，避免重复记录
 
+### Bug修复：evolution_recall_lessons 静默返回空列表
+
+**问题**：`evolution_recall_lessons` 始终返回空列表，即使经验库中有多条 failure 记录。
+
+**根因（三重断裂）**：
+1. SQL 列名不匹配 — 查询用 `content`/`lessons`，表实际列名为 `description`/`lessons_learned`
+2. db_pool 方法名错误 — 调用 `get_connection()` 但实际方法是 `connection()`，返回上下文管理器而非连接对象
+3. 异常被 `except Exception` 静默吞没，返回空列表无任何告警
+
+**修复**：
+- `consumer.py` `recall_lessons()`: SQL 改用 `description as content`、`lessons_learned as lessons`
+- `consumer.py` 全部 6 处: `get_connection()` → `connection()`，用 `with ... as conn:` 包裹
+- 排查发现: Gateway 运行在 Python 3.11 venv，与系统 Python 3.12 路径不同，修复需同步到 `/root/.hermes/hermes-agent/.venv/lib/python3.11/site-packages/evolution/`
+
 ---
 
 ## [7.0.1] — 2026-05-11

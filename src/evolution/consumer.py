@@ -102,22 +102,22 @@ class AssociationConsumer:
         if not candidates:
             return []
         try:
-            conn = self._db_pool.get_connection("associations.db")
-            cursor = conn.cursor()
-            all_ids, seen = [], set()
-            for term in candidates:
-                cursor.execute(
-                    "SELECT id FROM memory_entries WHERE LOWER(tags) LIKE ? LIMIT 5",
-                    (f"%{term}%",),
-                )
-                for row in cursor.fetchall():
-                    eid = str(row[0])
-                    if eid not in seen:
-                        all_ids.append(eid)
-                        seen.add(eid)
-                        if len(all_ids) >= 15:
-                            return all_ids
-            return all_ids
+            with self._db_pool.connection("associations.db") as conn:
+                cursor = conn.cursor()
+                all_ids, seen = [], set()
+                for term in candidates:
+                    cursor.execute(
+                        "SELECT id FROM memory_entries WHERE LOWER(tags) LIKE ? LIMIT 5",
+                        (f"%{term}%",),
+                    )
+                    for row in cursor.fetchall():
+                        eid = str(row[0])
+                        if eid not in seen:
+                            all_ids.append(eid)
+                            seen.add(eid)
+                            if len(all_ids) >= 15:
+                                return all_ids
+                return all_ids
         except Exception as exc:
             logger.debug("tags匹配失败: %s", exc)
             return []
@@ -130,15 +130,15 @@ class AssociationConsumer:
             return []
         query = " OR ".join(f'"{t}"' for t in terms[:6])
         try:
-            conn = self._db_pool.get_connection("associations.db")
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT m.id FROM memory_entries_fts f "
-                "JOIN memory_entries m ON m.rowid = f.rowid "
-                "WHERE f.content MATCH ? LIMIT 15",
-                (query,),
-            )
-            return [str(row[0]) for row in cursor.fetchall()]
+            with self._db_pool.connection("associations.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT m.id FROM memory_entries_fts f "
+                    "JOIN memory_entries m ON m.rowid = f.rowid "
+                    "WHERE f.content MATCH ? LIMIT 15",
+                    (query,),
+                )
+                return [str(row[0]) for row in cursor.fetchall()]
         except Exception as exc:
             logger.debug("FTS5匹配失败: %s", exc)
             return []
@@ -146,13 +146,13 @@ class AssociationConsumer:
     def _match_by_recent(self, limit: int = 5) -> List[str]:
         """S3: 最近更新的记忆兜底"""
         try:
-            conn = self._db_pool.get_connection("associations.db")
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id FROM memory_entries ORDER BY updated_at DESC LIMIT ?",
-                (limit,),
-            )
-            return [str(row[0]) for row in cursor.fetchall()]
+            with self._db_pool.connection("associations.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id FROM memory_entries ORDER BY updated_at DESC LIMIT ?",
+                    (limit,),
+                )
+                return [str(row[0]) for row in cursor.fetchall()]
         except Exception:
             return []
 
@@ -165,54 +165,54 @@ class AssociationConsumer:
             self._injected_meta = []
             return
         try:
-            conn = self._db_pool.get_connection("associations.db")
-            now = datetime.now().isoformat()
+            with self._db_pool.connection("associations.db") as conn:
+                now = datetime.now().isoformat()
 
-            # V7.0.7: 写入上下文注入采纳日志
-            for meta in self._injected_meta:
-                detail = self._get_assoc_detail(conn, meta["association_id"])
-                src_content = detail.get("src_content", "") if detail else ""
-                tgt_content = detail.get("tgt_content", "") if detail else ""
-                referenced = self._is_referenced(llm_response, src_content, tgt_content)
-                evidence = self._find_evidence(llm_response, src_content, tgt_content) if referenced else ""
+                # V7.0.7: 写入上下文注入采纳日志
+                for meta in self._injected_meta:
+                    detail = self._get_assoc_detail(conn, meta["association_id"])
+                    src_content = detail.get("src_content", "") if detail else ""
+                    tgt_content = detail.get("tgt_content", "") if detail else ""
+                    referenced = self._is_referenced(llm_response, src_content, tgt_content)
+                    evidence = self._find_evidence(llm_response, src_content, tgt_content) if referenced else ""
 
-                conn.execute(
-                    "INSERT INTO context_injection_logs "
-                    "(session_id, injected_at, association_id, association_type, "
-                    "strength, user_msg_hash, user_msg_len, accepted, accepted_evidence) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    ("", now, meta["association_id"], meta["association_type"],
-                     meta["strength"], meta["user_msg_hash"], meta["user_msg_len"],
-                     1 if referenced else 0, evidence),
-                )
-                conn.commit()
+                    conn.execute(
+                        "INSERT INTO context_injection_logs "
+                        "(session_id, injected_at, association_id, association_type, "
+                        "strength, user_msg_hash, user_msg_len, accepted, accepted_evidence) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        ("", now, meta["association_id"], meta["association_type"],
+                         meta["strength"], meta["user_msg_hash"], meta["user_msg_len"],
+                         1 if referenced else 0, evidence),
+                    )
+                    conn.commit()
 
-            # 关联质量打分（原有逻辑）
-            for assoc_id in self._injected_ids:
-                detail = self._get_assoc_detail(conn, assoc_id)
-                if not detail:
-                    continue
-                src_content = detail.get("src_content", "")
-                tgt_content = detail.get("tgt_content", "")
-                referenced = self._is_referenced(llm_response, src_content, tgt_content)
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT usefulness_score FROM association_usage_stats "
-                    "WHERE association_id = ? ORDER BY usage_time DESC LIMIT 1",
-                    (assoc_id,),
-                )
-                row = cursor.fetchone()
-                current_score = row[0] if row else 0.5
-                new_score = min(1.0, current_score + 0.2) if referenced else max(0.1, current_score - 0.1)
-                feedback = "referenced_by_llm" if referenced else "not_referenced"
-                conn.execute(
-                    "INSERT INTO association_usage_stats "
-                    "(association_id, usage_context, usage_time, usefulness_score, feedback) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (assoc_id, json.dumps({"phase": "v7_consumer"}), now, round(new_score, 4), feedback),
-                )
-                conn.commit()
-            logger.debug("已为 %d 条关联打分，%d 条写入采纳日志", len(self._injected_ids), len(self._injected_meta))
+                # 关联质量打分（原有逻辑）
+                for assoc_id in self._injected_ids:
+                    detail = self._get_assoc_detail(conn, assoc_id)
+                    if not detail:
+                        continue
+                    src_content = detail.get("src_content", "")
+                    tgt_content = detail.get("tgt_content", "")
+                    referenced = self._is_referenced(llm_response, src_content, tgt_content)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT usefulness_score FROM association_usage_stats "
+                        "WHERE association_id = ? ORDER BY usage_time DESC LIMIT 1",
+                        (assoc_id,),
+                    )
+                    row = cursor.fetchone()
+                    current_score = row[0] if row else 0.5
+                    new_score = min(1.0, current_score + 0.2) if referenced else max(0.1, current_score - 0.1)
+                    feedback = "referenced_by_llm" if referenced else "not_referenced"
+                    conn.execute(
+                        "INSERT INTO association_usage_stats "
+                        "(association_id, usage_context, usage_time, usefulness_score, feedback) "
+                        "VALUES (?, ?, ?, ?, ?)",
+                        (assoc_id, json.dumps({"phase": "v7_consumer"}), now, round(new_score, 4), feedback),
+                    )
+                    conn.commit()
+                logger.debug("已为 %d 条关联打分，%d 条写入采纳日志", len(self._injected_ids), len(self._injected_meta))
         except Exception as exc:
             logger.warning("关联打分/日志写入失败: %s", exc)
         finally:
@@ -227,22 +227,22 @@ class AssociationConsumer:
 
     def recall_lessons(self, limit: int = 5, outcome: str = "all") -> List[Dict[str, Any]]:
         try:
-            conn = self._db_pool.get_connection("learning_experiences.db")
-            cursor = conn.cursor()
-            sql = "SELECT id, content, outcome, lessons, metrics, created_at FROM experiences "
-            params = []
-            if outcome != "all":
-                sql += "WHERE outcome = ? "
-                params.append(outcome)
-            sql += "ORDER BY created_at DESC LIMIT ?"
-            params.append(limit)
-            cursor.execute(sql, params)
-            rows = cursor.fetchall()
-            return [
-                {"id": r[0], "content": r[1], "outcome": r[2], "lessons": r[3],
-                 "metrics": r[4], "created_at": r[5]}
-                for r in rows
-            ]
+            with self._db_pool.connection("learning_experiences.db") as conn:
+                cursor = conn.cursor()
+                sql = "SELECT id, description as content, outcome, lessons_learned as lessons, metrics, created_at FROM experiences "
+                params = []
+                if outcome != "all":
+                    sql += "WHERE outcome = ? "
+                    params.append(outcome)
+                sql += "ORDER BY created_at DESC LIMIT ?"
+                params.append(limit)
+                cursor.execute(sql, params)
+                rows = cursor.fetchall()
+                return [
+                    {"id": r[0], "content": r[1], "outcome": r[2], "lessons": r[3],
+                     "metrics": r[4], "created_at": r[5]}
+                    for r in rows
+                ]
         except Exception as exc:
             logger.warning("教训召回失败: %s", exc)
             return []
@@ -251,26 +251,26 @@ class AssociationConsumer:
 
     def _get_associations(self, entry_ids: List[str], limit: int = 3) -> List[Dict[str, Any]]:
         try:
-            conn = self._db_pool.get_connection("associations.db")
-            placeholders = ",".join("?" * len(entry_ids))
-            cursor = conn.cursor()
-            cursor.execute(
-                f"""
-                SELECT a.id, a.source_id, a.target_id, a.strength, a.confidence,
-                       me_src.content, me_tgt.content
-                FROM associations a
-                LEFT JOIN memory_entries me_src ON a.source_id = me_src.id
-                LEFT JOIN memory_entries me_tgt ON a.target_id = me_tgt.id
-                WHERE (a.source_id IN ({placeholders}) OR a.target_id IN ({placeholders}))
-                ORDER BY a.strength DESC LIMIT ?
-                """,
-                entry_ids + entry_ids + [limit],
-            )
-            return [
-                {"id": r[0], "source_id": r[1], "target_id": r[2], "strength": r[3],
-                 "confidence": r[4], "src_content": r[5] or "", "tgt_content": r[6] or ""}
-                for r in cursor.fetchall()
-            ]
+            with self._db_pool.connection("associations.db") as conn:
+                placeholders = ",".join("?" * len(entry_ids))
+                cursor = conn.cursor()
+                cursor.execute(
+                    f"""
+                    SELECT a.id, a.source_id, a.target_id, a.strength, a.confidence,
+                           me_src.content, me_tgt.content
+                    FROM associations a
+                    LEFT JOIN memory_entries me_src ON a.source_id = me_src.id
+                    LEFT JOIN memory_entries me_tgt ON a.target_id = me_tgt.id
+                    WHERE (a.source_id IN ({placeholders}) OR a.target_id IN ({placeholders}))
+                    ORDER BY a.strength DESC LIMIT ?
+                    """,
+                    entry_ids + entry_ids + [limit],
+                )
+                return [
+                    {"id": r[0], "source_id": r[1], "target_id": r[2], "strength": r[3],
+                     "confidence": r[4], "src_content": r[5] or "", "tgt_content": r[6] or ""}
+                    for r in cursor.fetchall()
+                ]
         except Exception as exc:
             logger.debug("查询关联失败: %s", exc)
             return []
