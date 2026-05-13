@@ -4,7 +4,36 @@
 
 ---
 
-## [7.0.13] — 2026-05-13
+## [7.0.14] — 2026-05-14
+
+### 新增：进化审计问题追溯（三层升级）
+
+**问题**：`evolution_audit` 只记录统计数字（issues_found=3），不保存问题详情（什么问题、什么严重程度、影响哪个工具），导致事后无法追溯。
+
+**层级一（最小改动）**：
+- `run_full_cycle()` 的 `phases.analyze` 新增 `_details` 字段，保留完整分析结果
+- `record_cycle()` 从 `_details` 提取 issues/patterns 序列化存入 `notes` 列
+
+**层级二（规范化存储）**：
+- `evolution_cycles` 表新增 `issues_details TEXT` 和 `patterns_details TEXT` 列
+- `_init_db()` 新增 `ALTER TABLE` 兼容迁移（旧数据库自动升级）
+- `record_cycle()` 分别写入 `issues_details` / `patterns_details` / `notes` 三列
+- `get_cycle_detail()` 返回新增 `analysis_details` 字段（含 issues + patterns 解析后数组）
+
+**层级三（可查询追溯）**：
+- `EvolutionAuditor` 新增三个查询方法：
+  - `get_latest_issues(limit)` — 获取最近发现问题详情
+  - `query_issues_by_type(issue_type, days)` — 按类型筛选
+  - `query_issues_by_severity(severity, days)` — 按严重程度筛选
+- `evolution_audit` tool 新增三个 action：
+  - `get_recent_issues` — 最近问题
+  - `query_issues_by_type` — 按类型查
+  - `query_issues_by_severity` — 按严重程度查
+
+### 改进
+- 版本号统一：`pyproject.toml` / `setup.py` / `__init__.py` 全部同步到 7.0.14
+
+---
 
 ### Bug修复：进化周期执行动作持久化
 

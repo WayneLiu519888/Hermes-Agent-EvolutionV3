@@ -274,20 +274,22 @@ def _handle_memory_discover(params, **kwargs):
 # ---------------------------------------------------------------------------
 # Tool 7: evolution_audit
 # ---------------------------------------------------------------------------
-TOOL_AUDIT_SCHEMA = {
-    "name": "evolution_audit",
-    "description": "Query evolution audit records.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "action": {"type": "string", "enum": ["query_cycles","get_cycle_detail","get_summary","get_health_trend"], "default": "get_summary"},
-            "cycle_id": {"type": "integer"},
-            "limit": {"type": "integer", "default": 10},
-            "success_only": {"type": "boolean", "default": False},
+    TOOL_AUDIT_SCHEMA = {
+        "name": "evolution_audit",
+        "description": "Query evolution audit records.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["query_cycles","get_cycle_detail","get_summary","get_health_trend","get_recent_issues","query_issues_by_type","query_issues_by_severity"], "default": "get_summary"},
+                "cycle_id": {"type": "integer"},
+                "limit": {"type": "integer", "default": 10},
+                "success_only": {"type": "boolean", "default": False},
+                "issue_type": {"type": "string"},
+                "severity": {"type": "string", "enum": ["critical","high","medium","low"]},
+            },
+            "required": [],
         },
-        "required": [],
-    },
-}
+    }
 
 def _handle_audit(params, **kwargs):
     try:
@@ -301,6 +303,12 @@ def _handle_audit(params, **kwargs):
             result = auditor.get_cycle_detail(cycle_id=params.get("cycle_id"))
         elif action == "get_health_trend":
             result = auditor.get_latest_health_trend()
+        elif action == "get_recent_issues":
+            result = auditor.get_latest_issues(limit=params.get("limit", 10))
+        elif action == "query_issues_by_type":
+            result = auditor.query_issues_by_type(issue_type=params.get("issue_type", ""))
+        elif action == "query_issues_by_severity":
+            result = auditor.query_issues_by_severity(severity=params.get("severity", "medium"))
         else:
             result = auditor.get_summary()
         return json.dumps(result, default=str, ensure_ascii=False)

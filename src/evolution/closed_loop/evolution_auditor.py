@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS evolution_cycles (
 
     issues_found          INTEGER DEFAULT 0,
     patterns_discovered   INTEGER DEFAULT 0,
+    issues_details        TEXT,
+    patterns_details      TEXT,
     actions_planned       INTEGER DEFAULT 0,
     actions_executed      INTEGER DEFAULT 0,
     actions_succeeded     INTEGER DEFAULT 0,
@@ -106,8 +108,19 @@ class EvolutionAuditor:
             conn.execute(idx_sql)
         for idx_sql in CREATE_ACTIONS_INDEXES:
             conn.execute(idx_sql)
+        # 🆕 兼容迁移：为旧数据库新增 issues_details / patterns_details 列
+        self._migrate_add_column(conn, "evolution_cycles", "issues_details", "TEXT")
+        self._migrate_add_column(conn, "evolution_cycles", "patterns_details", "TEXT")
         conn.commit()
         logger.debug("EvolutionAuditor 数据库初始化完成")
+
+    @staticmethod
+    def _migrate_add_column(conn, table: str, column: str, col_type: str):
+        """安全添加列（列已存在时忽略）"""
+        try:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        except Exception:
+            pass  # 列已存在
 
     # ── 写入 ──────────────────────────────────────────────────────────────
 
@@ -157,6 +170,18 @@ class EvolutionAuditor:
         errors = result.get("errors", [])
         error_json = json.dumps(errors[:20], ensure_ascii=False) if errors else None
 
+        # 🆕 分析详情：从 phases.analyze._details 提取 issues/patterns 分别存储
+        analyze_details = phases.get("analyze", {}).get("_details", {})
+        issues_json = json.dumps(analyze_details['issues'], ensure_ascii=False) if analyze_details.get("issues") else None
+        patterns_json = json.dumps(analyze_details['patterns'], ensure_ascii=False) if analyze_details.get("patterns") else None
+        # notes 保留完整上下文（含 issues + patterns，向前兼容）
+        notes_parts = []
+        if issues_json:
+            notes_parts.append(f"[ISSUES] {issues_json}")
+        if patterns_json:
+            notes_parts.append(f"[PATTERNS] {patterns_json}")
+        notes = "\n".join(notes_parts) if notes_parts else None
+
         try:
             conn = get_evolution_db(self.db_path)
             conn.execute("""
@@ -165,16 +190,19 @@ class EvolutionAuditor:
                     phase_monitor, phase_analyze, phase_plan, phase_execute, phase_verify, phase_feedback,
                     health_score_before, success_rate_before, tools_count_before, experiences_before,
                     health_score_after, success_rate_after, tools_count_after, experiences_after,
-                    issues_found, patterns_discovered, actions_planned, actions_executed,
+                    issues_found, patterns_discovered,
+                    issues_details, patterns_details,
+                    actions_planned, actions_executed,
                     actions_succeeded, improvements_detected, errors_count,
-                    improvement_summary, error_summary
+                    improvement_summary, error_summary, notes
                 ) VALUES (?, ?, ?, ?, ?, ?,
                           ?, ?, ?, ?, ?, ?,
                           ?, ?, ?, ?,
                           ?, ?, ?, ?,
                           ?, ?, ?, ?,
+                          ?, ?, ?, ?,
                           ?, ?, ?,
-                          ?, ?)
+                          ?)
             """, (
                 cycle_id,
                 result.get("timestamp"),
@@ -198,6 +226,8 @@ class EvolutionAuditor:
                 ha.get("experiences"),
                 phases.get("analyze", {}).get("issues", 0),
                 phases.get("analyze", {}).get("patterns", 0),
+                issues_json,
+                patterns_json,
                 phases.get("plan", {}).get("actions", 0),
                 phases.get("execute", {}).get("success", 0) + phases.get("execute", {}).get("failure", 0),
                 phases.get("execute", {}).get("success", 0),
@@ -205,6 +235,7 @@ class EvolutionAuditor:
                 len(errors) if errors else 0,
                 improvement_json,
                 error_json,
+                notes,
             ))
             conn.commit()
             logger.info("进化周期 #%d 已记录到审计数据库", cycle_id)
@@ -332,6 +363,10 @@ class EvolutionAuditor:
                 "improvements_detected": row["improvements_detected"],
                 "errors_count": row["errors_count"],
             },
+            "analysis_details": {
+                "issues": json.loads(row["issues_details"]) if row["issues_details"] else [],
+                "patterns": json.loads(row["patterns_details"]) if row["patterns_details"] else [],
+            },
             "improvements": json.loads(row["improvement_summary"]) if row["improvement_summary"] else [],
             "errors": json.loads(row["error_summary"]) if row["error_summary"] else [],
             "actions": [
@@ -439,6 +474,49 @@ class EvolutionAuditor:
                 "delta": row["delta"],
             }
             for row in reversed(rows)
+        ]
+
+    # ── 层级三：问题追溯查询 ──────────────────────────────────────────────
+
+    def get_latest_issues(self, limit: int = 10) -> List[Dict]:
+        """获取最近进化周期中发现的问题详情"""
+        conn = get_evolution_db(self.db_path)
+        rows = conn.execute("""
+            SELECT cycle_id, started_at, issues_details
+            FROM evolution_cycles
+            WHERE issues_details IS NOT NULL AND issues_details != ''
+            ORDER BY cycle_id DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+        result = []
+        for row in rows:
+            try:
+                issues = json.loads(row["issues_details"])
+                for issue in issues:
+                    issue["_cycle_id"] = row["cycle_id"]
+                    issue["_started_at"] = row["started_at"]
+                    result.append(issue)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return result
+
+    def query_issues_by_type(self, issue_type: str, days: int = 30) -> List[Dict]:
+        """按问题类型筛选历史问题"""
+        all_issues = self.get_latest_issues(limit=100)
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        return [
+            i for i in all_issues
+            if i.get("type") == issue_type and i.get("_started_at", "") >= cutoff
+        ]
+
+    def query_issues_by_severity(self, severity: str, days: int = 30) -> List[Dict]:
+        """按严重程度筛选历史问题"""
+        all_issues = self.get_latest_issues(limit=100)
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        return [
+            i for i in all_issues
+            if i.get("severity") == severity and i.get("_started_at", "") >= cutoff
         ]
 
 

@@ -677,6 +677,7 @@ class ClosedLoopOrchestrator:
             'patterns': len(analysis.get('patterns', [])),
             'issues': len(analysis.get('issues', [])),
             'elapsed': round(elapsed, 3),
+            '_details': analysis,  # 保留完整分析详情供审计持久化
         }
 
         # Phase 3: Plan
