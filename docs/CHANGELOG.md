@@ -4,6 +4,29 @@
 
 ---
 
+## [7.0.13] — 2026-05-13
+
+### Bug修复：进化周期执行动作持久化
+
+**问题**：`evolution_run_cycle` 执行5个动作后，动作详情未写入 `evolution_actions` 表，导致审计查询只能看到周期概要，无法回溯具体动作。
+
+**根因**：
+1. `execute()` 阶段执行动作后未调用 `EvolutionAuditor.record_action()` 持久化
+2. `run_full_cycle()` 返回的 `phases.execute` 中丢失了 `actions` 列表
+3. `_make_dynamic_handler` 中 `del sys.modules[k]` 可能 KeyError 导致 try 块静默失败，fallback 到旧代码
+
+**修复**：
+- `execute()` 内部新增 `_persist_actions()` 方法，执行后立即写入 `evolution_actions` 表，绕过 `_audit_cycle` 的缓存问题
+- `run_full_cycle()` 中 `phases.execute` 保留完整 `actions` 列表供审计使用
+- `_audit_cycle()` 补设 actions 的 cycle_id 并批量写入
+- `_make_dynamic_handler` 中 `del` → `sys.modules.pop(k, None)` 防 KeyError，清除范围扩大为所有 `evolution.*` 子模块
+
+### 改进：feedback 去重
+
+- `feedback()` 阶段检查最近经验中是否已存在相同 `task_id`，避免重复记录
+
+---
+
 ## [7.0.1] — 2026-05-11
 
 ### Bug修复：pip install 一键部署

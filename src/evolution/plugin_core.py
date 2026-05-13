@@ -232,7 +232,7 @@ def _handle_self_monitor(params, **kwargs):
             "health_score": int(success_rate * 80 + 20),
             "status": "healthy" if success_rate > 0.8 else "needs_attention",
             "metrics": {"success_rate": round(success_rate, 2), "total_experiences": total,
-                        "monitored_tools": 8, "current_strategy": "V7.0.11-standalone"},
+                        "monitored_tools": 8, "current_strategy": "V7.0.13-standalone"},
             "timestamp": datetime.now().isoformat()
         }, default=str, ensure_ascii=False)
     except Exception as e:
@@ -542,12 +542,17 @@ def _make_dynamic_handler(tool_name):
     def dynamic_handler(params, **kwargs):
         try:
             _importlib.invalidate_caches()
+            # 清除所有 HAE 子模块缓存，强制完整重新加载
+            import sys as _sys
+            _to_clear = [k for k in list(_sys.modules.keys()) 
+                        if k.startswith('evolution.')]
+            for k in _to_clear:
+                _sys.modules.pop(k, None)
             mod = _importlib.import_module("evolution.plugin_core")
-            _importlib.reload(mod)
             fn = getattr(mod, attr_name, None)
             if fn:
                 return fn(params, **kwargs)
-        except Exception:
+        except Exception as e:
             pass
         mod = _importlib.import_module("evolution.plugin_core")
         fn = getattr(mod, attr_name)
@@ -602,4 +607,4 @@ def register(ctx):
         except Exception as e:
             logger.error("Failed to register hook %s: %s", hook_name, e)
 
-    logger.info("Hermes Evolution Plugin v7.0.11 registered — 8 tools + 4 hooks")
+    logger.info("Hermes Evolution Plugin v7.0.13 registered — 8 tools + 4 hooks")

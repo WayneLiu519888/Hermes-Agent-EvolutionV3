@@ -426,7 +426,29 @@ class ClosedLoopOrchestrator:
                     duration_ms=action_duration,
                 )
         
+        # 直接在 execute() 内部持久化 actions（绕过 _audit_cycle 的缓存问题）
+        self._persist_actions(plan, results)
+        
         return results
+    
+    def _persist_actions(self, plan, exec_results):
+        """将执行结果直接持久化到 evolution_actions 表"""
+        try:
+            from .evolution_auditor import EvolutionAuditor
+            import time as _t
+            auditor = EvolutionAuditor()
+            # 生成临时 cycle_id（时间戳）
+            cycle_id = int(_t.time() * 1000) % 1000000
+            for action in exec_results.get('actions', []):
+                auditor.record_action(
+                    cycle_id=cycle_id,
+                    action=action,
+                    phase='execute',
+                    success=action.get('success', True),
+                    error=action.get('message') if not action.get('success') else None,
+                )
+        except Exception:
+            pass  # 静默失败
     
     # ═══════════════════════════════════════════
     # Phase 5: Verify — 验证改进效果
@@ -714,7 +736,16 @@ class ClosedLoopOrchestrator:
         self.cycle_history.append(result)
         
         # 🆕 持久化审计记录
+        exec_actions = result.get('phases', {}).get('execute', {}).get('actions', [])
+        with open("/tmp/evo_debug.log", "a") as f:
+            f.write(f"[run_full_cycle] _audit_cycle START - cycle_id={cycle_id}, exec_actions={len(exec_actions)}\n")
+            f.write(f"  execute phase keys: {list(result.get('phases', {}).get('execute', {}).keys())}\n")
+            if exec_actions:
+                for i, a in enumerate(exec_actions):
+                    f.write(f"  action[{i}]: {a.get('action_type')}->{a.get('target')} success={a.get('success')}\n")
         self._audit_cycle(result)
+        with open("/tmp/evo_debug.log", "a") as f:
+            f.write(f"[run_full_cycle] _audit_cycle DONE\n")
         
         result['duration'] = round(time.time() - cycle_start, 2)
         result['summary'] = (
