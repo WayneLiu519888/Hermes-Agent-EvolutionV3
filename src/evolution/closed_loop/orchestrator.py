@@ -371,9 +371,11 @@ class ClosedLoopOrchestrator:
         
         for action_dict in actions:
             action = ImprovementAction(**action_dict)
+            action_start = time.perf_counter()
             
             try:
                 result = self.action_executor.execute(action)
+                action_duration = (time.perf_counter() - action_start) * 1000
                 
                 action_result = {
                     'action_id': action.action_id,
@@ -392,8 +394,19 @@ class ClosedLoopOrchestrator:
                 else:
                     results['failure_count'] += 1
                     logger.warning(f"  ❌ {action.target}: {action.action_type} — {result.get('message', '失败')}")
+                
+                # 持久化到审计数据库
+                self._audit_action(
+                    cycle_id=None,  # 将在 _audit_cycle 中补设
+                    action=action_result,
+                    phase="execute",
+                    success=result.get('success', False),
+                    error=result.get('message') if not result.get('success') else None,
+                    duration_ms=action_duration,
+                )
                     
             except Exception as e:
+                action_duration = (time.perf_counter() - action_start) * 1000
                 results['actions'].append({
                     'action_id': action.action_id,
                     'action_type': action.action_type,
@@ -403,6 +416,15 @@ class ClosedLoopOrchestrator:
                 })
                 results['failure_count'] += 1
                 logger.error(f"  ❌ {action.target}: 执行异常 — {e}")
+                
+                self._audit_action(
+                    cycle_id=None,
+                    action=action_dict,
+                    phase="execute",
+                    success=False,
+                    error=str(e),
+                    duration_ms=action_duration,
+                )
         
         return results
     
@@ -526,6 +548,19 @@ class ClosedLoopOrchestrator:
                 except ImportError:
                     from src.evolution.learning.experience import Experience, ExperienceType, Outcome
                 
+                # 去重：检查最近是否已存在相同任务的经验
+                task_id = f"evolution_cycle_{snapshot.cycle_id}"
+                recent = self.learning_observer.get_recent_experiences(days=1, limit=5)
+                duplicate = any(
+                    getattr(e, 'task_id', '') == task_id
+                    for e in (recent if isinstance(recent, list) else [])
+                )
+                if duplicate:
+                    logger.info(f"  经验已存在 (task_id={task_id})，跳过重复记录")
+                    feedback['recorded'] = True
+                    feedback['experience_id'] = 'duplicate_skipped'
+                    return feedback
+                
                 # 构建 Experience 对象
                 exp = Experience(
                     id=str(uuid.uuid4()),
@@ -641,6 +676,7 @@ class ClosedLoopOrchestrator:
         result['phases']['execute'] = {
             'success': exec_result['success_count'],
             'failure': exec_result['failure_count'],
+            'actions': exec_result.get('actions', []),
             'elapsed': round(elapsed, 3),
         }
 
@@ -699,9 +735,36 @@ class ClosedLoopOrchestrator:
         try:
             from .evolution_auditor import EvolutionAuditor
             auditor = EvolutionAuditor()
-            auditor.record_cycle(result)
+            cycle_id = auditor.record_cycle(result)
+            # 补设之前 actions 的 cycle_id
+            if cycle_id > 0:
+                for action in result.get('phases', {}).get('execute', {}).get('actions', []):
+                    auditor.record_action(
+                        cycle_id=cycle_id,
+                        action=action,
+                        phase='execute',
+                        success=action.get('success', True),
+                        error=action.get('message') if not action.get('success') else None,
+                    )
         except Exception as e:
             logger.warning("审计记录失败: %s (进化流程不受影响)", e)
+    
+    def _audit_action(self, cycle_id, action, phase, success, error, duration_ms):
+        """持久化单个进化动作（不抛异常）"""
+        try:
+            from .evolution_auditor import EvolutionAuditor
+            auditor = EvolutionAuditor()
+            if cycle_id:
+                auditor.record_action(
+                    cycle_id=cycle_id,
+                    action=action,
+                    phase=phase,
+                    success=success,
+                    error=error,
+                    duration_ms=duration_ms,
+                )
+        except Exception as e:
+            logger.debug("动作审计记录失败: %s", e)
 
 
 # ═══════════════════════════════════════════
