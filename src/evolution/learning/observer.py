@@ -191,17 +191,18 @@ class LearningObserver:
         self._add_to_cache(experience_id, experience)
         return experience
     
-    def get_recent_experiences(self, days: int = 1) -> List[Experience]:
+    def get_recent_experiences(self, days: int = 1, limit: int = 100) -> List[Experience]:
         """获取最近的经历（测试兼容方法）
         
         Args:
             days: 最近多少天
+            limit: 返回数量上限
             
         Returns:
             经验列表
         """
         start_time = datetime.now() - timedelta(days=days)
-        return self.query_experiences(start_time=start_time)
+        return self.query_experiences(start_time=start_time, limit=limit)
 
     def _row_to_experience(self, row) -> Experience:
         """将数据库行转换为Experience对象"""
