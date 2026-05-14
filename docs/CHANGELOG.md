@@ -4,6 +4,18 @@
 
 ---
 
+## [7.0.15] — 待发布
+
+### Bug修复（待修）
+
+- **`evolution_analyze_performance` 无参调用缺少 `success` 字段**
+  - 测试：`test_analyze_performance_returns_json` 失败
+  - 根因：不传 `tool_name` 时走 `generate_performance_report("json")` 分支，返回 `{"report_generated": ..., "summaries": ...}`，未包裹 `success` 字段
+  - 修复：`_handle_analyze_performance` else 分支解析 JSON 后包裹 `{"success": true, ...}` 
+  - 文件：`src/evolution/plugin_core.py` L159-160
+
+---
+
 ## [7.0.14] — 2026-05-14
 
 ### 新增：进化审计问题追溯（三层升级）

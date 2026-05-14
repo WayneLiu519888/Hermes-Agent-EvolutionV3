@@ -274,22 +274,22 @@ def _handle_memory_discover(params, **kwargs):
 # ---------------------------------------------------------------------------
 # Tool 7: evolution_audit
 # ---------------------------------------------------------------------------
-    TOOL_AUDIT_SCHEMA = {
-        "name": "evolution_audit",
-        "description": "Query evolution audit records.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["query_cycles","get_cycle_detail","get_summary","get_health_trend","get_recent_issues","query_issues_by_type","query_issues_by_severity"], "default": "get_summary"},
-                "cycle_id": {"type": "integer"},
-                "limit": {"type": "integer", "default": 10},
-                "success_only": {"type": "boolean", "default": False},
-                "issue_type": {"type": "string"},
-                "severity": {"type": "string", "enum": ["critical","high","medium","low"]},
-            },
-            "required": [],
+TOOL_AUDIT_SCHEMA = {
+    "name": "evolution_audit",
+    "description": "Query evolution audit records.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["query_cycles","get_cycle_detail","get_summary","get_health_trend","get_recent_issues","query_issues_by_type","query_issues_by_severity"], "default": "get_summary"},
+            "cycle_id": {"type": "integer"},
+            "limit": {"type": "integer", "default": 10},
+            "success_only": {"type": "boolean", "default": False},
+            "issue_type": {"type": "string"},
+            "severity": {"type": "string", "enum": ["critical","high","medium","low"]},
         },
-    }
+        "required": [],
+    },
+}
 
 def _handle_audit(params, **kwargs):
     try:
