@@ -228,6 +228,7 @@ TOOL_SELF_MONITOR_SCHEMA = {
 }
 
 def _handle_self_monitor(params, **kwargs):
+    _debug_tag = "_handle_self_monitor V8-DEBUG-001"
     try:
         from evolution.learning import LearningObserver
         from evolution.db_utils import get_data_dir
@@ -238,6 +239,7 @@ def _handle_self_monitor(params, **kwargs):
         success_rate = (total - failures) / max(total, 1)
         return json.dumps({
             "success": True,
+            "_debug_tag": _debug_tag,
             "health_score": int(success_rate * 80 + 20),
             "status": "healthy" if success_rate > 0.8 else "needs_attention",
             "metrics": {"success_rate": round(success_rate, 2), "total_experiences": total,
@@ -557,6 +559,8 @@ def _make_dynamic_handler(tool_name):
     attr_name = _handler_attr[tool_name]
     
     def dynamic_handler(params, **kwargs):
+        import time as _t
+        _debug_ts = str(_t.time())
         try:
             _importlib.invalidate_caches()
             # 清除所有 HAE 子模块缓存，强制完整重新加载
@@ -568,12 +572,31 @@ def _make_dynamic_handler(tool_name):
             mod = _importlib.import_module("evolution.plugin_core")
             fn = getattr(mod, attr_name, None)
             if fn:
-                return fn(params, **kwargs)
+                result = fn(params, **kwargs)
+                # 嵌入调试标记，确认 handler 被执行
+                if isinstance(result, str) and result.startswith('{'):
+                    try:
+                        import json
+                        data = json.loads(result)
+                        data['_debug_handler'] = f'{attr_name} via dynamic reload @ {_debug_ts}'
+                        return json.dumps(data, default=str, ensure_ascii=False)
+                    except Exception:
+                        pass
+                return result
         except Exception as e:
             pass
         mod = _importlib.import_module("evolution.plugin_core")
         fn = getattr(mod, attr_name)
-        return fn(params, **kwargs)
+        result = fn(params, **kwargs)
+        if isinstance(result, str) and result.startswith('{'):
+            try:
+                import json
+                data = json.loads(result)
+                data['_debug_handler'] = f'{attr_name} via fallback @ {_debug_ts}'
+                return json.dumps(data, default=str, ensure_ascii=False)
+            except Exception:
+                pass
+        return result
     return dynamic_handler
 
 
