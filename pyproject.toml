@@ -68,3 +68,4 @@ services = ["config/*.yaml"]
 
 [project.scripts]
 hermes-evolution = "evolution.cli:main"
+hae = "evolution.cli:main"

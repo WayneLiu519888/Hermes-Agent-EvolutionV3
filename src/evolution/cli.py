@@ -10,6 +10,7 @@ HermesAgentEvolution CLI — 命令行工具
 
 import sys
 import os
+import argparse
 from pathlib import Path
 
 # 确保项目根在 sys.path
@@ -393,70 +394,287 @@ def cmd_test() -> bool:
     return result.returncode == 0
 
 
-# ── CLI 入口 ────────────────────────────────────────────────────────────────────
 
-COMMANDS = {
-    "check":  (cmd_check,  "环境自检"),
-    "clean":  (cmd_clean,  "清理测试残留"),
-    "setup":  (cmd_setup,  "一键部署到 Hermes"),
-    "status": (cmd_status, "查看系统状态"),
-    "test":   (cmd_test,   "运行自测"),
-}
+# ── 新增命令 ─────────────────────────────────────────────────
 
+def _db_info(args):
+    from evolution.db_utils import get_data_dir
+    db_dir = get_data_dir()
+    print(f"数据目录: {db_dir}")
+    for f in sorted(db_dir.glob("*.db")):
+        print(f"  {f.name:<40s} {f.stat().st_size/1024:>8.1f} KB")
+
+def _db_clean(args):
+    print(f"db clean (dry_run={getattr(args, 'dry_run', False)})")
+    from evolution.cli import cmd_clean
+    cmd_clean(dry_run=getattr(args, 'dry_run', False))
+
+def _db_vacuum(args):
+    import sqlite3
+    from evolution.db_utils import get_data_dir
+    for f in sorted(get_data_dir().glob("*.db")):
+        conn = sqlite3.connect(str(f))
+        conn.execute("VACUUM")
+        conn.close()
+        print(f"  OK {f.name}")
+
+def _db_backup(args):
+    import shutil
+    from evolution.db_utils import get_data_dir
+    dest = getattr(args, 'path', None) or "/tmp/hae-backup"
+    Path(dest).mkdir(parents=True, exist_ok=True)
+    for f in get_data_dir().glob("*.db"):
+        shutil.copy2(str(f), str(Path(dest) / f.name))
+    print(f"  备份到 {dest}")
+
+def _cycle_run(args):
+    import json
+    from evolution.plugin_core import _handle_run_cycle
+    result = json.loads(_handle_run_cycle({}))
+    if getattr(args, 'json', False):
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(f"周期 #{result.get('cycle_id', '?')}: {result.get('summary', '完成')}")
+
+def _cycle_status(args):
+    import sqlite3
+    from evolution.db_utils import get_data_dir
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT cycle_id, started_at, success, issues_found, actions_succeeded "
+        "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        ok = "OK" if row['success'] else "FAIL"
+        print(f"最近周期: #{row['cycle_id']} {row['started_at'][:19]} {ok} issues={row['issues_found']}")
+    else:
+        print("暂无进化周期记录")
+    conn.close()
+
+def _cycle_history(args):
+    import sqlite3
+    from evolution.db_utils import get_data_dir
+    limit = getattr(args, 'limit', 10) or 10
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    conn.row_factory = sqlite3.Row
+    for row in conn.execute(
+        "SELECT cycle_id, started_at, success, issues_found "
+        "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT ?", (limit,)
+    ):
+        ok = "OK" if row['success'] else "FAIL"
+        print(f"  #{row['cycle_id']:<5} {row['started_at'][:19]} {ok} issues={row['issues_found']}")
+    conn.close()
+
+def _cycle_detail(args):
+    import json, sqlite3
+    from evolution.db_utils import get_data_dir
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    conn.row_factory = sqlite3.Row
+    cid = getattr(args, 'id', None)
+    row = conn.execute("SELECT * FROM evolution_cycles WHERE cycle_id=?", (cid,)).fetchone()
+    if not row:
+        print(f"未找到周期 #{cid}")
+        return
+    print(f"周期 #{row['cycle_id']} {row['started_at'][:19]}")
+    print(f"  success={row['success']} issues={row['issues_found']} patterns={row['patterns_discovered']}")
+    if row['issues_details']:
+        try:
+            issues = json.loads(row['issues_details'])
+            for i in issues:
+                print(f"    [{i.get('severity','?')}] {i.get('type','?')}: {i.get('message','')[:80]}")
+        except: pass
+    conn.close()
+
+def _audit_summary(args):
+    import sqlite3
+    from evolution.db_utils import get_data_dir
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    conn.row_factory = sqlite3.Row
+    s = conn.execute("SELECT COUNT(*) as t, SUM(success) as ok, AVG(issues_found) as ai, SUM(actions_succeeded) as act FROM evolution_cycles").fetchone()
+    print(f"总周期: {s['t']}  成功率: {s['ok']}/{s['t'] or 1}  平均问题: {s['ai'] or 0:.1f}  总动作: {s['act'] or 0}")
+    conn.close()
+
+def _audit_cycles(args):
+    _cycle_history(args)
+
+def _audit_detail(args):
+    _cycle_detail(args)
+
+def _audit_issues(args):
+    import json, sqlite3
+    from evolution.db_utils import get_data_dir
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    conn.row_factory = sqlite3.Row
+    limit = getattr(args, 'limit', 10) or 10
+    rows = conn.execute("SELECT cycle_id, started_at, issues_details FROM evolution_cycles WHERE issues_details IS NOT NULL ORDER BY cycle_id DESC LIMIT ?", (limit,)).fetchall()
+    for row in rows:
+        try:
+            issues = json.loads(row['issues_details'])
+            for i in issues:
+                if getattr(args, 'type', None) and i.get('type') != args.type: continue
+                if getattr(args, 'severity', None) and i.get('severity') != args.severity: continue
+                print(f"  #{row['cycle_id']} [{i.get('severity','?')}] {i.get('type','?')}: {i.get('message','')[:80]}")
+        except: pass
+    conn.close()
+
+def _audit_trend(args):
+    import sqlite3
+    from evolution.db_utils import get_data_dir
+    conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
+    for row in conn.execute("SELECT cycle_id, issues_found, actions_succeeded FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 10"):
+        print(f"  #{row['cycle_id']:<5} issues={row['issues_found']} actions={'#'*row['actions_succeeded']}")
+    conn.close()
+
+def _log_show(args):
+    log_file = Path.home() / ".hermes" / "logs" / "gateway.log"
+    limit = getattr(args, 'limit', 50) or 50
+    if log_file.exists():
+        for line in log_file.read_text().splitlines()[-limit:]:
+            if getattr(args, 'level', None) and args.level.upper() not in line: continue
+            print(line)
+    else:
+        print(f"日志不存在: {log_file}")
+
+def _config_show(args):
+    config = Path.home() / ".hermes" / "config.yaml"
+    print(config.read_text() if config.exists() else f"配置文件不存在: {config}")
+
+def _config_doctor(args):
+    for label, path in [
+        ("配置文件", Path.home()/".hermes"/"config.yaml"),
+        ("数据目录", Path.home()/".hermes"/"data"/"evolution"),
+        ("插件目录", Path.home()/".hermes"/"plugins"/"hermes-evolution"),
+    ]:
+        print(f"  {label}: {'OK' if path.exists() else 'MISSING'} {path}")
+    data_dir = Path.home()/".hermes"/"data"/"evolution"
+    if data_dir.exists():
+        dbs = list(data_dir.glob("*.db"))
+        print(f"  数据库: {len(dbs)} 个 ({sum(f.stat().st_size for f in dbs)/1024/1024:.1f} MB)")
+    print(f"  Python: {sys.version}")
+
+def _config_validate(args):
+    _config_doctor(args)
+    print("  验证完成")
+
+def _uninstall(args):
+    import shutil, subprocess
+    targets = []
+    plugin = Path.home()/".hermes"/"plugins"/"hermes-evolution"
+    if plugin.exists(): targets.append(("插件", str(plugin)))
+    for sp in [Path("/usr/local/lib/python3.12/dist-packages/evolution"), Path.home()/".hermes"/"hermes-agent"/".venv"/"lib"/"python3.11"/"site-packages"/"evolution"]:
+        if sp.exists(): targets.append(("模块", str(sp)))
+    data_dir = Path.home()/".hermes"/"data"/"evolution"
+    if data_dir.exists() and not getattr(args, 'keep_data', False):
+        targets.append(("数据", str(data_dir)))
+    if getattr(args, 'dry_run', False):
+        print("预览:")
+        for l, p in targets: print(f"  [{l}] {p}")
+        return
+    if not getattr(args, 'force', False):
+        print(f"将清理 {len(targets)} 处残留:")
+        for l, p in targets: print(f"  [{l}] {p}")
+        if input("确认 [y/N]? ").lower() != 'y':
+            print("取消"); return
+    subprocess.run(["pip", "uninstall", "-y", "--break-system-packages", "hermes-agent-evolution"], capture_output=True)
+    for _, p in targets:
+        if Path(p).exists(): shutil.rmtree(p, ignore_errors=True)
+    # pycache
+    subprocess.run("find ~/.hermes -name '__pycache__' -exec rm -rf {} + 2>/dev/null", shell=True)
+    print("卸载完成")
+
+def _version(args):
+    from evolution import __version__
+    if getattr(args, 'all', False):
+        import evolution, psutil, numpy
+        print(f"HAE: {evolution.__version__}")
+        print(f"Python: {sys.version}")
+        print(f"psutil: {psutil.__version__}")
+        print(f"numpy: {numpy.__version__}")
+    else:
+        print(f"HAE v{__version__}")
+
+# ── argparse 命令树 ──────────────────────────────────────────────
+
+def _build_parser():
+    parser = argparse.ArgumentParser(prog='hae', description='HAE — Hermes Agent Evolution CLI', formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest='command')
+
+    p = sub.add_parser('install', help='部署 HAE 插件到 Hermes')
+    p.add_argument('--force', action='store_true')
+    p.set_defaults(func=lambda a: cmd_setup())
+
+    p = sub.add_parser('uninstall', help='一键卸载')
+    p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--keep-data', action='store_true')
+    p.add_argument('--force', action='store_true')
+    p.set_defaults(func=_uninstall)
+
+    p = sub.add_parser('check', help='环境自检')
+    p.add_argument('--fix', action='store_true')
+    p.add_argument('--clean', action='store_true')
+    p.set_defaults(func=lambda a: cmd_check(fix=a.fix, clean=a.clean))
+
+    p = sub.add_parser('status', help='系统状态')
+    p.add_argument('--detail', action='store_true')
+    p.add_argument('--json', action='store_true')
+    p.set_defaults(func=lambda a: cmd_status())
+
+    p = sub.add_parser('version', help='版本信息')
+    p.add_argument('--all', action='store_true')
+    p.set_defaults(func=_version)
+
+    p = sub.add_parser('test', help='运行测试')
+    p.add_argument('--quick', action='store_true')
+    p.add_argument('--suite', type=str)
+    p.set_defaults(func=lambda a: cmd_test())
+
+    p = sub.add_parser('db', help='数据库管理')
+    ds = p.add_subparsers(dest='db_sub')
+    ds.add_parser('info', help='DB信息').set_defaults(func=_db_info)
+    p2 = ds.add_parser('clean', help='清理残留'); p2.add_argument('--dry-run', action='store_true'); p2.set_defaults(func=_db_clean)
+    ds.add_parser('vacuum', help='压缩DB').set_defaults(func=_db_vacuum)
+    p2 = ds.add_parser('backup', help='备份DB'); p2.add_argument('--path', type=str); p2.set_defaults(func=_db_backup)
+
+    p = sub.add_parser('cycle', help='进化控制')
+    cs = p.add_subparsers(dest='cy_sub')
+    p2 = cs.add_parser('run', help='触发周期'); p2.add_argument('--json', action='store_true'); p2.set_defaults(func=_cycle_run)
+    cs.add_parser('status', help='周期状态').set_defaults(func=_cycle_status)
+    p2 = cs.add_parser('history', help='周期历史'); p2.add_argument('--limit', type=int, default=10); p2.set_defaults(func=_cycle_history)
+    p2 = cs.add_parser('detail', help='周期详情'); p2.add_argument('id', type=int); p2.set_defaults(func=_cycle_detail)
+
+    p = sub.add_parser('audit', help='审计查询')
+    au = p.add_subparsers(dest='au_sub')
+    au.add_parser('summary', help='汇总').set_defaults(func=_audit_summary)
+    p2 = au.add_parser('cycles', help='周期列表'); p2.add_argument('--limit', type=int, default=10); p2.set_defaults(func=_audit_cycles)
+    p2 = au.add_parser('detail', help='周期详情'); p2.add_argument('id', type=int); p2.set_defaults(func=_audit_detail)
+    p2 = au.add_parser('issues', help='问题列表'); p2.add_argument('--type', type=str); p2.add_argument('--severity', type=str); p2.add_argument('--limit', type=int, default=10); p2.set_defaults(func=_audit_issues)
+    au.add_parser('trend', help='趋势').set_defaults(func=_audit_trend)
+
+    p = sub.add_parser('log', help='查看日志')
+    p.add_argument('--tail', action='store_true')
+    p.add_argument('--level', type=str)
+    p.add_argument('--limit', type=int, default=50)
+    p.set_defaults(func=_log_show)
+
+    p = sub.add_parser('config', help='配置诊断')
+    cf = p.add_subparsers(dest='cf_sub')
+    cf.add_parser('show', help='显示').set_defaults(func=_config_show)
+    cf.add_parser('doctor', help='诊断').set_defaults(func=_config_doctor)
+    cf.add_parser('validate', help='验证').set_defaults(func=_config_validate)
+
+    return parser
 
 def main():
-    """CLI 主入口"""
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
-        print("HermesAgentEvolution CLI v7.0.1")
-        print()
-        print("用法: python3 -m src.evolution.cli <命令> [选项]")
-        print()
-        print("命令:")
-        for name, (_, desc) in COMMANDS.items():
-            print(f"  {name:<10s}  {desc}")
-        print()
-        print("选项:")
-        print("  --fix              自动修复缺失依赖 (仅 check / setup 有效)")
-        print("  --clean            清理测试残留 (仅 check / clean 有效)")
-        print()
-        print("示例:")
-        print("  python3 -m src.evolution.cli check")
-        print("  python3 -m src.evolution.cli check --fix")
-        print("  python3 -m src.evolution.cli check --clean")
-        print("  python3 -m src.evolution.cli clean --dry-run")
-        print("  python3 -m src.evolution.cli setup")
+    parser = _build_parser()
+    args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
         sys.exit(0)
-    
-    cmd = sys.argv[1]
-    if cmd not in COMMANDS:
-        print(f"❌ 未知命令: {cmd}")
-        print(f"   可用: {', '.join(COMMANDS.keys())}")
-        sys.exit(1)
-    
-    # 解析选项
-    fix_mode = "--fix" in sys.argv
-    clean_mode = "--clean" in sys.argv
-    dry_run = "--dry-run" in sys.argv
-
-    func, _ = COMMANDS[cmd]
-
-    # ── 自动懒部署：pip install 后首次运行任何命令时自动部署插件 ──────
-    if cmd != "setup":
-        plugin_dst = Path.home() / ".hermes" / "plugins" / "hermes-evolution" / "plugin.yaml"
-        if not plugin_dst.exists():
-            print("🔧 检测到插件未部署，自动执行一键部署...")
-            if not cmd_setup():
-                print("⚠️  自动部署失败，请手动运行: hermes-evolution setup")
-    # ──────────────────────────────────────────────────────────────────────
-
-    if cmd == "check":
-        success = cmd_check(fix=fix_mode, clean=clean_mode)
-    elif cmd == "clean":
-        success = cmd_clean(dry_run=dry_run)
+    if hasattr(args, 'func'):
+        args.func(args)
     else:
-        success = func()
-    sys.exit(0 if success else 1)
+        parser.print_help()
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
