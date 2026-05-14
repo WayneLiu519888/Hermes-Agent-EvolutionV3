@@ -4,6 +4,19 @@
 
 ---
 
+## [7.0.16] — 2026-05-14
+
+### Bug修复
+
+- **`EvolutionAuditor` 使用相对路径导致审计数据写入错误位置**
+  - 根因：`_audit_cycle`、`_persist_actions`、`_audit_action` 三处 `EvolutionAuditor()` 使用默认相对路径 `"evolution_audit.db"`，workdir 不同时写到错误位置
+  - 修复：三处全部改为 `EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))`
+
+### 改进
+- 版本号统一 7.0.16
+
+---
+
 ## [7.0.15] — 2026-05-14
 
 ### Bug修复

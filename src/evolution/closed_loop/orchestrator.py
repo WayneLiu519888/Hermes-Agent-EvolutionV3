@@ -435,8 +435,9 @@ class ClosedLoopOrchestrator:
         """将执行结果直接持久化到 evolution_actions 表"""
         try:
             from .evolution_auditor import EvolutionAuditor
+            from ..db_utils import get_data_dir
             import time as _t
-            auditor = EvolutionAuditor()
+            auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
             # 生成临时 cycle_id（时间戳）
             cycle_id = int(_t.time() * 1000) % 1000000
             for action in exec_results.get('actions', []):
@@ -766,7 +767,8 @@ class ClosedLoopOrchestrator:
         """将进化周期结果持久化到审计数据库（失败不影响主流程）"""
         try:
             from .evolution_auditor import EvolutionAuditor
-            auditor = EvolutionAuditor()
+            from ..db_utils import get_data_dir
+            auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
             cycle_id = auditor.record_cycle(result)
             # 补设之前 actions 的 cycle_id
             if cycle_id > 0:
@@ -785,7 +787,8 @@ class ClosedLoopOrchestrator:
         """持久化单个进化动作（不抛异常）"""
         try:
             from .evolution_auditor import EvolutionAuditor
-            auditor = EvolutionAuditor()
+            from ..db_utils import get_data_dir
+            auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
             if cycle_id:
                 auditor.record_action(
                     cycle_id=cycle_id,
