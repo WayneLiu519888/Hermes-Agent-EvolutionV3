@@ -124,6 +124,15 @@ class EvolutionAuditor:
 
     # ── 写入 ──────────────────────────────────────────────────────────────
 
+    def _next_cycle_id(self) -> int:
+        """获取下一个可用的 cycle_id（当前最大 + 1）"""
+        try:
+            conn = get_evolution_db(self.db_path)
+            row = conn.execute("SELECT COALESCE(MAX(cycle_id), 0) + 1 FROM evolution_cycles").fetchone()
+            return int(row[0]) if row else 1
+        except Exception:
+            return 1
+
     def record_cycle(self, result: Dict[str, Any],
                      trigger: str = "manual",
                      health_before: Optional[Dict] = None,

@@ -54,6 +54,7 @@ TOOL_RUN_CYCLE_SCHEMA = {
 }
 
 def _handle_run_cycle(params, **kwargs):
+    _debug_tag = "_handle_run_cycle V8-DEBUG-002"
     try:
         from evolution.closed_loop import ClosedLoopOrchestrator, SystemMetricsCollector, ActionExecutor
         from evolution.learning import LearningObserver, ExperienceAnalyzer, PatternRecognizer, ToolStrategyLearner
@@ -82,6 +83,36 @@ def _handle_run_cycle(params, **kwargs):
             tool_evolution_engine=tool_engine)
         result = orch.run_full_cycle()
         result["success"] = True
+        result["_debug_tag"] = _debug_tag
+        # 🆕 V8: 直接写入审计数据库（绕过所有模块缓存）
+        try:
+            import json as _json, sqlite3 as _sqlite3
+            ad = result.get("phases", {}).get("analyze", {}).get("_details", {})
+            audit_db = str(get_data_dir() / "evolution_audit.db")
+            conn = _sqlite3.connect(audit_db)
+            cid = conn.execute("SELECT COALESCE(MAX(cycle_id),0)+1 FROM evolution_cycles").fetchone()[0]
+            issues_json = _json.dumps(ad["issues"], ensure_ascii=False) if ad.get("issues") else None
+            patterns_json = _json.dumps(ad["patterns"], ensure_ascii=False) if ad.get("patterns") else None
+            conn.execute("""
+                INSERT INTO evolution_cycles (cycle_id, started_at, finished_at, success, trigger,
+                    phase_monitor, phase_analyze, phase_plan, phase_execute, phase_verify, phase_feedback,
+                    issues_found, patterns_discovered, actions_planned, actions_executed, actions_succeeded,
+                    issues_details, patterns_details)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                cid, result.get("timestamp"), result.get("timestamp"), 1, "manual",
+                "completed", "completed", "completed", "completed", "completed", "completed",
+                len(ad.get("issues",[])), len(ad.get("patterns",[])),
+                result.get("phases",{}).get("plan",{}).get("actions",0),
+                result.get("phases",{}).get("execute",{}).get("success",0) + result.get("phases",{}).get("execute",{}).get("failure",0),
+                result.get("phases",{}).get("execute",{}).get("success",0),
+                issues_json, patterns_json
+            ))
+            conn.commit()
+            conn.close()
+            result["cycle_id"] = cid
+        except Exception as _audit_err:
+            result["_audit_error"] = str(_audit_err)
         return json.dumps(result, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
