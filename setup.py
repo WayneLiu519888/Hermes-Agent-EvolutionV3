@@ -34,7 +34,7 @@ install_requires = parse_requirements()
 
 setup(
     name="hermes-agent-evolution",
-    version="7.0.16",
+    version="8.0.0",
     author="HermesAgentEvolution Team",
     author_email="contact@example.com",
     description="AI自我进化系统 V1/V2/V3 融合版 — 单体+微服务混合架构",

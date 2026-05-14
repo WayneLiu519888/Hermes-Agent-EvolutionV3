@@ -4,22 +4,39 @@
 
 ---
 
-## [8.0.0] — 规划中
+## [8.0.0] — 2026-05-15
 
-### V8.0.0 规划（详见 docs/v8_plan.md）
+### 🚀 重大更新：打破壁垒，统一环境，全新命令体系
 
-8 组 23 个任务，11 天工时：
+#### 核心改进
 
-| 组 | 内容 | 工时 | 优先级 |
-|----|------|------|--------|
-| A | 打破三层缓存（`_make_dynamic_handler`） | 3天 | 🔴 |
-| B | 进化周期真实性 | 2天 | 🔴 |
-| C | Python 环境统一到系统 3.12 | 1天 | 🟡 |
-| D | 数据闭环强化 | 2天 | 🟢 |
-| E | 版本发布自动化 | 1天 | 🟢 |
-| F | `hae uninstall` 一键卸载 | 0.5天 | 🟢 |
-| G | 简化指令 `HAE` | 0.5天 | 🟢 |
-| H | `hae` 完整命令体系 + help 系统 | 1天 | 🟢 |
+- **A: 打破三层缓存** — `_make_dynamic_handler` 每次调用 reload 模块，改代码重启即生效
+- **B: 进化周期真实性** — 确认六阶段真实执行，analyze 每次产出不同数据
+- **C: Python 环境统一** — gateway 改用系统 Python 3.12，`pip install` 一步到位，不再手动 cp 同步
+- **D: 数据闭环** — 审计追溯端到端打通（`issues_details` 持久化），hermes memory 桥接正常
+- **E: 版本发布自动化** — `scripts/release.sh` 一键：版本同步→冒烟→pytest→commit→build→PyPI
+- **F: `hae uninstall`** — 7层清理，`--dry-run`/`--keep-data`/`--force`
+- **G: 简化指令 `HAE`** — `hermes-evolution` + `hae` 双入口
+- **H: 完整命令体系** — 10命令/28子命令 + 三级 help 系统
+
+#### 新增 CLI 命令
+
+```
+hae install / uninstall     部署 / 卸载
+hae check / status / version
+hae test                     测试
+hae db info|clean|vacuum|backup
+hae cycle run|status|history|detail
+hae audit summary|cycles|detail|issues|trend
+hae log / config show|doctor|validate
+```
+
+#### 技术细节
+
+- `_handle_run_cycle` 中直接 sqlite3 写入审计，绕过 gateway 模块缓存
+- `EvolutionAuditor` 新增 `_next_cycle_id()` 方法
+- systemd unit ExecStart → `/usr/bin/python3`，PYTHONPATH 指向 hermes-agent
+- `pyproject.toml` 新增 `hae` 入口点
 
 ---
 
