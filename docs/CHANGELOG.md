@@ -4,15 +4,21 @@
 
 ---
 
-## [7.0.15] — 待发布
+## [7.0.15] — 2026-05-14
 
-### Bug修复（待修）
+### Bug修复
 
 - **`evolution_analyze_performance` 无参调用缺少 `success` 字段**
-  - 测试：`test_analyze_performance_returns_json` 失败
-  - 根因：不传 `tool_name` 时走 `generate_performance_report("json")` 分支，返回 `{"report_generated": ..., "summaries": ...}`，未包裹 `success` 字段
-  - 修复：`_handle_analyze_performance` else 分支解析 JSON 后包裹 `{"success": true, ...}` 
-  - 文件：`src/evolution/plugin_core.py` L159-160
+  - 根因：不传 `tool_name` 时走 `generate_performance_report("json")` 分支，返回 `{"report_generated": ..., "summaries": ...}`，未包裹 `success` 字段，与其它工具返回格式不一致
+  - 修复：`_handle_analyze_performance` else 分支解析 JSON 后包裹 `{"success": true, ...}`；同时 `tool_name` 分支也统一补上 `success` 字段
+  - 文件：`src/evolution/plugin_core.py` L149-168
+
+- **`TOOL_AUDIT_SCHEMA` 缩进错误（V7.0.14 引入）**
+  - 根因：V7.0.14 修改 audit schema 时 patch 误加了 4 格缩进，导致常量嵌套定义，模块顶层不可见，27 个集成测试 import 阶段报 `NameError`
+  - 修复：恢复模块顶层定义
+
+### 改进
+- 版本号统一：`pyproject.toml` / `setup.py` / `__init__.py` 全部 7.0.15
 
 ---
 

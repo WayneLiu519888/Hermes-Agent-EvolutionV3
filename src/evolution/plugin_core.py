@@ -149,6 +149,7 @@ def _handle_analyze_performance(params, **kwargs):
         if tool_name:
             summary = analyzer.analyze_tool_performance(tool_name)
             result = json.dumps({
+                "success": True,
                 "tool_name": summary.tool_name,
                 "overall_score": summary.overall_score,
                 "performance_level": summary.performance_level.value,
@@ -157,7 +158,15 @@ def _handle_analyze_performance(params, **kwargs):
             }, default=str, ensure_ascii=False)
             return result
         else:
-            return analyzer.generate_performance_report(output_format)
+            report = analyzer.generate_performance_report(output_format)
+            # 统一返回格式：JSON 模式下包裹 success 字段
+            if output_format == "json":
+                try:
+                    parsed = json.loads(report)
+                    return json.dumps({"success": True, **parsed}, default=str, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    pass
+            return report
     except Exception as e:
         return json.dumps({"success": False, "error": str(e), "timestamp": datetime.now().isoformat()})
 
