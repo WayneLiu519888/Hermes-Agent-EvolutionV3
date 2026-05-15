@@ -285,24 +285,24 @@ def cmd_status() -> bool:
     print("📊 HermesAgentEvolution 系统状态")
     print("=" * 50)
     
-    # 版本
+    # 版本（从包元数据读取，兼容 pip 安装和源码运行）
     try:
-        import re
-        pyproject = _project_root / "pyproject.toml"
-        content = pyproject.read_text()
-        m = re.search(r'version\s*=\s*"([^"]+)"', content)
-        version = m.group(1) if m else "unknown"
-        print(f"  版本: v{version}")
+        from evolution import __version__
+        print(f"  版本: v{__version__}")
     except Exception:
         print(f"  版本: 无法读取")
     
-    # 模块统计
+    # 模块统计（从安装路径读取）
     try:
-        src_dir = _project_root / "src" / "evolution"
-        py_files = list(src_dir.rglob("*.py"))
+        import evolution
+        pkg_dir = Path(evolution.__file__).parent
+        py_files = list(pkg_dir.rglob("*.py"))
         total_lines = 0
         for f in py_files:
-            total_lines += len(f.read_text().splitlines())
+            try:
+                total_lines += len(f.read_text().splitlines())
+            except Exception:
+                pass
         print(f"  模块: {len(py_files)} 文件")
         print(f"  代码: {total_lines} 行")
     except Exception as e:
@@ -315,7 +315,8 @@ def cmd_status() -> bool:
             test_files = list(test_dir.glob("test_*.py"))
             print(f"  测试文件: {len(test_files)} 个")
         else:
-            print(f"  测试: 无 tests/ 目录")
+            # pip 安装后无 tests/ 目录
+            print(f"  测试: 已安装包（无 tests/）")
     except Exception:
         print(f"  测试: 无法统计")
     
