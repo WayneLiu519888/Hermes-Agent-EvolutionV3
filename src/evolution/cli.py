@@ -308,14 +308,16 @@ def cmd_status() -> bool:
     except Exception as e:
         print(f"  代码统计失败: {e}")
     
-    # 测试状态
-    import subprocess
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=no"],
-        cwd=_project_root,
-        capture_output=True, text=True, timeout=60
-    )
-    print(f"  测试: {result.stdout.strip().splitlines()[-1] if result.stdout else '无法运行'}")
+    # 测试文件数（轻量级，不跑全量测试）
+    try:
+        test_dir = _project_root / "tests"
+        if test_dir.exists():
+            test_files = list(test_dir.glob("test_*.py"))
+            print(f"  测试文件: {len(test_files)} 个")
+        else:
+            print(f"  测试: 无 tests/ 目录")
+    except Exception:
+        print(f"  测试: 无法统计")
     
     # DB 统计
     try:
