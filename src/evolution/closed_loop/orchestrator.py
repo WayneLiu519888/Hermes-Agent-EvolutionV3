@@ -773,14 +773,14 @@ class ClosedLoopOrchestrator:
             # 从 analysis._details 提取 health 指标作为 before/after
             ad = result.get('phases', {}).get('analyze', {}).get('_details', {})
             health = ad.get('health', {})
-            metrics = health.get('metrics', {}) if isinstance(health, dict) else {}
+            analysis = health.get('analysis', {}) if isinstance(health, dict) else {}
             exp_data = ad.get('experience', {})
             
             health_before = {
-                'health_score': health.get('health_score'),
-                'success_rate': metrics.get('success_rate'),
-                'tools_count': metrics.get('monitored_tools'),
-                'experiences': metrics.get('total_experiences'),
+                'health_score': None,  # 当前 SelfMonitor 未输出此字段
+                'success_rate': analysis.get('success_rate') or exp_data.get('success_rate'),
+                'tools_count': None,   # 可从 tool_performance 获取，暂空
+                'experiences': analysis.get('total_experiences') or exp_data.get('total'),
             }
             health_after = dict(health_before)  # 同周期内 before/after 相同
             

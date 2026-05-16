@@ -4,6 +4,15 @@
 
 ---
 
+## [8.0.7] — 2026-05-16
+
+### 修复
+
+- **health 提取路径对齐** — 根据 `SelfMonitor.monitor_and_improve()` 实际返回结构修正字段路径
+- health_score 暂空（当前 SelfMonitor 未输出），success_rate/experiences 正确提取
+
+---
+
 ## [8.0.6] — 2026-05-16
 
 ### 修复
