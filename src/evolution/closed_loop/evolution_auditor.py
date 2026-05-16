@@ -149,7 +149,7 @@ class EvolutionAuditor:
         Returns:
             cycle_id
         """
-        cycle_id = result.get("cycle_id", 0)
+        cycle_id = self._next_cycle_id()  # DB 自增，不依赖 result 中的内存 ID
         phases = result.get("phases", {})
 
         # 阶段状态

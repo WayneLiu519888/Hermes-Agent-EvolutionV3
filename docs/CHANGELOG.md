@@ -4,6 +4,28 @@
 
 ---
 
+## [8.0.4] — 2026-05-15
+
+### 修复
+
+- **审计写入统一入口** — `EvolutionAuditor.record_cycle()` 使用 `_next_cycle_id()` DB 自增，不再依赖内存 `cycle_history` 计数器
+- **消除双重写入** — 删除 `_handle_run_cycle` 中的直写 SQL（原 V8.0.0 绕过模块缓存方案），审计完全由 `EvolutionAuditor` 负责
+- **`duration_ms` 修复** — `record_cycle()` 使用 `(result['duration'] or 0) * 1000`，不再为 0
+- **补全审计字段** — `record_cycle()` 已写满 28 个字段（含 health_score/success_rate），之前因 cycle_id 始终=1 被覆盖
+- **学习经验清空** — `learning_experiences.db` 7875 条测试遗留经验已清空，PatternRecognizer 不再基于脏数据
+
+### 架构变更
+
+```
+旧: _handle_run_cycle ─直写SQL(不完整)→ evolution_audit.db
+    run_full_cycle ─_audit_cycle→ EvolutionAuditor(完整, 但 cycle_id=1)
+
+新: _handle_run_cycle → orch.run_full_cycle → _audit_cycle → EvolutionAuditor(完整 + 自增ID)
+    唯一写入路径，28 字段全量
+```
+
+---
+
 ## [8.0.3] — 2026-05-15
 
 ### 修复
