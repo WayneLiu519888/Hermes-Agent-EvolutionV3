@@ -777,9 +777,9 @@ class ClosedLoopOrchestrator:
             exp_data = ad.get('experience', {})
             
             health_before = {
-                'health_score': None,  # 当前 SelfMonitor 未输出此字段
+                'health_score': health.get('health_score'),
                 'success_rate': analysis.get('success_rate') or exp_data.get('success_rate'),
-                'tools_count': None,   # 可从 tool_performance 获取，暂空
+                'tools_count': analysis.get('tools_count') or exp_data.get('total'),
                 'experiences': analysis.get('total_experiences') or exp_data.get('total'),
             }
             health_after = dict(health_before)  # 同周期内 before/after 相同

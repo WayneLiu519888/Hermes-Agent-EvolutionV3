@@ -58,13 +58,24 @@ class SelfMonitor:
         self.monitoring_history.append(monitor_record)
         
         # 5. 返回结果
+        # 计算健康分数 (0-100)
+        success_score = min(100, analysis.success_rate * 100)
+        experience_score = min(100, analysis.total_experiences * 2)
+        tool_count = len(tool_summary)
+        if tool_count == 0:
+            tool_count = self._count_tools_from_db()
+        tool_diversity_score = min(100, tool_count * 20)
+        health_score = int((success_score * 0.5 + experience_score * 0.3 + tool_diversity_score * 0.2))
+        
         result = {
             'timestamp': datetime.now().isoformat(),
+            'health_score': health_score,
             'analysis': {
                 'total_experiences': analysis.total_experiences,
                 'success_rate': analysis.success_rate,
                 'pattern_count': len(analysis.identified_patterns),
-                'key_insights': analysis.key_insights
+                'key_insights': analysis.key_insights,
+                'tools_count': tool_count,
             },
             'strategy_update': {
                 'current': self.strategy_learner.get_current_strategy().value,

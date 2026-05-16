@@ -4,6 +4,22 @@
 
 ---
 
+## [8.0.8] — 2026-05-16
+
+### 修复
+
+- **`health_score` 审计写入** — `SelfMonitor.monitor_and_improve()` 新增 `health_score` 输出，`_audit_cycle` 提取写入审计 DB
+- **`tools_count` 审计写入** — `monitor_and_improve()` 新增 `tools_count` 输出
+
+### health_score 公式
+
+```
+health_score = success_rate×50 + experiences×0.6 + tools×4
+             (成功率权重0.5, 经验权重0.3, 工具多样性权重0.2, 均归一到0-100)
+```
+
+---
+
 ## [8.0.7] — 2026-05-16
 
 ### 修复
