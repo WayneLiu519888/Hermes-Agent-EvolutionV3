@@ -769,7 +769,26 @@ class ClosedLoopOrchestrator:
             from .evolution_auditor import EvolutionAuditor
             from ..db_utils import get_data_dir
             auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
-            cycle_id = auditor.record_cycle(result)
+            
+            # 从 analysis._details 提取 health 指标作为 before/after
+            ad = result.get('phases', {}).get('analyze', {}).get('_details', {})
+            health = ad.get('health', {})
+            analysis = health.get('analysis', {}) if isinstance(health, dict) else {}
+            exp_data = ad.get('experience', {})
+            
+            health_before = {
+                'health_score': analysis.get('health_score'),
+                'success_rate': exp_data.get('success_rate'),
+                'tools_count': analysis.get('tools_count'),
+                'experiences': exp_data.get('total'),
+            }
+            health_after = dict(health_before)  # 同周期内 before/after 相同
+            
+            cycle_id = auditor.record_cycle(
+                result,
+                health_before=health_before,
+                health_after=health_after,
+            )
             # 补设之前 actions 的 cycle_id
             if cycle_id > 0:
                 for action in result.get('phases', {}).get('execute', {}).get('actions', []):

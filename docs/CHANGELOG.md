@@ -4,6 +4,16 @@
 
 ---
 
+## [8.0.5] — 2026-05-16
+
+### 修复
+
+- **`duration_ms` falsy bug** — `(0.0 or 0)*1000` → `(val if val else 0)*1000`，短周期不再丢 duration
+- **health/success_rate 写入** — `_audit_cycle` 从 `analysis._details` 提取 health 指标传给 `record_cycle`
+- **审计字段补全** — health_score/success_rate/tools_count/experiences 前后值现在正确写入
+
+---
+
 ## [8.0.4] — 2026-05-15
 
 ### 修复

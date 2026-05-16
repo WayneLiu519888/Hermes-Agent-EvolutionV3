@@ -216,7 +216,7 @@ class EvolutionAuditor:
                 cycle_id,
                 result.get("timestamp"),
                 datetime.now().isoformat(),
-                (result.get("duration", 0) or 0) * 1000,
+                (result.get("duration") if result.get("duration") else 0) * 1000,
                 1 if result.get("success", True) else 0,
                 trigger,
                 phase_status.get("monitor"),
