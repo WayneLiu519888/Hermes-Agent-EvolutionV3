@@ -4,6 +4,14 @@
 
 ---
 
+## [8.0.9] — 2026-05-16
+
+### 修复
+
+- **`_count_tools_from_db` 相对导入 bug** — `from ..db_utils` → `from evolution.db_utils`，tools_count 从 0 修正为 29，health_score 从 50 修正为 70
+
+---
+
 ## [8.0.8] — 2026-05-16
 
 ### 修复

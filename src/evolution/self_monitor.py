@@ -173,7 +173,7 @@ class SelfMonitor:
     def _count_tools_from_db(self) -> int:
         """从 tools.db 统计已注册工具数量（重启后策略学习器内存为空时的回退）"""
         try:
-            from ..db_utils import get_evolution_db
+            from evolution.db_utils import get_evolution_db
             conn = get_evolution_db("tools.db")
             count = conn.execute("SELECT COUNT(*) FROM tools").fetchone()[0]
             return count
