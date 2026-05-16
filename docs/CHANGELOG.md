@@ -4,6 +4,16 @@
 
 ---
 
+## [8.0.10] — 2026-05-16
+
+### 修复
+
+- **`ToolRegistry` 参数类型错误** — `tool_integration.py` L84 `ToolStrategyLearner(self.registry)` → `ToolStrategyLearner(self.registry.db_path)`，消除 `startswith` 报错，学习模块恢复正常
+- **FOREIGN KEY 断裂** — 删除 `_persist_actions`（随机 cycle_id）和分散的 `_audit_action`（cycle_id=None），actions 统一由 `_audit_cycle` 写入
+- **actions 入口统一** — execute 阶段不再独立写 actions，与 cycle 审计保持同一 cycle_id
+
+---
+
 ## [8.0.9] — 2026-05-16
 
 ### 修复

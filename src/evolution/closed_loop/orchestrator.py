@@ -395,15 +395,7 @@ class ClosedLoopOrchestrator:
                     results['failure_count'] += 1
                     logger.warning(f"  ❌ {action.target}: {action.action_type} — {result.get('message', '失败')}")
                 
-                # 持久化到审计数据库
-                self._audit_action(
-                    cycle_id=None,  # 将在 _audit_cycle 中补设
-                    action=action_result,
-                    phase="execute",
-                    success=result.get('success', False),
-                    error=result.get('message') if not result.get('success') else None,
-                    duration_ms=action_duration,
-                )
+                # action 统一由 _audit_cycle 持久化，此处不做单独写入
                     
             except Exception as e:
                 action_duration = (time.perf_counter() - action_start) * 1000
@@ -416,40 +408,8 @@ class ClosedLoopOrchestrator:
                 })
                 results['failure_count'] += 1
                 logger.error(f"  ❌ {action.target}: 执行异常 — {e}")
-                
-                self._audit_action(
-                    cycle_id=None,
-                    action=action_dict,
-                    phase="execute",
-                    success=False,
-                    error=str(e),
-                    duration_ms=action_duration,
-                )
-        
-        # 直接在 execute() 内部持久化 actions（绕过 _audit_cycle 的缓存问题）
-        self._persist_actions(plan, results)
         
         return results
-    
-    def _persist_actions(self, plan, exec_results):
-        """将执行结果直接持久化到 evolution_actions 表"""
-        try:
-            from .evolution_auditor import EvolutionAuditor
-            from ..db_utils import get_data_dir
-            import time as _t
-            auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
-            # 生成临时 cycle_id（时间戳）
-            cycle_id = int(_t.time() * 1000) % 1000000
-            for action in exec_results.get('actions', []):
-                auditor.record_action(
-                    cycle_id=cycle_id,
-                    action=action,
-                    phase='execute',
-                    success=action.get('success', True),
-                    error=action.get('message') if not action.get('success') else None,
-                )
-        except Exception:
-            pass  # 静默失败
     
     # ═══════════════════════════════════════════
     # Phase 5: Verify — 验证改进效果
@@ -802,27 +762,8 @@ class ClosedLoopOrchestrator:
         except Exception as e:
             logger.warning("审计记录失败: %s (进化流程不受影响)", e)
     
-    def _audit_action(self, cycle_id, action, phase, success, error, duration_ms):
-        """持久化单个进化动作（不抛异常）"""
-        try:
-            from .evolution_auditor import EvolutionAuditor
-            from ..db_utils import get_data_dir
-            auditor = EvolutionAuditor(db_path=str(get_data_dir() / "evolution_audit.db"))
-            if cycle_id:
-                auditor.record_action(
-                    cycle_id=cycle_id,
-                    action=action,
-                    phase=phase,
-                    success=success,
-                    error=error,
-                    duration_ms=duration_ms,
-                )
-        except Exception as e:
-            logger.debug("动作审计记录失败: %s", e)
-
-
-# ═══════════════════════════════════════════
-# Phase 3 引擎升级：闭环编排状态机
+    # ═══════════════════════════════════════════
+    # Phase 3 引擎升级：闭环编排状态机
 # ═══════════════════════════════════════════
 
 from typing import Set

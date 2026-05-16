@@ -81,7 +81,7 @@ class ToolLearningIntegrator:
         try:
             self.observer = LearningObserver()
             self.analyzer = ExperienceAnalyzer(self.observer)
-            self.strategy_learner = ToolStrategyLearner(self.registry)
+            self.strategy_learner = ToolStrategyLearner(self.registry.db_path)
             self.pattern_recognizer = PatternRecognizer()
             log.info("工具-学习集成模块初始化成功")
         except Exception as e:
