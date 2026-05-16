@@ -4,6 +4,15 @@
 
 ---
 
+## [8.0.6] — 2026-05-16
+
+### 修复
+
+- **`health_score` 提取路径修正** — `_audit_cycle` 从 `health` 顶层取 `health_score`，不再嵌套 `analysis` 层
+- **`duration_ms` is-not-None 修复** — `0.0 if 0.0 else 0` → `val if val is not None else 0`，彻底解决 falsy 截断
+
+---
+
 ## [8.0.5] — 2026-05-16
 
 ### 修复
