@@ -4,6 +4,24 @@
 
 ---
 
+## [8.0.3] — 2026-05-15
+
+### 修复
+
+- **`action_executor` 假数据写入移除** — `_execute_strategy_switch()` 不再向 search_files/terminal/read_file/write_file 伪造 success=True 记录，消除 tool_usage_history 污染
+- **`tool_usage_history` 表清空** — 删除 54,157 条假数据（策略切换伪造 + 旧版本测试残留），工具成功率从失真恢复
+- **`search_files` 假 issue 清除** — evolution_audit.db 中 search_files 相关的 tool_low_performance 已移除
+
+### 根因分析
+
+search_files 成功率 14.3% 的假告警链路：
+1. `action_executor._execute_strategy_switch()` 每周期往 tool_usage_history 伪造工具使用记录
+2. `ToolStrategyLearner._load_from_db()` 加载脏数据计算成功率
+3. `orchestrator._analyze_phase()` 生成 tool_low_performance issue
+4. 旧版本遗留 1037 条 search_files 失败记录 + 173 条伪造成功 = 14.3% 失真
+
+---
+
 ## [8.0.2] — 2026-05-15
 
 ### 修复

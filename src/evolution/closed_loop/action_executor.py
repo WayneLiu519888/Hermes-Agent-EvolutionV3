@@ -131,16 +131,8 @@ class ActionExecutor:
         try:
             current = self.strategy_learner.get_current_strategy()
             
-            # 通过记录模拟使用来触发策略自适应（内部会根据性能自动切换）
-            # 记录一些代表性的使用数据促使策略评估
-            sample_tools = ['terminal', 'read_file', 'write_file', 'search_files']
-            for tool in sample_tools:
-                self.strategy_learner.record_tool_usage(
-                    tool_name=tool,
-                    success=True,
-                    execution_time=0.5,
-                    context={'complexity': 0.3, 'source': 'strategy_switch'}
-                )
+            # 策略学习器在 record_tool_usage 内部已有 _consider_strategy_update，
+            # 不需要外部伪造数据触发
             
             new_strategy = self.strategy_learner.get_current_strategy()
             changed = new_strategy != current
