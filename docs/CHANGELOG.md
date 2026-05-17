@@ -4,6 +4,14 @@
 
 ---
 
+## [8.0.18] — 2026-05-17
+
+### 修复
+
+- **post_tool_call 打通 tool_usage_history** — `_on_post_tool_call` hook 新增 `tools.db → tool_usage_history` 直写逻辑，消除 learning_experiences 与 tool_usage_history 两套追踪系统割裂。修复后 post_tool_call 每次工具调用自动写入成功率数据，`hae audit issues` 不再报 `low_success_rate: 0.0%`（v8.0.3 清空54157条脏数据后无新记录流入的遗留问题）
+
+---
+
 ## [8.0.17] — 2026-05-17
 
 ### 改进

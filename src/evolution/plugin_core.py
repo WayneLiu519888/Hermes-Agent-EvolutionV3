@@ -543,6 +543,23 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
         except Exception:
             pass
 
+    # V8.0.18: 写入 tool_usage_history，消除两套追踪系统割裂
+    try:
+        import sqlite3
+        from evolution.db_utils import get_data_dir
+        conn = sqlite3.connect(str(get_data_dir() / "tools.db"))
+        success_val = 1 if error is None and result is not None else 0
+        exec_ms = float(duration_ms) if duration_ms else 0
+        conn.execute(
+            "INSERT INTO tool_usage_history (tool_name, success, execution_time, timestamp, context) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (tool_name, success_val, exec_ms / 1000.0, datetime.now().isoformat(),
+             '{"source": "post_tool_call_hook"}'))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
 
 # ── Python import 缓存绕过：每次工具调用强制 reload 最新 handler ──
 import importlib as _importlib
