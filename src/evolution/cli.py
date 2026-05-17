@@ -461,13 +461,24 @@ def _cycle_history(args):
     limit = getattr(args, 'limit', 10) or 10
     conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
     conn.row_factory = sqlite3.Row
-    for row in conn.execute(
-        "SELECT cycle_id, started_at, success, issues_found "
+    rows = conn.execute(
+        "SELECT cycle_id, started_at, success, issues_found, "
+        "actions_succeeded, health_score_before, patterns_discovered, duration_ms "
         "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT ?", (limit,)
-    ):
-        ok = "OK" if row['success'] else "FAIL"
-        print(f"  #{row['cycle_id']:<5} {row['started_at'][:19]} {ok} issues={row['issues_found']}")
+    ).fetchall()
     conn.close()
+    
+    # 表头
+    print("┌──────┬─────────────────────┬──────┬───────┬────────┬────────┬────────┬───────┐")
+    print("│  ID  │ 时间                 │ 状态 │ 问题  │ 动作   │ 健康   │ 模式   │ 耗时  │")
+    print("├──────┼─────────────────────┼──────┼───────┼────────┼────────┼────────┼───────┤")
+    for row in rows:
+        status = "✅" if row['success'] else "❌"
+        print(f"│ {row['cycle_id']:>4} │ {row['started_at'][:19]} │  {status}  │"
+              f" {row['issues_found']:>4}  │ {row['actions_succeeded'] or 0:>4}   │"
+              f" {row['health_score_before'] or 0:>4.0f}   │ {row['patterns_discovered']:>4}   │"
+              f" {row['duration_ms'] or 0:>4.0f} │")
+    print("└──────┴─────────────────────┴──────┴───────┴────────┴────────┴────────┴───────┘")
 
 def _cycle_detail(args):
     import json, sqlite3
