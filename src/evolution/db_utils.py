@@ -41,6 +41,12 @@ def _resolve_data_dir() -> Path:
     # 2. Hermes 标准路径
     hermes_home = os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))
     data_dir = Path(hermes_home) / "data" / "evolution"
+
+    # 3. Demo 模式检测
+    demo_marker = data_dir / ".demo_mode"
+    if demo_marker.exists():
+        data_dir = data_dir / "demo"
+
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 

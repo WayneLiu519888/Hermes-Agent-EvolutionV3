@@ -615,6 +615,19 @@ def _config_validate(args):
     _config_doctor(args)
     print("  验证完成")
 
+def _demo_install(args):
+    from evolution.demo import install_demo
+    print(install_demo())
+
+def _demo_uninstall(args):
+    from evolution.demo import uninstall_demo
+    print(uninstall_demo())
+
+def _demo_status(args):
+    from evolution.demo import demo_status
+    print(demo_status())
+
+# ── argparse 命令树 ──────────────────────────────────────────────
 def _uninstall(args):
     import shutil, subprocess
     targets = []
@@ -720,6 +733,12 @@ def _build_parser():
     cf.add_parser('show', help='显示').set_defaults(func=_config_show)
     cf.add_parser('doctor', help='诊断').set_defaults(func=_config_doctor)
     cf.add_parser('validate', help='验证').set_defaults(func=_config_validate)
+
+    # demo 命令组
+    ds = sub.add_parser('demo', help='Demo 演示环境管理').add_subparsers(dest='dm_sub')
+    ds.add_parser('install', help='部署 demo 环境').set_defaults(func=_demo_install)
+    ds.add_parser('uninstall', help='清除 demo 环境').set_defaults(func=_demo_uninstall)
+    ds.add_parser('status', help='查看当前模式').set_defaults(func=_demo_status)
 
     return parser
 

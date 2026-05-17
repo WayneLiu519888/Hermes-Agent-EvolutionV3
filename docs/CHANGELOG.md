@@ -4,6 +4,23 @@
 
 ---
 
+## [8.0.13] — 2026-05-17
+
+### 新增
+
+- **`hae demo` 演示环境模块** — 三位一体命令：
+  - `hae demo install` — 部署 demo DB（5工具/50经验/3周期/12动作），含演进数据
+  - `hae demo status` — 查看 PROD/DEMO 模式
+  - `hae demo uninstall` — 一键清除
+- **`get_data_dir()` demo 切换** — 检测 `.demo_mode` 标记自动切路径，生产/demo DB 完全隔离
+- **`tools.db` 清理** — 移除 5 个 demo 工具（add_numbers/add_tool/add_with_logging/api_func/broken_tool）
+
+### 由繁入简
+
+Demo CLI 采用功能完善的第一版方案（独立命令组），待验证后做简洁优化。
+
+---
+
 ## [8.0.12] — 2026-05-17
 
 ### 改进
