@@ -494,9 +494,53 @@ def _audit_summary(args):
     from evolution.db_utils import get_data_dir
     conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
     conn.row_factory = sqlite3.Row
-    s = conn.execute("SELECT COUNT(*) as t, SUM(success) as ok, AVG(issues_found) as ai, SUM(actions_succeeded) as act FROM evolution_cycles").fetchone()
-    print(f"总周期: {s['t']}  成功率: {s['ok']}/{s['t'] or 1}  平均问题: {s['ai'] or 0:.1f}  总动作: {s['act'] or 0}")
+    s = conn.execute("""
+        SELECT 
+            COUNT(*)                      AS total_cycles,
+            SUM(success)                  AS success_cycles,
+            COUNT(*) - SUM(success)       AS fail_cycles,
+            ROUND(AVG(duration_ms))       AS avg_duration_ms,
+            MIN(started_at)               AS first_cycle,
+            MAX(started_at)               AS last_cycle,
+            ROUND(AVG(health_score_before),1)     AS avg_health,
+            ROUND(AVG(success_rate_before)*100,1) AS avg_success_rate_pct,
+            ROUND(AVG(tools_count_before),0)      AS avg_tools,
+            ROUND(AVG(experiences_before),0)      AS avg_experiences,
+            SUM(issues_found)             AS total_issues,
+            ROUND(AVG(issues_found),1)    AS avg_issues,
+            SUM(actions_planned)          AS total_planned,
+            SUM(actions_executed)         AS total_executed,
+            SUM(actions_succeeded)        AS total_succeeded,
+            SUM(improvements_detected)    AS total_improvements,
+            SUM(errors_count)             AS total_errors
+        FROM evolution_cycles
+    """).fetchone()
     conn.close()
+    
+    print("┌──────────────────────────────────────────────┐")
+    print("│           HAE 进化审计总览                    │")
+    print("├────────────────────┬─────────────────────────┤")
+    print(f"│ 总周期             │ {s['total_cycles']:>5}                    │")
+    print(f"│ 成功 / 失败        │ {s['success_cycles']:>5} / {s['fail_cycles']:<5}               │")
+    print(f"│ 成功率             │ {s['success_cycles']/max(s['total_cycles'],1)*100:>5.0f}%                   │")
+    print(f"│ 平均耗时 (ms)      │ {s['avg_duration_ms'] or 0:>5.0f}                    │")
+    print(f"│ 首周期             │ {str(s['first_cycle'] or '-')[:19]:<25}│")
+    print(f"│ 末周期             │ {str(s['last_cycle'] or '-')[:19]:<25}│")
+    print("├────────────────────┼─────────────────────────┤")
+    print(f"│ 平均健康分         │ {s['avg_health'] or 0:>5.1f}                    │")
+    print(f"│ 平均成功率         │ {s['avg_success_rate_pct'] or 0:>5.1f}%                   │")
+    print(f"│ 平均工具数         │ {s['avg_tools'] or 0:>5.0f}                    │")
+    print(f"│ 平均经验数         │ {s['avg_experiences'] or 0:>5.0f}                    │")
+    print("├────────────────────┼─────────────────────────┤")
+    print(f"│ 累计问题           │ {s['total_issues']:>5}                    │")
+    print(f"│ 平均问题/周期      │ {s['avg_issues'] or 0:>5.1f}                    │")
+    print(f"│ 累计错误           │ {s['total_errors']:>5}                    │")
+    print("├────────────────────┼─────────────────────────┤")
+    print(f"│ 计划动作           │ {s['total_planned']:>5}                    │")
+    print(f"│ 已执行动作         │ {s['total_executed']:>5}                    │")
+    print(f"│ 成功动作           │ {s['total_succeeded']:>5}                    │")
+    print(f"│ 检测改进           │ {s['total_improvements']:>5}                    │")
+    print("└────────────────────┴─────────────────────────┘")
 
 def _audit_cycles(args):
     _cycle_history(args)
