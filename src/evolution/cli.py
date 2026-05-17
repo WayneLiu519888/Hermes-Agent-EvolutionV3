@@ -490,14 +490,46 @@ def _cycle_detail(args):
     if not row:
         print(f"未找到周期 #{cid}")
         return
-    print(f"周期 #{row['cycle_id']} {row['started_at'][:19]}")
-    print(f"  success={row['success']} issues={row['issues_found']} patterns={row['patterns_discovered']}")
+    
+    # 基础信息表
+    print("┌──────────────────────────────────────────────────────────────┐")
+    print(f"│  周期 #{row['cycle_id']:<5}  {row['started_at'][:19]}                      │")
+    print("├────────────────────┬────────────────────┬────────────────────┤")
+    print(f"│ 耗时 (ms)          │ {row['duration_ms'] or 0:>6.0f}              │ 触发方式           │ {row['trigger']:<18} │")
+    print(f"│ 成功               │ {'✅' if row['success'] else '❌':>6}              │ 错误数             │ {row['errors_count']:>6}              │")
+    print("├────────────────────┼────────────────────┼────────────────────┤")
+    print(f"│ 健康分 (前/后)     │ {row['health_score_before'] or 0:>5.0f} / {row['health_score_after'] or 0:<5.0f}        │ 成功率 (前/后)     │ {row['success_rate_before'] or 0:>4.0%} / {row['success_rate_after'] or 0:<4.0%}        │")
+    print(f"│ 工具数 (前/后)     │ {row['tools_count_before'] or 0:>5} / {row['tools_count_after'] or 0:<5}          │ 经验数 (前/后)     │ {row['experiences_before'] or 0:>5} / {row['experiences_after'] or 0:<5}          │")
+    print("├────────────────────┼────────────────────┼────────────────────┤")
+    print(f"│ 发现问题           │ {row['issues_found']:>6}              │ 发现模式           │ {row['patterns_discovered']:>6}              │")
+    print(f"│ 计划动作           │ {row['actions_planned']:>6}              │ 已执行             │ {row['actions_executed']:>6}              │")
+    print(f"│ 成功动作           │ {row['actions_succeeded']:>6}              │ 检测改进           │ {row['improvements_detected']:>6}              │")
+    print("└────────────────────┴────────────────────┴────────────────────┘")
+
+    # 问题详情
     if row['issues_details']:
         try:
             issues = json.loads(row['issues_details'])
-            for i in issues:
-                print(f"    [{i.get('severity','?')}] {i.get('type','?')}: {i.get('message','')[:80]}")
+            if issues:
+                print("\n问题详情:")
+                for i in issues:
+                    sev = i.get('severity', '?')
+                    icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '🟢'}.get(sev, '⚪')
+                    print(f"  {icon} [{sev:<8}] {i.get('type','?')}: {i.get('message','')[:100]}")
         except: pass
+
+    # 模式详情
+    if row['patterns_details']:
+        try:
+            patterns = json.loads(row['patterns_details'])
+            if patterns:
+                print("\n发现模式:")
+                for p in patterns[:10]:
+                    conf = p.get('confidence', 0)
+                    bar = '█' * int(conf * 10) + '░' * (10 - int(conf * 10))
+                    print(f"  [{bar}] {conf:.0%} {p.get('description','')[:80]}")
+        except: pass
+    
     conn.close()
 
 def _audit_summary(args):
@@ -580,9 +612,25 @@ def _audit_trend(args):
     import sqlite3
     from evolution.db_utils import get_data_dir
     conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
-    for row in conn.execute("SELECT cycle_id, issues_found, actions_succeeded FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 10"):
-        print(f"  #{row['cycle_id']:<5} issues={row['issues_found']} actions={'#'*row['actions_succeeded']}")
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT cycle_id, health_score_before, success_rate_before, issues_found, "
+        "actions_succeeded, patterns_discovered, improvements_detected "
+        "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 10"
+    ).fetchall()
     conn.close()
+    
+    print("┌──────┬────────┬──────────┬───────┬────────┬────────┬──────────┐")
+    print("│  ID  │ 健康   │ 成功率   │ 问题  │ 动作   │ 模式   │ 改进     │")
+    print("├──────┼────────┼──────────┼───────┼────────┼────────┼──────────┤")
+    for row in reversed(rows):
+        hs = row['health_score_before'] or 0
+        sr = (row['success_rate_before'] or 0) * 100
+        bar = '█' * int(hs / 10) + '░' * (10 - int(hs / 10)) if hs else '─' * 10
+        print(f"│ {row['cycle_id']:>4} │ {bar} │ {sr:>5.0f}%   │"
+              f" {row['issues_found']:>4}  │ {row['actions_succeeded']:>4}   │"
+              f" {row['patterns_discovered']:>4}   │ {row['improvements_detected']:>4}      │")
+    print("└──────┴────────┴──────────┴───────┴────────┴────────┴──────────┘")
 
 def _log_show(args):
     log_file = Path.home() / ".hermes" / "logs" / "gateway.log"
