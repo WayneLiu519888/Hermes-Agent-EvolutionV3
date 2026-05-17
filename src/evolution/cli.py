@@ -635,12 +635,36 @@ def _audit_trend(args):
 def _log_show(args):
     log_file = Path.home() / ".hermes" / "logs" / "gateway.log"
     limit = getattr(args, 'limit', 50) or 50
-    if log_file.exists():
-        for line in log_file.read_text().splitlines()[-limit:]:
-            if getattr(args, 'level', None) and args.level.upper() not in line: continue
-            print(line)
-    else:
+    level_filter = getattr(args, 'level', None)
+    if not log_file.exists():
         print(f"日志不存在: {log_file}")
+        return
+    
+    import re
+    lines = log_file.read_text().splitlines()[-limit:]
+    # 解析: 2026-05-15 08:27:13,994 INFO gateway.run: message
+    log_re = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ (\w+) ([^:]+): (.+)$')
+    
+    # 先收集解析后的行
+    parsed = []
+    for line in lines:
+        if level_filter and level_filter.upper() not in line:
+            continue
+        m = log_re.match(line)
+        if m:
+            parsed.append((m.group(1), m.group(2), m.group(3), m.group(4)[:60]))
+        else:
+            parsed.append(("", "", "", line[:60]))
+    
+    if not parsed:
+        return
+    
+    print("┌──────────────────────┬───────┬────────────────────┬──────────────────────────────────────────────┐")
+    print("│ 时间                  │ 级别  │ 来源                │ 内容                                         │")
+    print("├──────────────────────┼───────┼────────────────────┼──────────────────────────────────────────────┤")
+    for ts, lvl, src, msg in parsed:
+        print(f"│ {ts:<20} │ {lvl:<5} │ {src:<18} │ {msg:<44} │")
+    print("└──────────────────────┴───────┴────────────────────┴──────────────────────────────────────────────┘")
 
 def _config_show(args):
     config = Path.home() / ".hermes" / "config.yaml"
