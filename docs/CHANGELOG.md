@@ -4,6 +4,22 @@
 
 ---
 
+## [8.0.17] — 2026-05-17
+
+### 改进
+
+- **`hae cycle status` 表格化** — 从一行摘要改为展示最近20条周期表格（同 `hae cycle history` 格式）+ 一句总结（最新周期状态、OK/FAIL统计、累计问题、平均耗时）
+
+---
+
+## [8.0.16] — 2026-05-17
+
+### 修复
+
+- **`hae test` pip 安装兼容** — `cmd_test()` 不再依赖 `_project_root` 固定路径，改为多路查找 `tests/`，找不到时给出清晰提示 `git clone` 而非报 `ERROR: file or directory not found`
+
+---
+
 ## [8.0.15] — 2026-05-17
 
 ### 改进

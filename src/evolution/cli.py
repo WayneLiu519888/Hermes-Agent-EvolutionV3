@@ -386,12 +386,30 @@ def cmd_clean(dry_run: bool = False) -> bool:
     return True
 
 
+def _find_tests_dir() -> Path | None:
+    """查找测试目录。支持源码安装 (cwd/_project_root) 和 pip 安装 (tests/ 打包进包时)。"""
+    candidates = [
+        _project_root / "tests",               # 源码安装 → 项目根
+        Path.cwd() / "tests",                  # 当前工作目录
+        Path(__file__).resolve().parent.parent.parent / "tests",  # pip安装 site-packages/../../tests
+    ]
+    for d in candidates:
+        if d.is_dir():
+            return d
+    return None
+
+
 def cmd_test() -> bool:
     """运行自测"""
     import subprocess
+    test_dir = _find_tests_dir()
+    if test_dir is None:
+        print("❌ tests/ 目录未找到。hae test 需在源码目录下运行。")
+        print("   git clone https://github.com/WayneLiu519888/Hermes-Agent-EvolutionV3")
+        return False
+    print(f"🧪 测试目录: {test_dir}")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=line"],
-        cwd=_project_root,
+        [sys.executable, "-m", "pytest", str(test_dir), "-q", "--tb=line"],
         timeout=600
     )
     return result.returncode == 0
@@ -444,16 +462,40 @@ def _cycle_status(args):
     from evolution.db_utils import get_data_dir
     conn = sqlite3.connect(str(get_data_dir() / "evolution_audit.db"))
     conn.row_factory = sqlite3.Row
-    row = conn.execute(
-        "SELECT cycle_id, started_at, success, issues_found, actions_succeeded "
-        "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 1"
-    ).fetchone()
-    if row:
-        ok = "OK" if row['success'] else "FAIL"
-        print(f"最近周期: #{row['cycle_id']} {row['started_at'][:19]} {ok} issues={row['issues_found']}")
-    else:
-        print("暂无进化周期记录")
+    rows = conn.execute(
+        "SELECT cycle_id, started_at, success, issues_found, "
+        "actions_succeeded, health_score_before, patterns_discovered, duration_ms "
+        "FROM evolution_cycles ORDER BY cycle_id DESC LIMIT 20"
+    ).fetchall()
     conn.close()
+    
+    if not rows:
+        print("暂无进化周期记录")
+        return
+    
+    # 表格
+    print("┌──────┬─────────────────────┬──────┬───────┬────────┬────────┬────────┬───────┐")
+    print("│  ID  │ 时间                 │ 状态 │ 问题  │ 动作   │ 健康   │ 模式   │ 耗时  │")
+    print("├──────┼─────────────────────┼──────┼───────┼────────┼────────┼────────┼───────┤")
+    for row in rows:
+        status = "✅" if row['success'] else "❌"
+        print(f"│ {row['cycle_id']:>4} │ {row['started_at'][:19]} │  {status}  │"
+              f" {row['issues_found']:>4}  │ {row['actions_succeeded'] or 0:>4}   │"
+              f" {row['health_score_before'] or 0:>4.0f}   │ {row['patterns_discovered']:>4}   │"
+              f" {row['duration_ms'] or 0:>4.0f} │")
+    print("└──────┴─────────────────────┴──────┴───────┴────────┴────────┴────────┴───────┘")
+    
+    # 总结
+    latest = rows[0]
+    total = len(rows)
+    ok_count = sum(1 for r in rows if r['success'])
+    fail_count = total - ok_count
+    total_issues = sum(r['issues_found'] for r in rows)
+    avg_duration = sum(r['duration_ms'] or 0 for r in rows) / total if total else 0
+    status_word = f"全部{ok_count}周期OK" if fail_count == 0 else f"{ok_count}OK/{fail_count}FAIL"
+    print(f"\n总结: 最新周期#{latest['cycle_id']} {latest['started_at'][:19]} {'OK' if latest['success'] else 'FAIL'} "
+          f"issues={latest['issues_found']} | 最近{total}周期: {status_word}, "
+          f"累计问题{total_issues}, 平均耗时{avg_duration:.0f}ms")
 
 def _cycle_history(args):
     import sqlite3
