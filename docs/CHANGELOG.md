@@ -4,6 +4,22 @@
 
 ---
 
+## [9.0.0] — 2026-05-19
+
+### 新增 — 同Session实时自进化闭环
+
+基于 `analysis_01_realtime_self_evolution_closed_loop.md` 架构分析，实现5方案：
+
+- **方案A: 同步知识提取** — `_sync_extract_knowledge()` 规则引擎，post_llm_call后零延迟提取关键知识点写入memory_entries，当前session立即可用
+- **方案B: 洞察注入器** — 新增 `insight_injector.py`，将ClosedLoopOrchestrator的产出（模式/策略/趋势）注入pre_llm_call上下文
+- **方案C: 会话状态机** — 新增 `session_state.py`，追踪当前session对话状态（话题/错误/重复提问/困惑），情境感知注入
+- **方案D: 语义匹配** — 新增 `embedding_matcher.py`，TF-IDF向量化为inject_context提供第4阶段语义匹配（numpy不可用时自动降级Jaccard）
+- **方案E: 自适应注入** — 新增 `adaptive_policy.py`，根据context_injection_logs历史采纳率动态调整注入量和策略
+
+**架构**: 新增3模块（insight_injector / session_state / embedding_matcher / adaptive_policy），修改2文件（plugin_core / consumer），~800行代码。
+
+---
+
 ## [8.0.18] — 2026-05-17
 
 ### 修复

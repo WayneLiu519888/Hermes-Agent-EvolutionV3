@@ -29,19 +29,31 @@ class AssociationConsumer:
     # ── 上下文注入（V7.0.6：三阶段智能匹配）─────────────────────
 
     def inject_context(self, user_message: str) -> str:
-        """三阶段智能匹配：tags优先 → FTS5全文 → 最近记忆兜底
+        """四阶段智能匹配：tags → FTS5 → embedding → 最近记忆
 
-        不机械切词，让 SQLite 自己匹配。中英文混合消息原生支持。
+        V9.0.0: 新增自适应策略 + embedding语义匹配
         """
         if not user_message or len(user_message.strip()) < 3:
             return ""
+
+        # V9.0.0: 自适应注入策略
+        max_injections = 3
+        try:
+            from evolution.memory.adaptive_policy import AdaptiveInjectionPolicy
+            from evolution.db_utils import get_data_dir
+            policy = AdaptiveInjectionPolicy(str(get_data_dir() / "associations.db"))
+            if not policy.should_inject("pre_llm_call"):
+                return ""
+            max_injections = policy.get_max_injections()
+        except Exception:
+            pass
 
         try:
             entry_ids = self._match_entries(user_message)
             if not entry_ids:
                 return ""
 
-            associations = self._get_associations(entry_ids, limit=3)
+            associations = self._get_associations(entry_ids, limit=max_injections)
             if not associations:
                 return ""
 
@@ -73,7 +85,7 @@ class AssociationConsumer:
             return ""
 
     def _match_entries(self, user_message: str) -> List[str]:
-        """三阶段匹配：tags → FTS5 → 最近记忆，任一命中即停止"""
+        """四阶段匹配：tags → FTS5 → embedding → 最近记忆，任一命中即停止"""
         msg = user_message.strip()
 
         # S1: tags 匹配（最精确）
@@ -88,10 +100,16 @@ class AssociationConsumer:
             logger.debug("S2 FTS5匹配: %d 条", len(entry_ids))
             return entry_ids
 
-        # S3: 最近记忆兜底
+        # S3: V9.0.0 embedding 语义匹配
+        embedding_ids = self._match_by_embedding(msg)
+        if embedding_ids:
+            logger.debug("S3 embedding匹配: %d 条", len(embedding_ids))
+            return embedding_ids
+
+        # S4: 最近记忆兜底
         entry_ids = self._match_by_recent(limit=5)
         if entry_ids:
-            logger.debug("S3 最近记忆: %d 条", len(entry_ids))
+            logger.debug("S4 最近记忆: %d 条", len(entry_ids))
             return entry_ids
 
         return []
@@ -144,7 +162,7 @@ class AssociationConsumer:
             return []
 
     def _match_by_recent(self, limit: int = 5) -> List[str]:
-        """S3: 最近更新的记忆兜底"""
+        """S4: 最近更新的记忆兜底"""
         try:
             with self._db_pool.connection("associations.db") as conn:
                 cursor = conn.cursor()
@@ -154,6 +172,30 @@ class AssociationConsumer:
                 )
                 return [str(row[0]) for row in cursor.fetchall()]
         except Exception:
+            return []
+
+    # V9.0.0: embedding 语义匹配
+    def _match_by_embedding(self, user_message: str) -> List[str]:
+        """S3: TF-IDF 语义向量匹配（numpy不可用时降级为Jaccard）"""
+        try:
+            from evolution.memory.embedding_matcher import EmbeddingMatcher
+
+            if not hasattr(self, '_embed_matcher'):
+                self._embed_matcher = EmbeddingMatcher()
+                with self._db_pool.connection("associations.db") as conn:
+                    cursor = conn.cursor()
+                    rows = cursor.execute(
+                        "SELECT id, content FROM memory_entries "
+                        "WHERE content IS NOT NULL AND content != '' "
+                        "ORDER BY updated_at DESC LIMIT 500"
+                    ).fetchall()
+                    entries = [(r[0], r[1]) for r in rows]
+                    self._embed_matcher.index_entries(entries)
+
+            results = self._embed_matcher.search(user_message, top_k=10)
+            return [str(r[0]) for r in results]
+        except Exception as e:
+            logger.debug("embedding匹配跳过: %s", e)
             return []
 
     # ── 质量反馈 ──────────────────────────────────────────────────

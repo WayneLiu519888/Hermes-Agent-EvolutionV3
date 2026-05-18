@@ -377,6 +377,13 @@ def _on_session_start(session_id, model=None, platform=None, **kwargs):
         # 写入 hermes memory（通过 memory 系统）
         _inject_lesson_to_memory("\n".join(lines), session_id)
 
+        # V9.0.0: 初始化会话状态机
+        try:
+            from evolution.memory.session_state import SessionStateTracker
+            SessionStateTracker.for_session(session_id)
+        except Exception:
+            pass
+
     except Exception as exc:
         logger.debug("on_session_start hook: %s", exc)
 
@@ -421,6 +428,30 @@ def _on_pre_llm_call(messages, model=None, **kwargs):
             return messages
 
         context = consumer.inject_context(user_msg.get("content", ""))
+        # V9.0.0: 学习洞察注入
+        try:
+            from evolution.memory.insight_injector import InsightInjector
+            injector = InsightInjector()
+            insights = injector.inject_insights(user_msg.get("content", ""))
+            if insights:
+                context = (context + "\n" + insights) if context else insights
+        except Exception:
+            pass
+        # V9.0.0: 会话状态感知注入
+        try:
+            from evolution.memory.session_state import SessionStateTracker
+            sess_id = kwargs.get('session_id', '') or ''
+            tracker = SessionStateTracker._instances.get(sess_id)
+            if tracker:
+                tracker.record_user_message(user_msg.get("content", ""))
+                state_inj = tracker.generate_injection(
+                    user_msg.get("content", ""),
+                    existing_context=context,
+                )
+                if state_inj:
+                    context = (context + "\n" + state_inj) if context else state_inj
+        except Exception:
+            pass
         if context:
             # 追加到用户消息尾部
             modified = dict(user_msg)
@@ -450,8 +481,133 @@ def _on_post_llm_call(response, messages=None, model=None, **kwargs):
         user_msg = _last_user_message(messages)
         if user_msg and text:
             _cache_conversation(user_msg, text)
+
+        # V9.0.0: 同步轻量知识提取（规则引擎，零延迟）
+        if user_msg and text:
+            _sync_extract_knowledge(user_msg, text)
+
+        # V9.0.0: 会话状态更新 — 记录LLM回复中的话题和决策
+        try:
+            from evolution.memory.session_state import SessionStateTracker
+            sess_id = kwargs.get('session_id', '') or ''
+            tracker = SessionStateTracker._instances.get(sess_id)
+            if tracker and text:
+                tracker.record_llm_reply(text)
+        except Exception:
+            pass
     except Exception as exc:
         logger.debug("post_llm_call hook: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# V9.0.0: 同步轻量知识提取 — 规则引擎从LLM回复中提取关键知识点
+# ---------------------------------------------------------------------------
+def _sync_extract_knowledge(user_msg: str, llm_reply: str) -> None:
+    """规则引擎从LLM回复中同步提取关键知识点，直接写入memory_entries。
+
+    不调LLM，零延迟。提取不到则静默跳过。
+    """
+    import sqlite3
+    import re
+
+    knowledge_items = []
+
+    # ── 提取器1: 关键技术决策 ──
+    decision_patterns = [
+        (r'决定[：:]?\s*(.+?)(?:[。\n]|$)', '决策'),
+        (r'采用[：:]?\s*(.+?)(?:[。\n]|$)', '决策'),
+        (r'最终选择[：:]?\s*(.+?)(?:[。\n]|$)', '决策'),
+        (r'最终方案[：:]?\s*(.+?)(?:[。\n]|$)', '决策'),
+        (r'推荐用[：:]?\s*(.+?)(?:[。\n]|$)', '推荐'),
+    ]
+    for pattern, category in decision_patterns:
+        for match in re.finditer(pattern, llm_reply):
+            content = match.group(1).strip()[:200]
+            if len(content) >= 8:
+                knowledge_items.append({
+                    'content': content,
+                    'content_type': 'sync_extract',
+                    'tags': f'决策,{category}',
+                    'confidence': 0.75,
+                })
+
+    # ── 提取器2: 结构化结论 ──
+    summary_patterns = [
+        r'#{1,3}\s*(?:总结|结论|要点)[：:]?\s*\n+(.+?)(?:\n\n|\n#|$)',
+        r'\*\*(?:总结|结论|要点|关键发现)\*\*[：:]?\s*(.+?)(?:\n\n|\n\*\*|$)',
+    ]
+    for pattern in summary_patterns:
+        for match in re.finditer(pattern, llm_reply, re.DOTALL):
+            content = match.group(1).strip()[:200]
+            if len(content) >= 10:
+                knowledge_items.append({
+                    'content': content,
+                    'content_type': 'sync_extract',
+                    'tags': '总结,关键发现',
+                    'confidence': 0.85,
+                })
+
+    # ── 提取器3: 错误/修复 模式 ──
+    fix_patterns = [
+        (r'(?:修复|解决|修正).{0,10}?(?:方法|方案|步骤)[：:]?\s*(.+?)(?:[。\n]|$)', '修复'),
+        (r'根因[是：:]\s*(.+?)(?:[。\n]|$)', '根因'),
+        (r'原因是[：:]?\s*(.+?)(?:[。\n]|$)', '原因'),
+    ]
+    for pattern, category in fix_patterns:
+        for match in re.finditer(pattern, llm_reply):
+            content = match.group(1).strip()[:200]
+            if len(content) >= 8:
+                knowledge_items.append({
+                    'content': content,
+                    'content_type': 'sync_extract',
+                    'tags': f'修复,{category}',
+                    'confidence': 0.70,
+                })
+
+    if not knowledge_items:
+        return
+
+    # ── 去重 + 写入 ──
+    try:
+        from evolution.db_utils import get_data_dir
+        db_path = str(get_data_dir() / "associations.db")
+        conn = sqlite3.connect(db_path)
+
+        existing = set()
+        try:
+            rows = conn.execute(
+                "SELECT content FROM memory_entries WHERE content_type='sync_extract'"
+            ).fetchall()
+            for (c,) in rows:
+                existing.add(c[:80] if c else '')
+        except sqlite3.OperationalError:
+            pass
+
+        now = datetime.now().isoformat()
+        inserted = 0
+        for item in knowledge_items:
+            prefix = item['content'][:80]
+            if prefix in existing:
+                continue
+            try:
+                conn.execute(
+                    "INSERT INTO memory_entries (content, content_type, tags, confidence, "
+                    "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (item['content'], item['content_type'], item['tags'],
+                     item['confidence'], now, now)
+                )
+                conn.commit()
+                inserted += 1
+                existing.add(prefix)
+            except sqlite3.OperationalError:
+                pass
+
+        if inserted > 0:
+            logger.debug("sync_extract: 提取 %d 条知识点", inserted)
+
+        conn.close()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -559,6 +715,17 @@ def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error):
         conn.close()
     except Exception:
         pass
+
+    # V9.0.0: 会话状态 — 记录工具调用失败
+    if error:
+        try:
+            from evolution.memory.session_state import SessionStateTracker
+            sess_id = getattr(ctx, 'session_id', '') or ''
+            tracker = SessionStateTracker._instances.get(sess_id)
+            if tracker:
+                tracker.record_tool_error(tool_name, str(error))
+        except Exception:
+            pass
 
 
 # ── Python import 缓存绕过：每次工具调用强制 reload 最新 handler ──
