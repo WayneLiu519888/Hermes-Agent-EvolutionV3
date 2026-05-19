@@ -1,0 +1,685 @@
+================================================================================
+  HermesAgentEvolution 项目 - 全模块关键API签名采集报告
+  项目路径: /mnt/c/Users/1/hermes_agent_evolution/src/evolution/
+================================================================================
+
+===============================================================================
+一、核心模块 (src/evolution/)
+===============================================================================
+
+--- plugin_core.py --- 插件核心：注册Hermes Agent钩子，连接所有进化子系统
+  def _shutdown()                                          # 优雅关闭，清理所有子系统资源
+  def _handle_run_cycle(params, **kwargs)                  # 处理 run_cycle 工具调用，触发闭环进化
+  def _handle_create_tool(params, **kwargs)                # 处理 create_tool 工具调用，创建新工具
+  def _handle_analyze_performance(params, **kwargs)        # 处理 analyze_performance 工具调用，分析性能
+  def _handle_learn(params, **kwargs)                      # 处理 learn 工具调用，触发学习模块
+  def _handle_self_monitor(params, **kwargs)               # 处理 self_monitor 工具调用，自监控
+  def _handle_memory_discover(params, **kwargs)            # 处理 memory_discover 工具调用，发现记忆关联
+  def _handle_audit(params, **kwargs)                      # 处理 audit 工具调用，审计日志
+  def _handle_recall_lessons(params, **kwargs)             # 处理 recall_lessons 工具调用，回忆经验教训
+  def _on_session_start(session_id, model, platform, **kwargs)  # 会话开始钩子，初始化SessionState
+  def _inject_lesson_to_memory(lesson_text, session_id)    # 将LLM学到的教训注入记忆系统
+  def _on_pre_llm_call(messages, model, **kwargs)          # LLM调用前钩子，注入上下文/关联知识
+  def _on_post_llm_call(response, messages, model, **kwargs)  # LLM调用后钩子，提取知识/记录经验
+  def _sync_extract_knowledge(user_msg, llm_reply)         # 同步提取知识（关键词/标签/摘要）
+  def _on_post_tool_call(ctx, tool_name, params, result, duration_ms, error)  # 工具调用后钩子，记录性能/模式
+  def _make_dynamic_handler(tool_name)                     # 为动态工具生成运行时handler
+  def register(ctx)                                        # Hermes Agent插件注册入口
+
+--- consumer.py --- 关联消费者：匹配用户消息与记忆条目、评分、回忆经验
+  class AssociationConsumer:                               # 关联消费者主类，管理记忆匹配与清理
+    def __init__(self, db_pool)                            # 初始化，注入数据库连接池
+    def inject_context(self, user_message) -> str          # 主入口：根据用户消息注入上下文文本
+    def _match_entries(self, user_message) -> List[str]    # 多层匹配：标签>全文>最近>嵌入，返回条目ID
+    def _match_by_tags(self, message) -> List[str]         # 基于标签关键词匹配条目
+    def _match_by_fts(self, message) -> List[str]          # 基于SQLite全文搜索匹配
+    def _match_by_recent(self, limit) -> List[str]         # 返回最近使用的条目
+    def _match_by_embedding(self, user_message) -> List[str]  # 基于嵌入向量余弦相似度匹配
+    def score_usage(self, llm_response) -> None            # 根据LLM回复中是否引用对关联评分
+    def cleanup(self) -> None                              # 清理低质量关联（零使用+弱强度）
+    def recall_lessons(self, limit, outcome) -> List[Dict] # 回忆经验教训，支持按结果过滤
+    def _get_associations(self, entry_ids, limit) -> List[Dict]  # 获取给定条目的关联详情
+    def _get_assoc_detail(conn, assoc_id) -> Optional[Dict]      # 获取单条关联详情(SQL)
+    def _is_referenced(response, src_content, tgt_content) -> bool   # 判断LLM回复是否引用了两个条目
+    def _find_evidence(response, src_content, tgt_content) -> str    # 在LLM回复中查找引用证据
+
+--- cli.py --- 命令行界面：子命令驱动进化系统的手动操作
+  class EvolutionCLI:                                      # CLI主类，封装所有子命令处理
+    def __init__(self, data_dir, db_pool)                  # 初始化CLI，设置数据目录和连接池
+  def _version(args)                                       # 显示版本信息
+  def _build_parser()                                      # 构建argparse解析器及所有子命令
+  def main()                                               # CLI入口函数
+
+--- self_monitor.py --- 自监控：收集系统指标和进化统计数据
+  class SelfMonitor:                                       # 自监控器，采集内存/CPU/磁盘/进化指标
+    def collect_metrics() -> Dict[str, Any]                # 收集所有系统指标快照
+    def record_evolution_event(event_type, detail)         # 记录进化事件用于统计
+    def get_evolution_stats() -> Dict[str, Any]            # 获取进化统计摘要
+
+--- schema.py --- 数据库Schema管理：版本化迁移和初始化
+  def ensure_schema(db_name, target_version)               # 确保数据库schema达到目标版本(自动迁移)
+  def get_schema_version(db_name) -> int                   # 获取当前数据库的schema版本
+  def initialize_all()                                     # 初始化所有进化数据库的schema
+
+--- db_pool.py --- 数据库连接池：单例多库连接管理、WAL检查点
+  class DatabasePool:                                      # 单例数据库连接池
+    def __new__(cls)                                       # 单例模式创建
+    def _resolve_path(self, db_name) -> str                # 将库名解析为完整文件路径
+    def _get_connection(self, db_name) -> sqlite3.Connection  # 创建/缓存SQLite连接(启用WAL)
+    def connection(self, db_name)                          # 上下文管理器，自动checkpoint和关闭
+    def checkpoint_all(self, max_wal_mb)                   # 对所有数据库执行WAL检查点
+    def close_all(self)                                    # 关闭所有活跃数据库连接
+    def stats(self) -> dict                                # 返回连接池统计信息
+
+--- db_utils.py --- 数据库工具函数：路径解析、WAL操作、重试装饰器
+  def _resolve_data_dir() -> Path                          # 内部解析数据目录(环境变量/默认路径)
+  def get_data_dir() -> Path                              # 获取并缓存数据目录
+  def get_evolution_db(db_name) -> sqlite3.Connection      # 获取进化数据库连接(通过DatabasePool)
+  def close_all_connections()                              # 关闭所有数据库连接
+  def wal_checkpoint(db_name, mode) -> dict                # 执行WAL检查点，返回统计信息
+  def _get_wal_size(db_name) -> int                       # 获取WAL文件大小(字节)
+  def auto_checkpoint_if_needed(db_name, max_wal_mb)       # 自动检查点(WAL超过阈值时触发)
+  def vacuum_database(db_name)                             # 清理数据库碎片
+  def retry_on_db_error(max_retries, delay, backoff)       # 数据库操作重试装饰器
+  def db_table_exists(db_name, table_name) -> bool         # 检查表是否存在
+  def db_get_stats(db_name) -> dict                        # 获取数据库统计信息
+
+--- health.py --- 健康检查：系统完整性验证和自诊断
+  def health_check(data_dir) -> dict                       # 执行快速健康检查(目录/DB/依赖)
+  def comprehensive_health_check() -> dict                 # 执行全面健康检查(磁盘/内存/进程)
+  def print_health(data_dir) -> bool                       # 打印健康检查报告，返回是否全部通过
+
+--- dependency_manager.py --- 依赖管理器：自动检测/安装缺失的Python包
+  def detect_env() -> str                                  # 检测运行环境(pip/pipx/uv/poetry)
+  def get_pipx_package() -> Optional[str]                  # 如果通过pipx安装则返回包名
+  def check_module(module_name) -> bool                    # 检查单个模块是否可导入
+  def find_missing_modules() -> List[str]                  # 扫描并列出所有缺失的必要模块
+  def install_package(pkg_name, env) -> Tuple[bool, str]   # 安装单个包，返回(成功, 消息)
+  def auto_fix_missing(missing_modules) -> List[Tuple]     # 自动安装所有缺失模块
+
+--- logging_config.py --- 日志配置：统一的日志获取和辅助函数
+  def get_logger(name) -> logging.Logger                   # 获取命名logger(控制台+文件双输出)
+  def setup_logging(level, log_dir, ...)                   # 初始化全局日志配置
+  def shutdown_logging()                                   # 关闭所有日志handler
+  def log_tool_call(logger, tool_name, params, result_summary)  # 记录工具调用日志
+  def log_cycle_step(logger, cycle, step, detail)          # 记录闭环进化步骤日志
+  def log_db_query(logger, db_name, sql, duration_ms)      # 记录数据库查询日志
+
+
+===============================================================================
+二、闭环进化模块 (src/evolution/closed_loop/)
+===============================================================================
+
+--- closed_loop/orchestrator.py --- 编排器：协调闭环进化的完整周期
+  class EvolutionOrchestrator:                             # 闭环进化编排器
+    def run_cycle() -> Dict[str, Any]                      # 运行一个完整进化周期(收集>分析>学习>执行)
+    def start() -> bool                                    # 启动后台进化循环
+    def stop() -> bool                                     # 停止进化循环
+    def get_status() -> Dict[str, Any]                     # 获取当前进化状态
+
+--- closed_loop/action_executor.py --- 动作执行器：执行进化产生的改进动作
+  class ActionExecutor:                                    # 动作执行器，应用学习到的改进
+    def execute(action) -> Dict[str, Any]                  # 执行单个进化动作
+    def execute_batch(actions) -> List[Dict]               # 批量执行动作
+    def rollback(action_id) -> bool                        # 回滚指定动作
+
+--- closed_loop/evolution_auditor.py --- 进化审计器：审计进化周期结果和安全
+  class EvolutionAuditor:                                  # 进化审计器
+    def audit_cycle(cycle_data) -> Dict[str, Any]          # 审计单个进化周期
+    def get_audit_history(limit) -> List[Dict]             # 获取审计历史记录
+
+--- closed_loop/metrics_collector.py --- 指标收集器：系统/工具/进化指标采集
+  class SystemMetricsCollector:                            # 系统级指标收集器
+    def __init__(self, config)                             # 初始化收集器
+    def start() -> None                                    # 启动后台采集循环
+    def stop() -> None                                     # 停止采集
+    def collect_all() -> Dict[str, Any]                    # 采集所有指标(系统+工具+进化+自定义)
+    def collect_minimal() -> Dict[str, Any]                # 最小采集(CPU/内存/磁盘)
+    def record_tool_call(tool_name, success, ...)          # 记录单次工具调用指标
+    def record_experience(count) -> None                   # 记录经验累积数量
+    def record_pattern(count) -> None                      # 记录模式识别数量
+    def record_improvement(count) -> None                  # 记录改进数量
+    def register_collector(name, collector_fn) -> None     # 注册自定义指标采集器
+    def get_tool_stats(tool_name) -> Optional[Dict]        # 获取单个工具统计
+    def get_system_health() -> Dict[str, Any]              # 获取系统健康状态
+    def get_metrics_summary() -> Dict[str, Any]            # 获取指标摘要
+
+--- closed_loop/daemon.py --- 守护进程：长期运行的进化守护进程
+  class EvolutionPhase(Enum):                              # 进化阶段枚举(COLLECT/ANALYZE/LEARN/EXECUTE/VERIFY)
+  class LoopState(Enum):                                   # 循环状态(IDLE/RUNNING/PAUSED/ERROR)
+  class EvolutionSnapshot:                                 # 进化快照数据类
+  class EvolutionDaemon:                                   # 进化守护进程
+    def start() -> bool                                    # 启动守护进程
+    def stop() -> bool                                     # 停止守护进程
+    def pause() -> bool                                    # 暂停
+    def resume() -> bool                                   # 恢复
+    def get_status() -> Dict[str, Any]                     # 获取详细状态
+
+
+===============================================================================
+三、学习模块 (src/evolution/learning/)
+===============================================================================
+
+--- learning/observer.py --- 观察者：监控LLM交互，记录执行路径
+  class InteractionObserver:                               # 交互观察者
+    def observe(interaction) -> Dict[str, Any]             # 观察并记录单次交互
+    def get_interaction_history(limit) -> List[Dict]       # 获取交互历史
+
+--- learning/experience.py --- 经验：经验数据的封装和持久化
+  class Experience:                                        # 经验数据类(状态/动作/结果/反馈)
+    def to_dict() -> Dict[str, Any]                        # 序列化为字典
+    def from_dict(data) -> 'Experience'                    # 从字典反序列化
+    def save() -> None                                     # 持久化经验到数据库
+
+--- learning/analyzer.py --- 分析器：分析执行结果并生成洞察
+  class ExecutionAnalyzer:                                 # 执行分析器
+    def analyze(experience) -> Dict[str, Any]              # 分析单条经验，提取洞察
+    def batch_analyze(experiences) -> List[Dict]           # 批量分析经验
+    def get_insights(limit) -> List[Dict]                  # 获取已有洞察
+
+--- learning/pattern_recognizer.py --- 模式识别器：识别经验中的模式和策略
+  class PatternCategory(Enum):                             # 模式分类(PERFORMANCE/ERROR/SEQUENTIAL/TEMPORAL/CONTEXTUAL)
+  class StrategyType(Enum):                                # 策略类型(TOOL_SELECTION/PARAMETER/AFTERCARE/PREPROCESS/GENERAL)
+  class RecognizedPattern:                                 # 识别到的模式(类别/支持度/置信度/数据)
+  class GeneratedStrategy:                                 # 从模式生成的策略(类型/优先级/动作/条件)
+  class PatternRecognizer:                                 # 模式识别器
+    def recognize_patterns(experiences) -> List[RecognizedPattern]  # 识别所有类型模式
+    def generate_strategies(patterns) -> List[GeneratedStrategy]    # 基于模式生成改进策略
+    def get_pattern_summary() -> Dict[str, Any]             # 获取模式摘要
+    def get_strategy_summary() -> Dict[str, Any]            # 获取策略摘要
+    def validate_strategy(strategy_id, success, feedback) -> bool    # 验证策略有效性
+
+--- learning/tool_strategy_learner.py --- 工具策略学习器：学习最优工具选择和使用策略
+  class ToolPerformance:                                   # 工具性能数据(成功率/耗时/错误率)
+  class ToolStrategyLearner:                               # 工具策略学习器
+    def select_best_tool(task_desc, context) -> Tuple[str, float]  # 为任务选择最佳工具(名称+信心)
+    def record_execution(tool_name, success, duration, ...)         # 记录工具执行结果
+    def get_tool_stats(tool_name) -> Optional[ToolPerformance]      # 获取工具性能统计
+
+
+===============================================================================
+四、记忆模块 (src/evolution/memory/)
+===============================================================================
+
+--- memory/database.py --- 记忆数据库：知识条目和关联的CRUD操作
+  class MemoryDatabase:                                    # 记忆数据库
+    def add_entry(content, tags, embedding) -> str         # 添加记忆条目
+    def get_entry(entry_id) -> Optional[Dict]              # 获取单条记忆
+    def add_association(src_id, tgt_id, method, weight)    # 添加关联
+    def search_entries(query, limit) -> List[Dict]         # 搜索记忆条目
+    def cleanup_low_quality() -> int                       # 清理低质量条目/关联
+
+--- memory/knowledge_agent.py --- 知识代理：通过LLM从对话提取结构化知识
+  class KnowledgeAgent:                                    # 知识提取代理
+    def extract_knowledge(user_msg, llm_reply) -> Dict     # 从对话提取关键词/标签/摘要
+
+--- memory/association_discoverer.py --- 关联发现器：使用NLP/嵌入发现记忆间的隐含关联
+  class AssociationDiscoverer:                             # 关联发现器
+    def discover(new_entry_id) -> List[Dict]               # 为新条目发现关联
+
+--- memory/association_optimizer.py --- 关联优化器：优化/清理/推荐记忆关联
+  class OptimizationResult:                                # 优化结果数据类(移除/更新/推荐)
+  class AssociationOptimizer:                              # 关联优化器
+    def optimize_all_associations() -> OptimizationResult  # 优化所有关联(再评分/清理弱关联)
+    def get_recommendations(memory_entry_id, limit) -> List[Dict]  # 获取记忆推荐
+    def analyze_patterns() -> List[Dict]                   # 分析关联模式
+
+--- memory/embedding_matcher.py --- 嵌入匹配器：基于向量嵌入的语义相似度匹配
+  class EmbeddingMatcher:                                  # 嵌入匹配器
+    def index_entries(entries) -> None                     # 索引条目(使用sentence-transformers)
+    def search(query, top_k) -> List[Tuple[int, float]]    # 语义搜索(返回ID+分数)
+    def _search_numpy(query, top_k) -> List[Tuple]         # 基于numpy的余弦相似度(优先)
+    def _search_text(query, top_k) -> List[Tuple]          # 降级：基于文本重叠率
+    def _tokenize(text) -> List[str]                       # 文本分词
+
+--- memory/retrieval_optimizer.py --- 检索优化器：优化记忆检索策略
+  class RetrievalOptimizer:                                # 检索优化器
+    def optimize_retrieval(query, options) -> Dict         # 优化检索参数和策略
+
+--- memory/adaptive_policy.py --- 自适应策略：根据反馈调整记忆策略
+  class AdaptivePolicy:                                    # 自适应策略引擎
+    def adapt(feedback) -> Dict[str, Any]                  # 根据反馈调整策略参数
+
+--- memory/session_state.py --- 会话状态：跟踪单次会话的交互和错误上下文
+  class SessionState:                                      # 会话快照数据类
+    def to_dict() -> Dict                                  # 序列化
+  class SessionStateTracker:                               # 会话状态跟踪器(内存缓存)
+    def for_session(cls, session_id) -> 'SessionStateTracker'  # 工厂方法
+    def record_user_message(message) -> None               # 记录用户消息(去重检测)
+    def record_tool_error(tool_name, error) -> None        # 记录工具错误
+    def record_llm_reply(reply) -> None                    # 记录LLM回复(提取引用)
+    def reset_error_state() -> None                        # 重置错误状态
+    def is_repeat_question(message) -> bool                # 检测重复提问
+    def should_inject_summary() -> bool                    # 是否应注入对话摘要
+    def should_inject_error_context() -> bool              # 是否应注入错误上下文
+    def is_confusion(message) -> bool                      # 检测用户困惑信号
+    def generate_injection(user_message, ...) -> str       # 生成上下文注入文本
+
+--- memory/memory_tier.py --- 记忆分层：热/温/冷三层记忆存储
+  class MemoryTier(Enum):                                  # 记忆层级(HOT/WARM/COLD)
+  class TieredMemory:                                      # 分层记忆管理器
+    def store(entry, tier) -> bool                         # 按层级存储
+    def retrieve(query, tier) -> List[Dict]                # 按层级检索
+    def promote(entry_id) -> bool                          # 提升记忆层级
+    def demote(entry_id) -> bool                           # 降低记忆层级
+
+--- memory/insight_injector.py --- 洞察注入器：将学习到的洞察注入系统行为
+  class InsightInjector:                                   # 洞察注入器
+    def inject(insight, target) -> bool                    # 注入洞察到目标模块
+
+
+===============================================================================
+五、工具模块 (src/evolution/tools/)
+===============================================================================
+
+--- tools/tool_registry.py --- 工具注册表：工具定义存储和CRUD
+  class ToolCategory(Enum):                                # 工具类别
+  class ToolStatus(Enum):                                  # 工具状态(ACTIVE/DEPRECATED/DISABLED/BETA)
+  class ToolDefinition:                                    # 工具定义数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+    def from_dict(cls, data) -> 'ToolDefinition'           # 反序列化
+  class ToolRegistry:                                      # 工具注册表(基于SQLite)
+    def register(tool) -> bool                             # 注册新工具
+    def get(name) -> Optional[ToolDefinition]              # 获取工具定义
+    def list_all(category, status) -> List[ToolDefinition] # 列出所有工具(支持过滤)
+    def update_usage_stats(name, success)                  # 更新使用统计
+    def delete(name) -> bool                               # 删除工具
+    def get_statistics() -> Dict[str, Any]                 # 获取全局统计
+    def search(query) -> List[ToolDefinition]              # 搜索工具
+
+--- tools/tool_creator.py --- 工具创建器：从函数/代码创建工具定义
+  class ToolCreationResult:                                # 工具创建结果数据类
+  class ToolCreator:                                       # 工具创建器
+    def create_from_function(func, ...) -> ToolCreationResult  # 从Python函数创建工具
+    def create_from_code(code, ...) -> ToolCreationResult      # 从源码字符串创建工具
+    def create_wrapper_tool(...) -> ToolCreationResult         # 创建包装/组合工具
+    def create_batch_tools(func_list) -> Dict[str, ToolCreationResult]  # 批量创建工具
+    def validate_tool_definition(tool_def) -> List[str]          # 验证工具定义合法性
+    def generate_tool_documentation(tool_def) -> str             # 生成工具文档
+
+--- tools/enhanced_tool_creator.py --- 增强工具创建器：支持多种源分析和模板
+  class CreationSource(Enum):                              # 创建来源(FUNCTION/CODE/API/CONFIG/TEMPLATE/ADAPTIVE)
+  class ToolQuality(Enum):                                 # 工具质量等级(EXCELLENT/GOOD/FAIR/POOR)
+  class CodeAnalysisResult:                                # 代码分析结果数据类
+  class EnhancedToolCreator:                               # 增强工具创建器
+    def create_from_function(func, ...) -> ToolCreationResult  # 从函数创建(含质量分析)
+    def create_from_code(code, name, description)              # 从源码创建
+    def create_from_api_description(api_spec, ...)             # 从API描述创建
+    def create_from_config(config_path) -> ToolCreationResult  # 从配置文件创建
+    def create_from_template(template_name, ...)               # 从模板创建
+    def adaptive_create(requirements, ...)                     # 自适应创建(根据需求智能选择)
+    def get_creation_history(limit) -> List[ToolCreationResult]  # 获取创建历史
+    def get_creation_stats() -> Dict[str, Any]                 # 获取创建统计
+
+--- tools/tool_auto_generator.py --- 工具自动生成器：基于需求描述自动生成完整工具
+  class ToolGenerationResult:                              # 自动生成结果数据类
+  class ToolAutoGenerator:                                 # 工具自动生成器
+    def generate_from_requirement(requirement) -> ToolGenerationResult  # 从需求描述生成工具
+    def generate_composite_workflow(requirements) -> ToolGenerationResult  # 生成复合工作流工具
+    def list_available_templates() -> List[Dict]           # 列出可用模板
+    def get_generation_history(limit) -> List[Result]      # 获取生成历史
+    def add_custom_template(name, description, ...)        # 添加自定义模板
+
+--- tools/tool_integration.py --- 工具集成：将进化工具暴露给Hermes Agent
+  class ToolIntegration:                                   # 工具集成器
+    def register_all_tools() -> int                        # 注册所有进化工具到Agent框架
+    def get_available_tools() -> List[Dict]                # 获取可用工具列表
+
+--- tools/tool_performance_analyzer.py --- 工具性能分析器：全面性能分析和趋势
+  class PerformanceMetric(Enum):                           # 性能指标(EXECUTION_TIME/SUCCESS_RATE/ERROR_RATE/MEMORY_USAGE/CALL_FREQ)
+  class PerformanceLevel(Enum):                            # 性能等级(EXCELLENT/GOOD/FAIR/POOR/CRITICAL)
+  class PerformanceRecord:                                 # 性能记录数据类
+  class PerformanceAnalysis:                               # 性能分析结果数据类
+  class ToolPerformanceSummary:                            # 工具性能摘要数据类
+  class ToolPerformanceAnalyzer:                           # 工具性能分析器
+    def record_performance(tool_name, ...)                 # 记录工具性能数据
+    def analyze_tool_performance(tool_name, ...) -> ToolPerformanceSummary  # 分析单工具性能
+    def analyze_all_tools() -> Dict[str, ToolPerformanceSummary]  # 分析全部工具
+    def get_performance_trends(tool_name, days, metrics)   # 获取性能变化趋势
+    def generate_performance_report(output_format) -> str  # 生成性能报告
+  def monitor_performance(metric)                          # 性能监控装饰器
+
+
+===============================================================================
+六、安全模块 (src/evolution/security/)
+===============================================================================
+
+--- security/audit_logger.py --- 审计日志器：安全事件记录、查询、轮转
+  class AuditLogLevel(str, Enum):                          # 审计日志级别(INFO/WARNING/ERROR/CRITICAL)
+  class EventType(str, Enum):                              # 事件类型(TOOL_CALL/PERMISSION/THREAT/SYSTEM/...)
+  class AuditEntry:                                        # 审计条目数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+    def from_row(cls, row) -> 'AuditEntry'                 # 从SQL行反序列化
+  class AuditQueryResult:                                  # 审计查询结果数据类
+  class AuditLogger:                                       # 审计日志器(基于SQLite)
+    def log_event(event_type, level, agent_id, action, resource, outcome, detail, ...) -> int  # 记录事件
+    def log_batch(entries) -> int                          # 批量记录事件
+    def query(...) -> AuditQueryResult                     # 灵活查询(Filters模型)
+    def query_recent(hours, limit) -> AuditQueryResult     # 查询最近事件
+    def get_event_by_id(record_id) -> Optional[AuditEntry] # 按ID获取
+    def get_statistics(hours) -> Dict[str, Any]            # 获取统计摘要
+    def force_rotate() -> bool                             # 强制执行日志轮转
+    def get_record_count() -> int                          # 获取记录总数
+    def purge_old_entries(days) -> int                     # 清理过期条目
+    def close()                                            # 关闭连接
+
+--- security/permission_manager.py --- 权限管理器：基于角色的细粒度权限控制
+  class Operation(str, Enum):                              # 操作类型枚举
+  class Role(str, Enum):                                   # 角色枚举(ADMIN/WRITER/READER/OBSERVER)
+  class AgentPermission:                                   # 代理权限数据类
+  class PermissionCheckResult:                             # 权限检查结果数据类
+  class PermissionManager:                                 # 权限管理器
+    def assign_role(agent_id, role, metadata) -> AgentPermission  # 分配角色
+    def get_role(agent_id) -> Role                         # 获取角色
+    def remove_agent(agent_id) -> bool                     # 移除代理
+    def check_permission(agent_id, operation, resource, contextual_facts) -> PermissionCheckResult  # 细粒度权限检查
+    def check_permission_simple(agent_id, action) -> bool  # 简化权限检查
+    def check_batch(checks) -> List[PermissionCheckResult] # 批量权限检查
+    def register_resource(resource, owner_agent_id) -> bool  # 注册资源所有权
+    def get_resource_owner(resource) -> Optional[str]      # 获取资源所有者
+    def transfer_resource(resource, new_owner) -> bool     # 转移资源所有权
+    def list_agents() -> Dict[str, Role]                   # 列出所有代理
+    def list_resources() -> Dict[str, str]                 # 列出所有资源
+
+--- security/threat_detector.py --- 威胁检测器：检测异常行为和潜在攻击
+  class ThreatLevel(Enum):                                 # 威胁等级(RISK/WARNING/CRITICAL)
+  class ThreatAlert:                                       # 威胁告警数据类
+  class ThreatDetector:                                    # 威胁检测器
+    def detect(agent_id, action, resource, ip) -> Optional[ThreatAlert]  # 检测单次操作威胁
+    def get_recent_alerts(limit) -> List[ThreatAlert]      # 获取最近告警
+    def get_alerts_by_level(level) -> List[ThreatAlert]    # 按等级获取告警
+    def get_suspicious_agents() -> List[str]               # 获取可疑代理列表
+    def get_suspicious_ips() -> List[str]                  # 获取可疑IP列表
+    def get_stats() -> Dict[str, Any]                      # 获取检测统计
+    def acknowledge_alert(alert_id, acknowledged_by) -> bool  # 确认告警
+
+--- security/input_validator.py --- 输入验证器：参数校验和错误消息净化
+  class ValidationResult:                                  # 验证结果数据类
+  class InputValidator:                                    # 输入验证器(大多数为静态方法)
+    def validate_tool_name(cls, name) -> ValidationResult  # 验证工具名称合法性
+    def validate_db_path(cls, path) -> ValidationResult    # 验证数据库路径安全性
+    def validate_interval(cls, seconds) -> ValidationResult  # 验证时间间隔合法性
+    def sanitize_error_message(error) -> str               # 净化错误消息(移除敏感信息)
+  def validate_or_raise(result, label) -> Any              # 验证失败时抛出异常
+
+--- security/sandbox_executor.py --- 沙箱执行器：安全隔离执行用户生成的代码
+  class SandboxExecutor:                                   # 沙箱执行器
+    def execute(code, timeout, allowed_modules) -> Dict    # 在沙箱中执行代码
+
+
+===============================================================================
+七、融合模块 (src/evolution/fusion/)
+===============================================================================
+
+--- fusion/bridge.py --- V1/V2桥接器：Hermes V1/V2系统之间的数据转换和互通
+  class ServiceMapping:                                    # 服务映射数据类(V1服务名->V2服务路径)
+  class V1ExperienceData:                                  # V1版经验数据格式
+  class V2EventData:                                       # V2版事件数据格式
+  class DataFormatConverter:                               # 数据格式转换器
+    def v1_experience_to_dict(v1_experience) -> Dict       # V1经验->字典
+    def convert_v1_to_v2_json(v1_dataclass_obj) -> Dict    # V1数据类->V2 JSON
+    def convert_v2_to_v1_dataclass(v2_dict)               # V2字典->V1数据类
+    def convert_v2_event_to_v1_format(v2_event) -> Dict    # V2事件->V1格式
+    def health_check_v1() -> Dict[str, Any]               # V1侧健康检查
+    def health_check_v2() -> Dict[str, Any]               # V2侧健康检查
+    def full_health_check() -> Dict[str, Any]             # 双向完整健康检查
+    def is_bridge_ready() -> bool                          # 桥接器就绪状态
+    def is_v1_ready() -> bool                              # V1端就绪
+    def is_v2_ready() -> bool                              # V2端就绪
+    def get_bridge_summary() -> Dict[str, Any]             # 获取桥接统计摘要
+
+--- fusion/unified_entry.py --- 统一入口：提供V1/V2的统一API
+  class UnifiedEntry:                                      # 统一入口
+    def handle_request(method, params) -> Dict[str, Any]   # 处理请求(自动路由V1/V2)
+    def get_unified_status() -> Dict[str, Any]             # 获取统一状态
+
+--- fusion/compatibility.py --- 兼容层：处理V1/V2之间的兼容性问题
+  class CompatibilityLayer:                                # 兼容层
+    def check_compatibility() -> Dict[str, Any]            # 检查V1/V2兼容性
+    def resolve_conflict(conflict) -> Dict                 # 解决兼容性冲突
+
+
+===============================================================================
+八、协作模块 (src/evolution/collaboration/)
+===============================================================================
+
+--- collaboration/message_bus.py --- 消息总线：Agent间异步消息传递
+  class MessageBus:                                        # 消息总线
+    def publish(topic, message) -> bool                    # 发布消息到话题
+    def subscribe(topic, callback) -> bool                 # 订阅话题
+    def get_subscribers(topic) -> List                     # 获取话题订阅者
+
+--- collaboration/agent_registry.py --- 代理注册表：管理协作Agent的注册和发现
+  class AgentInfo:                                         # 代理信息数据类(能力/状态/负载)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class AgentRegistry:                                     # 代理注册表
+    def register(agent_info) -> bool                       # 注册代理
+    def deregister(agent_id) -> bool                       # 注销代理
+    def find_best_agent(task_desc) -> Optional[AgentInfo]  # 为任务查找最佳代理
+    def list_agents(status) -> List[AgentInfo]             # 列出代理
+    def update_status(agent_id, status, load) -> bool      # 更新代理状态/负载
+
+--- collaboration/task_dispatcher.py --- 任务调度器：DAG任务分发和协调
+  class TaskPriority(Enum):                                # 任务优先级(CRITICAL/HIGH/MEDIUM/LOW)
+  class TaskStatus(Enum):                                  # 任务状态(PENDING/RUNNING/COMPLETED/FAILED/CANCELLED)
+  class Task:                                              # 任务定义(含依赖DAG)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+    def can_execute(completed_tasks) -> bool               # 检查依赖是否满足
+  class TaskDispatcher:                                    # 任务调度器(线程池+优先级队列)
+    def submit_task(task) -> str                           # 提交任务，返回task_id
+    def complete_task(task_id, result, ...) -> bool        # 标记任务完成
+    def cancel_task(task_id) -> bool                       # 取消任务
+    def task_status(task_id) -> Optional[Dict]             # 查询任务状态
+    def list_tasks(status, priority) -> List[Dict]         # 列出任务
+    def get_queue_size() -> int                            # 获取待处理队列大小
+    def get_stats() -> Dict[str, int]                      # 获取调度统计
+
+--- collaboration/agent_orchestrator.py --- 代理编排器：多Agent协作编排
+  class AgentOrchestrator:                                 # 代理编排器
+    def orchestrate(task) -> Dict[str, Any]                # 编排多Agent协作
+    def get_orchestration_status(task_id) -> Dict          # 获取编排状态
+
+
+===============================================================================
+九、服务层 (src/services/)
+===============================================================================
+
+--- services/core/config/config_manager.py --- 配置管理服务
+  class ConfigSource(Enum):                                # 配置来源(ENV/FILE/DEFAULT/USER/OVERRIDE)
+  class ConfigType(Enum):                                  # 配置类型(STRING/INT/FLOAT/BOOL/DICT/LIST)
+  class ConfigItem:                                        # 配置项数据类(含校验规则)
+    def validate() -> bool                                 # 验证配置值
+  class ConfigManager:                                     # 配置管理器(多层配置合并)
+    def get(key, default) -> Any                           # 获取配置值
+    def get_item(key) -> Optional[ConfigItem]              # 获取完整配置项
+    def set(key, value, config_type) -> bool               # 设置配置值
+    def delete(key) -> bool                                # 删除配置项
+    def validate_all() -> Dict[str, List[str]]             # 验证所有配置
+    def subscribe(callback) -> None                        # 订阅配置变更
+    def unsubscribe(callback) -> None                      # 取消订阅
+    def save_to_file(file_path) -> bool                    # 保存到文件
+    def get_all() -> Dict[str, Any]                        # 获取全部配置
+    def get_config_hash() -> str                           # 获取配置哈希
+
+--- services/core/events/event_bus.py --- 事件总线服务
+  class EventPriority(Enum):                               # 事件优先级
+  class Event:                                             # 事件数据类
+  class EventBus:                                          # 事件总线
+    def publish(event) -> bool                             # 发布事件
+    def subscribe(event_type, handler, priority) -> bool   # 订阅事件
+    def unsubscribe(event_type, handler) -> bool           # 取消订阅
+    def get_event_history(event_type, limit) -> List       # 获取事件历史
+  class EventFilter:                                       # 事件过滤器
+    def by_priority(min_priority) -> Callable              # 按优先级过滤
+    def by_data_key(key, value) -> Callable                # 按数据键过滤
+    def combine(*filters) -> Callable                      # 组合过滤器
+
+--- services/core/services/service_manager.py --- 服务管理器
+  class ServiceStatus(Enum):                               # 服务状态(INITIALIZING/RUNNING/STOPPING/STOPPED/ERROR)
+  class ServiceType(Enum):                                 # 服务类型(CORE/LEARNING/TOOLS/SYSTEM)
+  class ServiceInfo:                                       # 服务信息数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class ServiceManager:                                    # 服务管理器(心跳+健康检查)
+    def register_service(service_info) -> bool             # 注册服务
+    def start_all() -> bool                                # 启动全部服务
+    def stop_all() -> bool                                 # 停止全部服务
+    def get_service_status(service_name) -> Optional[Dict] # 获取服务状态
+    def list_services(filter_type) -> List[ServiceInfo]     # 列出所有服务
+
+--- services/system/deployment/deployment_service.py --- 部署服务
+  class DeploymentStatus(Enum):                            # 部署状态(PENDING/DEPLOYING/SUCCESS/FAILED/ROLLBACK)
+  class EnvironmentType(Enum):                             # 环境类型(DEVELOPMENT/STAGING/PRODUCTION)
+  class DeploymentConfig:                                  # 部署配置数据类
+  class DeploymentResult:                                  # 部署结果数据类
+  class ConfigurationManager:                              # 配置管理器(环境配置)
+    def load_config(env) -> Dict[str, Any]                 # 加载环境配置
+    def save_config(env, config) -> bool                   # 保存配置
+    def get_config(env, key, default) -> Any               # 获取配置项
+    def update_config(env, updates) -> bool                # 更新配置
+    def register_watcher(callback) -> None                 # 注册配置监视器
+    def validate_config(env) -> List[str]                  # 验证配置
+    def export_config(env, format) -> str                  # 导出配置
+  class DockerManager:                                     # Docker管理器
+    def build_image(...) -> Dict[str, Any]                 # 构建Docker镜像
+    def push_image(image_name, image_tag) -> Dict          # 推送镜像
+    def run_container(...) -> Dict[str, Any]               # 运行容器
+    def stop_container(container_name) -> Dict             # 停止容器
+    def get_container_status(container_name) -> Dict       # 获取容器状态
+  class DeploymentManager:                                 # 部署管理器
+    def deploy(...) -> Dict[str, Any]                      # 执行部署
+    def rollback(...) -> Dict[str, Any]                    # 回滚部署
+
+--- services/system/monitoring/monitoring_service.py --- 监控服务
+  class MonitoringService:                                 # 监控服务
+    def start_monitoring() -> bool                         # 启动监控
+    def stop_monitoring() -> bool                          # 停止监控
+    def get_monitoring_data() -> Dict[str, Any]            # 获取监控数据
+
+--- services/system/testing/test_service.py --- 测试服务
+  class TestStatus(Enum):                                  # 测试状态(PASSED/FAILED/SKIPPED/ERROR/TIMEOUT)
+  class TestType(Enum):                                    # 测试类型(UNIT/INTEGRATION/E2E/PERFORMANCE/SECURITY)
+  class TestResult:                                        # 测试结果数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class TestSuiteResult:                                   # 测试套件结果数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class TestCase:                                          # 测试用例类
+    def assert_true(condition, message) -> None            # 断言为真
+    def assert_false(condition, message) -> None           # 断言为假
+    def assert_equal(actual, expected, message) -> None    # 断言相等
+
+--- services/tools/discovery/tool_discovery_service.py --- 工具发现服务
+  class ToolCategory(Enum):                                # 工具类别
+  class ToolType(Enum):                                    # 工具类型(BUILTIN/PLUGIN/REMOTE/GENERATED/COMPOSITE)
+  class ToolParameter:                                     # 工具参数定义
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class ToolMetadata:                                      # 工具元数据(含描述/参数/示例/使用统计)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+    def update_usage_stats(success, execution_time)        # 更新使用统计
+  class ToolScanner:                                       # 工具扫描器
+    def scan_directory(directory, recursive) -> List[ToolMetadata]  # 扫描目录发现工具
+
+--- services/tools/composition/tool_composition_service.py --- 工具组合服务
+  class ToolCompositionType(Enum):                         # 组合类型(SEQUENTIAL/PARALLEL/CONDITIONAL/BRANCH/LOOP)
+  class ToolCompositionStatus(Enum):                       # 组合状态
+  class ToolNode:                                          # 工具节点(DAG节点)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class ToolEdge:                                          # 工具边(DAG依赖/数据流)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class CompositionResult:                                 # 组合执行结果
+  class ToolComposition:                                   # 工具组合(基于DAG)
+    def add_node(node) -> bool                             # 添加节点
+    def add_edge(edge) -> bool                             # 添加边
+    def remove_node(node_id) -> bool                       # 移除节点
+    def remove_edge(src, tgt) -> bool                      # 移除边
+    def get_execution_order() -> List[List[str]]           # 获取拓扑执行顺序(并行层级)
+    def validate() -> Tuple[bool, List[str]]               # 验证DAG合法性
+    def to_dict() -> Dict[str, Any]                        # 序列化
+    def update_stats(success, execution_time)              # 更新统计
+  class ToolExecutor:                                      # 工具执行器(线程池并行)
+    def register_tool_executor(tool_id, executor) -> None  # 注册工具执行函数
+    def execute(composition, context) -> CompositionResult # 执行组合
+  class ToolCompositionService:                            # 工具组合服务(组合CRUD+缓存)
+
+--- services/learning/reinforcement/rl_service.py --- 强化学习服务
+  class RLState:                                           # RL状态向量
+    def to_tensor() -> torch.Tensor                        # 转为张量
+  class RLAction:                                          # RL动作
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class RLExperience:                                      # RL经验(S,A,R,S')
+    def to_tuple() -> Tuple                                # 转为四元组
+  class ReplayBuffer:                                      # 经验回放缓冲区
+    def push(experience) -> None                           # 存入经验
+    def sample(batch_size) -> List[RLExperience]           # 采样批次
+    def clear() -> None                                    # 清空
+  class QNetwork(nn.Module):                               # Q网络(神经网络)
+  class DQNAgent:                                          # DQN智能体
+    def select_action(state) -> RLAction                   # 选择动作
+    def train_step() -> float                              # 训练一步
+    def save(path) -> None                                 # 保存模型
+    def load(path) -> None                                 # 加载模型
+
+--- services/learning/reflection/reflection_service.py --- 反思服务
+  class ReflectionType(Enum):                              # 反思类型(FAILURE/SUCCESS/PATTERN/GENERAL)
+  class ReflectionDepth(Enum):                             # 反思深度(SHALLOW/STANDARD/DEEP)
+  class Experience:                                        # 经验数据类
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class ReflectionResult:                                  # 反思结果(洞察+建议+置信度)
+    def to_dict() -> Dict[str, Any]                        # 序列化
+  class PatternRecognizer:                                 # 模式识别器(分析经验集合)
+    def analyze_experiences(experiences) -> List[Dict]     # 综合分析经验
+  class ReflectionEngine:                                  # 反思引擎(深度分析单条经验)
+    def add_experience(experience) -> None                 # 添加经验
+    def reflect_on_experience(experience, depth) -> ReflectionResult  # 对经验进行反思
+    def batch_reflect(experiences) -> List[ReflectionResult]  # 批量反思
+    def get_reflection_history(limit) -> List[Result]      # 获取反思历史
+    def get_patterns() -> List[Dict]                       # 获取已发现模式
+    def clear_history() -> None                            # 清空历史
+  class ReflectionService:                                 # 反思服务(外观)
+
+--- services/learning/meta/meta_learning_service.py --- 元学习服务
+  class MetaTask:                                          # 元学习任务(support+query集)
+    def get_batch(batch_size, from_set) -> Tuple[Tensor]   # 获取批次数据
+  class MetaLearner(nn.Module):                            # 元学习器网络
+    def forward(x) -> torch.Tensor                         # 前向传播
+    def adapt(task, steps, lr) -> nn.Module                # 快速适应新任务
+  class MAML:                                              # MAML算法实现
+    def meta_train_step(tasks) -> float                    # 单步元训练
+    def meta_train(task_distribution, epochs) -> List[float]  # 完整元训练
+    def fast_adapt(task) -> MetaLearner                    # 快速适应
+    def save(path) -> None                                 # 保存模型
+    def load(path) -> None                                 # 加载模型
+    def get_stats() -> Dict[str, Any]                      # 获取统计
+  class TaskDistribution:                                  # 任务分布采样器
+    def sample_task() -> MetaTask                          # 采样单个任务
+    def sample_tasks(n) -> List[MetaTask]                  # 采样n个任务
+
+
+===============================================================================
+十、工具模块 (src/utils/)
+===============================================================================
+
+--- utils/progress_reporter.py --- 进度报告器：通过飞书推送任务进度
+  class ProgressReporter:                                  # 进度报告器
+    def start_reporting()                                  # 开始定时上报
+    def stop_reporting()                                   # 停止上报
+    def update_task_progress(task_name, status, ...)       # 更新任务进度
+    def send_start_notification()                          # 发送开始通知
+    def send_progress_report()                             # 发送进度报告
+    def send_task_complete_notification(task_name, ...)    # 发送完成通知
+    def send_error_notification(task_name, error, ...)     # 发送错误通知
+  def get_reporter(webhook_url) -> ProgressReporter        # 工厂函数
+
+--- utils/feishu_notifier.py --- 飞书通知器：通过飞书机器人发送消息
+  class FeishuNotifier:                                    # 飞书通知器(Webhook+OpenAPI双通道)
+    def _load_config(config_path) -> Dict[str, Any]        # 加载飞书配置
+    def get_access_token() -> Optional[str]                # 获取飞书访问令牌
+    def send_notification(title, content, level) -> bool   # 发送通知(优先Webhook)
+    def _send_via_webhook(title, content, level) -> bool   # 通过Webhook发送(富文本卡片)
+    def _send_via_openapi(title, content, level) -> bool   # 通过OpenAPI发送(IM消息)
+    def _send_simulated(title, content, level) -> bool     # 模拟发送(离线测试)
+    def test_connection() -> Dict[str, Any]                # 测试飞书连接
+
+================================================================================
+报告完毕
+总计采集:  ~60+ 个Python文件,  ~550+ 个class/def签名行
+================================================================================
